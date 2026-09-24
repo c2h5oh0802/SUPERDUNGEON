@@ -1,7 +1,40 @@
 // 練習模式：以正常動作鏈做出空中擊破煙霧瓶。
 // 操作全部是正常輸入（方向鍵轉向、3 換投石、Q 投瓶、左鍵投石）；
 // 瞄準時透過 __sd 讀取瓶子的位置與速度來決定要轉到哪裡（狀態讀取輔助，不是真人操作）。
-import { Bot, OUT, launch, wrap } from './lib.mjs';
+import { Bot, OUT, launch } from './lib.mjs';
+
+// 與 src/config.ts 相同的數值（投石 30 m/s、重力 6、準備 0.06 s；眼高 1.6−0.05；天花板 4.5 m）
+const STONE = { speed: 30, gravity: 6, windup: 0.06 };
+const EYE_Y = 1.55;
+const CEILING = 4.5;
+
+/** 依目前的視角，找出投石直線與瓶子拋物線最接近的時刻，回傳要在哪個世界時間按下左鍵。 */
+function planIntercept(s, b) {
+  const p = s.player;
+  const cp = Math.cos(p.pitch);
+  const v = { x: -Math.sin(p.yaw) * cp, y: Math.sin(p.pitch), z: -Math.cos(p.yaw) * cp };
+  const f = { x: -Math.sin(p.yaw), z: -Math.cos(p.yaw) };
+  const r = { x: Math.cos(p.yaw), z: -Math.sin(p.yaw) };
+  const eye = { x: p.x, y: EYE_Y, z: p.z };
+  const o = { x: eye.x + f.x * 0.45 + r.x * 0.16, y: EYE_Y - 0.12, z: eye.z + f.z * 0.45 + r.z * 0.16 };
+  // 投石朝「準星射線打到的表面」收斂；開闊場地仰角瞄準時是天花板
+  const aimDist = Math.max(2.5, v.y > 0.05 ? Math.min(60, (CEILING - EYE_Y) / v.y) : 60);
+  const a = { x: eye.x + v.x * aimDist, y: eye.y + v.y * aimDist, z: eye.z + v.z * aimDist };
+  const len = Math.hypot(a.x - o.x, a.y - o.y, a.z - o.z);
+  const u = { x: (a.x - o.x) / len, y: (a.y - o.y) / len, z: (a.z - o.z) / len };
+  let best = null;
+  for (let t = 0.02; t < 2; t += 0.004) {
+    const bt = { x: b.x + b.vx * t, y: b.y + b.vy * t - 0.5 * b.gravity * t * t, z: b.z + b.vz * t };
+    if (bt.y < 0.3) break;
+    const tau = Math.hypot(bt.x - o.x, bt.y - o.y, bt.z - o.z) / STONE.speed;
+    const lead = t - tau - STONE.windup;
+    if (lead < 0.03) continue;
+    const st = { x: o.x + u.x * STONE.speed * tau, y: o.y + u.y * STONE.speed * tau - 0.5 * STONE.gravity * tau * tau, z: o.z + u.z * STONE.speed * tau };
+    const miss = Math.hypot(st.x - bt.x, st.y - bt.y, st.z - bt.z);
+    if (!best || miss < best.miss) best = { t, miss, dist: tau * STONE.speed, clickAt: s.time + lead };
+  }
+  return best;
+}
 
 const { browser, page, errors } = await launch();
 await page.goto(`${process.env.BASE_URL ?? 'http://127.0.0.1:5173/'}?dev=1&gfx=low`);
@@ -54,33 +87,14 @@ for (let attempt = 1; attempt <= 3 && !success; attempt++) {
   }
   console.log(`attempt ${attempt}: 投瓶後行動結束時瓶子仍在空中 y=${bottle.y.toFixed(2)}`);
   await page.screenshot({ path: `${OUT}airburst-${attempt}-bottle.png` });
-  // 瞄準：預測瓶子在投石命中時的位置（投石 30 m/s、準備 0.06 s、重力 6）
-  for (let iter = 0; iter < 3; iter++) {
-    s = await bot.st();
-    const b = s.projectiles.find((q) => q.kind === 'bottle');
-    if (!b) break;
-    const ex = s.player.x;
-    const ey = 1.55;
-    const ez = s.player.z;
-    let t = 0.2;
-    let tx = b.x;
-    let ty = b.y;
-    let tz = b.z;
-    for (let k = 0; k < 4; k++) {
-      tx = b.x + b.vx * t;
-      ty = b.y + b.vy * t - 0.5 * b.gravity * t * t;
-      tz = b.z + b.vz * t;
-      const d = Math.hypot(tx - ex, ty - ey, tz - ez);
-      t = 0.06 + d / 30 + 0.02;
-    }
-    const d = Math.hypot(tx - ex, tz - ez);
-    const drop = 0.5 * 6 * (d / 30) ** 2;
-    const yaw = Math.atan2(-(tx - ex), -(tz - ez));
-    const pitch = Math.atan2(ty + drop - ey, d);
-    await bot.turnTo(yaw, 0.012);
-    await bot.pitchTo(pitch, 0.012);
-    const now = await bot.st();
-    if (Math.abs(wrap(now.player.yaw - yaw)) < 0.02 && Math.abs(now.player.pitch - pitch) < 0.02) break;
+  // 不轉向：瓶子沿著面向的方向飛，投石也從同一個出手點朝準星射出，兩者幾乎在同一個鉛直面上，
+  // 投石的直線一定會穿過瓶子的拋物線。只要算出交會點，並在正確的世界時間按下左鍵（和真人「等它飛到準星再丟」一樣）。
+  const plan = planIntercept(s, bottle);
+  console.log(`attempt ${attempt}: 預計交會 ${plan.t.toFixed(2)} s 後、距離 ${plan.dist.toFixed(1)} m、預估偏差 ${plan.miss.toFixed(3)} m`);
+  for (;;) {
+    const x = await bot.st();
+    if (x.time >= plan.clickAt - x.lastWorldDt * 0.5) break;
+    await page.waitForTimeout(15);
   }
   await bot.click();
   await page.waitForTimeout(80);

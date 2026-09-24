@@ -1,5 +1,6 @@
 import { PLAYER } from '../config';
 import { activeLoopCount } from '../core/loop';
+import { levelSignature } from '../gen/generator';
 import { geometryCacheSize } from '../render/characters';
 import { Nav } from '../sim/nav';
 import type { World } from '../sim/world';
@@ -90,6 +91,8 @@ export function installDevApi(app: App): void {
       return {
         seed: l.seed,
         template: l.templateId,
+        /** 生成結果的完整簽章（地形、門、敵人初始位置、補給、祭壇），用來比對同種子重試。 */
+        signature: levelSignature(l),
         w: l.grid.w,
         h: l.grid.h,
         spawn: l.spawn,

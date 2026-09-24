@@ -12,16 +12,13 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
 };
 
-const signature = async () =>
+// 生成結果的完整簽章（地形、門、敵人初始位置與狀態、補給、祭壇），不受開局後經過多少慢動作時間影響
+const signature = async () => page.evaluate(() => window.__sd.level().signature);
+// 開局後的即時狀態（巡邏中的敵人會在慢動作中移動，只在失敗時列出以供比對）
+const liveSnapshot = async () =>
   page.evaluate(() => {
-    const l = window.__sd.level();
     const s = window.__sd.state();
-    return JSON.stringify({
-      t: l.template,
-      rooms: l.rooms.map((r) => [r.key, r.layoutId, r.x0, r.z0]),
-      enemies: s.enemies.map((e) => [e.kind, e.x.toFixed(2), e.z.toFixed(2), e.state]),
-      altars: l.altars.map((a) => a.offer),
-    });
+    return { time: s.time, enemies: s.enemies.map((e) => [e.kind, +e.x.toFixed(2), +e.z.toFixed(2), e.state]) };
   });
 
 /** 走進最近的敵人附近，按住空白讓時間流動直到死亡。 */
@@ -69,6 +66,7 @@ async function dieNormally() {
 await startRun(page, 'RETRY1');
 await page.waitForTimeout(400);
 const sig1 = await signature();
+const live1 = await liveSnapshot();
 check('第一局死亡後進入結算', await dieNormally());
 await page.waitForTimeout(500);
 check('結算標題顯示死亡', (await page.textContent('#res-title')) === '你倒下了');
@@ -79,7 +77,10 @@ await page.click('#btn-retry');
 await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 30000 });
 await page.waitForTimeout(400);
 const sig2 = await signature();
-check('同種子重試：初始佈局與內容完全相同', sig1 === sig2);
+const live2 = await liveSnapshot();
+check('同種子重試：生成結果完全相同（地形、門、敵人初始位置、補給、祭壇）', sig1 === sig2, `${sig1.length} 字元`);
+const sameLive = JSON.stringify(live1.enemies) === JSON.stringify(live2.enemies);
+if (!sameLive) console.log('（資訊）開局後的即時敵人狀態不同，原因是取樣時已經過的世界時間不同：', live1.time.toFixed(3), 'vs', live2.time.toFixed(3));
 const st2 = await bot.st();
 check('同種子重試：狀態重置（生命、時間、敵人）', st2.player.hp === st2.player.maxHp && st2.time < 0.5 && st2.enemies.every((e) => e.alive));
 check('第二局死亡後進入結算', await dieNormally());
