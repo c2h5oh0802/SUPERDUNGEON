@@ -10,10 +10,11 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
 };
 
-const { browser, page, errors } = await launch();
+// 較小的視窗：軟體渲染下幀率較高、輸入延遲較低（反擊與疾射的時機檢查需要）
+const { browser, page, errors } = await launch({ viewport: { width: 640, height: 360 } });
 const bot = new Bot(page);
 await page.goto(`${BASE}?dev=1&gfx=low`);
-await page.mouse.move(640, 360);
+await page.mouse.move(320, 180);
 
 const st = () => bot.st();
 // 射擊場裡弩手（高台、面向南）視野內的站位；踏板在 (24.5, 11.5) 與 (31.5, 11.5)
@@ -26,7 +27,7 @@ check('點選獵手卡片後被選取', (await page.getAttribute('.class-card[da
 const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('superdungeon.settings.v1') ?? '{}').cls);
 check('職業選擇存進設定', saved === 'huntress', String(saved));
 await page.reload();
-await page.mouse.move(640, 360);
+await page.mouse.move(320, 180);
 check('重新整理後仍是獵手', (await page.getAttribute('.class-card[data-cls="huntress"]', 'aria-checked')) === 'true');
 const cardText = await page.textContent('.class-card[data-cls="warrior"]');
 check('職業卡顯示名稱、承諾與能力', cardText.includes('戰士') && cardText.includes('反擊斬') && cardText.includes('擊開'), cardText.slice(0, 40));
@@ -128,12 +129,17 @@ await startPractice('warrior');
         const ang = Math.abs(wrap(yawTo(x.player.x, x.player.z, gg.x, gg.z) - x.player.yaw));
         return `phase=${gg.phase} phaseT=${gg.phaseT.toFixed(3)} locked=${gg.locked} d=${Math.hypot(gg.x - x.player.x, gg.z - x.player.z).toFixed(2)} ang=${ang.toFixed(2)} cue=${JSON.stringify(x.cue.counter)} time=${x.time.toFixed(3)} dt=${x.lastWorldDt.toFixed(4)}/${x.lastRealDt.toFixed(3)}`;
       };
+      const r0 = Date.now();
       console.log('INFO 看到反擊提示時', gp(s));
-      await bot.click();
-      for (let k = 0; k < 60; k++) {
+      await page.mouse.down({ button: 'left' });
+      const r1 = Date.now();
+      await page.waitForTimeout(50);
+      await page.mouse.up({ button: 'left' });
+      const r2 = Date.now();
+      for (let k = 0; k < 200; k++) {
         const x = await st();
         if (x.player.action) {
-          console.log('INFO 行動開始時', gp(x), 'action', JSON.stringify(x.player.action));
+          console.log('INFO 行動開始時', gp(x), 'action', JSON.stringify(x.player.action), `真實時間：按下 ${r1 - r0} ms、放開 ${r2 - r0} ms、看到行動 ${Date.now() - r0} ms`);
           break;
         }
         await page.waitForTimeout(10);
