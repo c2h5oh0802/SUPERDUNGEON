@@ -155,3 +155,15 @@ describe('時間規則', () => {
     expect(computeWorldDt({ realDt: 0.02, moveDist: 10, actionRemaining: 0, waitHeld: false })).toBeCloseTo(0.02, 12);
   });
 });
+
+describe('行動結束效果（回歸）', () => {
+  it('以各種幀長執行時，喝藥的效果都會在行動結束時發生', () => {
+    for (const frame of [1 / 60, 1 / 144, 1 / 30, 0.037, 0.1]) {
+      const w = makeWorld();
+      w.player.hp = 3;
+      w.frame(frame, { ...emptyInput(), potion: true });
+      for (let k = 0; k < 2000 && w.player.action; k++) w.frame(frame, emptyInput());
+      expect(w.player.hp, `frame ${frame}`).toBe(3 + PLAYER.potionHeal);
+    }
+  });
+});

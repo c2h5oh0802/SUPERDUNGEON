@@ -66,6 +66,7 @@ export class Nav {
   private gScore: Float32Array;
   private came: Int32Array;
   private stamp: Uint32Array;
+  private closed: Uint32Array;
   private stampId = 1;
 
   constructor(grid: Grid, radius: number) {
@@ -79,6 +80,7 @@ export class Nav {
     this.gScore = new Float32Array(n);
     this.came = new Int32Array(n);
     this.stamp = new Uint32Array(n);
+    this.closed = new Uint32Array(n);
     for (let j = 0; j < this.h; j++) {
       for (let i = 0; i < this.w; i++) {
         const x = (i + 0.5) * this.res;
@@ -177,7 +179,7 @@ export class Nav {
   }
 
   /** A*；回傳平滑後的路徑點（不含起點）。 */
-  findPath(sx: number, sz: number, tx: number, tz: number, ignoreBars = false, maxExpand = 30000): V2[] | null {
+  findPath(sx: number, sz: number, tx: number, tz: number, ignoreBars = false, maxExpand = 40000): V2[] | null {
     const start = this.nearestPassable(sx, sz);
     const goal = this.nearestPassable(tx, tz);
     if (start < 0 || goal < 0) return null;
@@ -196,6 +198,8 @@ export class Nav {
     let expanded = 0;
     while (heap.size > 0) {
       const cur = heap.pop();
+      if (this.closed[cur] === stamp) continue; // 過期的堆積項目
+      this.closed[cur] = stamp;
       if (cur === goal) {
         found = true;
         break;

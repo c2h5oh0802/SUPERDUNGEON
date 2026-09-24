@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIONS, ENEMIES, PERCEPTION, PLAYER, RUNES, runeInfo } from '../src/config';
 import { fireProjectile } from '../src/sim/playerSys';
-import { updateProjectiles } from '../src/sim/projectileSys';
 import { emptyInput, type Projectile } from '../src/sim/types';
 import type { World } from '../src/sim/world';
 import { finishAction, makeWorld, run } from './helpers';

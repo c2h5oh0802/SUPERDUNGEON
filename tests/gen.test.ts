@@ -79,3 +79,16 @@ describe('地城生成', () => {
     expect(l.grid.get(Math.floor(l.spawn.x), Math.floor(l.spawn.z))).toBe(T.Floor);
   });
 });
+
+describe('導航', () => {
+  it('長路徑也找得到（A* 不因過期堆積項目提早放棄）', () => {
+    for (const seed of ['RUN2', 'FLOW1', 'FLOW2', 'S7', 'S19']) {
+      const l = generateLevel(seed);
+      const nav = new Nav(l.grid, PLAYER.radius);
+      const h = l.heart!;
+      const p = nav.findPath(l.spawn.x, l.spawn.z, h.x, h.z + 1.3);
+      expect(p, seed).not.toBeNull();
+      expect(p!.length).toBeGreaterThan(2);
+    }
+  });
+});

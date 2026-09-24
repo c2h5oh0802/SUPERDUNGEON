@@ -154,6 +154,8 @@ export function updatePlayerAction(w: World, dt: number): void {
   const prevT = a.t;
   a.t += dt;
   const total = a.windup + a.active + a.recovery;
+  // 以同一個容許誤差判定「行動結束」與「結束時的效果」，避免浮點誤差讓效果被跳過
+  const done = a.t >= total - 1e-9;
   switch (a.kind) {
     case 'sword':
       if (prevT < a.windup && a.t >= a.windup) {
@@ -172,13 +174,13 @@ export function updatePlayerAction(w: World, dt: number): void {
       }
       break;
     case 'potion':
-      if (!a.fired && a.t >= total) {
+      if (!a.fired && done) {
         a.fired = true;
         p.hp = Math.min(p.maxHp, p.hp + PLAYER.potionHeal);
       }
       break;
     case 'use':
-      if (!a.fired && a.t >= total) {
+      if (!a.fired && done) {
         a.fired = true;
         const it = w.interactables.find((i) => i.id === a.targetId);
         if (it) performUse(w, it);
@@ -187,7 +189,7 @@ export function updatePlayerAction(w: World, dt: number): void {
     case 'door':
       break;
   }
-  if (a.t >= total - 1e-9) {
+  if (done) {
     p.action = null;
     if (p.desiredTool !== p.tool) p.tool = p.desiredTool;
   }
