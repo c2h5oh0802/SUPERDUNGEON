@@ -254,8 +254,13 @@ await startPractice('huntress');
       const la = (await st()).lastAction;
       spent = la && la.quick ? la.spent : null;
       console.log('INFO 疾射行動', JSON.stringify(la));
+      // 行動結束後世界回到慢動作：等箭飛到（瓶子與箭都不在空中）再檢查
+      for (let k = 0; k < 400; k++) {
+        const x = await st();
+        if (!x.projectiles.some((q) => q.kind === 'bottle' || q.kind === 'arrow')) break;
+        await page.waitForTimeout(50);
+      }
       await shot('huntress-quick-fired');
-      await page.waitForTimeout(800);
       const ev = await page.evaluate(() =>
         window.__sd
           .events()
