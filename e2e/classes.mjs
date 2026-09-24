@@ -123,7 +123,21 @@ await startPractice('warrior');
     if (s.cue.counter && s.cue.counter.kind === 'guard' && !s.player.action) {
       // 先出手，再截圖與驗證（真人看到提示就按）
       hpBefore = s.player.hp;
+      const gp = (x) => {
+        const gg = x.enemies.find((e) => e.id === guard.id);
+        const ang = Math.abs(wrap(yawTo(x.player.x, x.player.z, gg.x, gg.z) - x.player.yaw));
+        return `phase=${gg.phase} phaseT=${gg.phaseT.toFixed(3)} locked=${gg.locked} d=${Math.hypot(gg.x - x.player.x, gg.z - x.player.z).toFixed(2)} ang=${ang.toFixed(2)} cue=${JSON.stringify(x.cue.counter)} time=${x.time.toFixed(3)} dt=${x.lastWorldDt.toFixed(4)}/${x.lastRealDt.toFixed(3)}`;
+      };
+      console.log('INFO 看到反擊提示時', gp(s));
       await bot.click();
+      for (let k = 0; k < 60; k++) {
+        const x = await st();
+        if (x.player.action) {
+          console.log('INFO 行動開始時', gp(x), 'action', JSON.stringify(x.player.action));
+          break;
+        }
+        await page.waitForTimeout(10);
+      }
       counterShot = true;
       check('戰士：盾衛鎖定時準星下出現「反擊」', s.cueText === '反擊', s.cueText);
       await bot.waitIdle();
@@ -143,7 +157,11 @@ await startPractice('warrior');
     }
     // 面向盾衛等待（慢動作中）；舉劍期間不轉身，專心等鎖定
     const p = s.player;
+    if (globalThis.__lastHp !== undefined && p.hp < globalThis.__lastHp)
+      console.log('INFO 被盾衛打中前最後看到的狀態', globalThis.__lastSeen ?? '（沒有看到舉劍）');
+    globalThis.__lastHp = p.hp;
     if (g.phase === 'windup') {
+      globalThis.__lastSeen = `phaseT=${g.phaseT.toFixed(3)} locked=${g.locked} d=${Math.hypot(g.x - p.x, g.z - p.z).toFixed(2)} ang=${Math.abs(wrap(yawTo(p.x, p.z, g.x, g.z) - p.yaw)).toFixed(2)} cue=${JSON.stringify(s.cue.counter)} dt=${s.lastWorldDt.toFixed(4)}/${s.lastRealDt.toFixed(3)}`;
       // 等鎖定時不做任何耗時的事（截圖在軟體渲染下要 1–2 秒，會錯過窗口）
       await page.waitForTimeout(15);
       continue;
