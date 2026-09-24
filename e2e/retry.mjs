@@ -85,6 +85,17 @@ const st2 = await bot.st();
 check('同種子重試：狀態重置（生命、時間、敵人）', st2.player.hp === st2.player.maxHp && st2.time < 0.5 && st2.enemies.every((e) => e.alive));
 check('第二局死亡後進入結算', await dieNormally());
 await page.waitForTimeout(500);
+// 換職業、同種子：佈局不變，職業改變
+const cls1 = (await bot.st()).player.cls;
+const swapLabel = await page.textContent('#btn-swap');
+await page.click('#btn-swap');
+await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 30000 });
+await page.waitForTimeout(400);
+const sigSwap = await signature();
+const stSwap = await bot.st();
+check('換職業（同種子）：職業改變、生成結果相同', stSwap.player.cls !== cls1 && stSwap.seed === 'RETRY1' && sigSwap === sig1, `${cls1} → ${stSwap.player.cls}（按鈕：${swapLabel}）`);
+check('換職業後的一局死亡後進入結算', await dieNormally());
+await page.waitForTimeout(500);
 await page.click('#btn-new');
 await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 30000 });
 await page.waitForTimeout(400);

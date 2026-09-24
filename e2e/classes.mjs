@@ -82,6 +82,21 @@ async function walkTo(tx, tz, arrive = 0.8, maxMs = 60000) {
   await bot.releaseAll();
 }
 
+/**
+ * 重置練習場，再以狀態注入把玩家放到射擊場站位（只擺位置，之後的動作都是正常輸入）。
+ * 目的：隔離這項檢查，避免練習場的盾衛一路跟過來或途中陣亡導致練習場自動重置。
+ */
+async function enterRange(label) {
+  await bot.releaseAll();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if ((await st()).mode !== 'paused') await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.click('#btn-restart');
+  await page.waitForFunction(() => window.__sd?.state().mode === 'playing' && window.__sd.state().time < 0.5, null, { timeout: 90000 });
+  await page.evaluate(([x, z]) => window.__sd.debug.teleport(x, z), [RANGE_SPOT.x, RANGE_SPOT.z]);
+  console.log(`INFO 狀態注入：${label}傳送到射擊場站位`, RANGE_SPOT.x, RANGE_SPOT.z);
+}
+
 async function aimAt(x, y, z, tol = 0.03) {
   const s = await st();
   const p = s.player;
@@ -139,15 +154,17 @@ await startPractice('warrior');
   if (!counterShot) check('戰士：盾衛鎖定時準星下出現「反擊」', false, '沒有等到反擊時機');
 }
 {
-  // 高台弩手：站在它的視野內（先沿 z≈9.5 走，避開踏板）；有「反擊」提示就揮劍（弩矢或突進者）
-  await walkTo(26.5, 9.5, 0.7);
-  await walkTo(RANGE_SPOT.x, RANGE_SPOT.z, 0.5);
+  // 高台弩手：站在它的視野內；有「反擊」提示就揮劍（弩矢或衝過來的突進者）
+  await enterRange('戰士');
   const t0 = Date.now();
   let deflectShot = false;
   const kinds = {};
   while (Date.now() - t0 < 60000) {
     const s = await st();
-    if (s.player.dead || s.mode !== 'playing') break;
+    if (s.player.dead || s.mode !== 'playing') {
+      console.log('INFO 戰士在射擊場倒下', JSON.stringify(s.stats.damageTaken));
+      break;
+    }
     if (s.stats.deflects >= 1 && (s.enemies.find((e) => e.kind === 'archer')?.alive === false || Date.now() - t0 > 30000)) break;
     if (s.cue.counter && !s.player.action) {
       kinds[s.cue.counter.kind] = (kinds[s.cue.counter.kind] ?? 0) + 1;
@@ -220,6 +237,14 @@ await startPractice('huntress');
       spent = la && la.quick ? la.spent : null;
       console.log('INFO 疾射行動', JSON.stringify(la));
       await shot('huntress-quick-fired');
+      await page.waitForTimeout(800);
+      const ev = await page.evaluate(() =>
+        window.__sd
+          .events()
+          .filter((e) => ['quickshot', 'fire', 'bottleBreak', 'hitWall', 'hitEnemy', 'shield', 'throw'].includes(e.type))
+          .map((e) => `${e.type}:${e.kind ?? ''}${e.air !== undefined ? (e.air ? ':air' : ':ground') : ''}@${[e.x, e.y, e.z].map((v) => (typeof v === 'number' ? v.toFixed(1) : '-')).join(',')} t=${e.t.toFixed(2)}`),
+      );
+      console.log('INFO 空爆事件', ev.join(' | '));
       break;
     }
   }
@@ -230,17 +255,8 @@ await startPractice('huntress');
   check('獵手：疾射只花很少世界時間（< 0.2 秒，一般射擊 0.8 秒）', spent !== null && spent < 0.2, spent === null ? '沒有射擊' : `${spent.toFixed(3)} 秒`);
 }
 {
-  // 高台弩手：面向弩手；弩矢飛來時準星自然在它的路線上 → 出現「疾射」就射。
-  // 先重置練習場（空爆的聲響會吵醒練習場的盾衛並一路跟過來），
-  // 再以狀態注入把獵手放到射擊場站位（只擺位置；截擊本身是正常輸入）。
-  await bot.releaseAll();
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(300);
-  if ((await st()).mode !== 'paused') await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-  await page.click('#btn-restart');
-  await page.waitForFunction(() => window.__sd?.state().mode === 'playing' && window.__sd.state().time < 0.5, null, { timeout: 90000 });
-  await page.evaluate(([x, z]) => window.__sd.debug.teleport(x, z), [RANGE_SPOT.x, RANGE_SPOT.z]);
-  console.log('INFO 狀態注入：獵手傳送到射擊場站位', RANGE_SPOT.x, RANGE_SPOT.z);
+  // 高台弩手：面向弩手；弩矢飛來時準星自然在它的路線上 → 出現「疾射」就射
+  await enterRange('獵手');
   await bot.tap('Digit2');
   const t0 = Date.now();
   let readyShot = false;
@@ -260,7 +276,8 @@ await startPractice('huntress');
     }
     if (s.cue.quickTarget >= 0 && !p.action && p.arrows > 0) {
       const tq = s.projectiles.find((q) => q.id === s.cue.quickTarget);
-      if (tq && tq.kind === 'bolt') {
+      // 弩矢還在 3.5 m 外就出手（越近角度變化越快；軟體渲染約 8 fps，按鍵要一幀以上才生效）
+      if (tq && tq.kind === 'bolt' && Math.hypot(tq.x - p.x, tq.z - p.z) >= 3.5) {
         await bot.click(30);
         await bot.waitIdle();
         if (!readyShot) {
