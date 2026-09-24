@@ -219,7 +219,8 @@ export class Input {
       lookDY: this.dy,
       keyYaw: axis('ArrowRight', 'ArrowLeft'),
       keyPitch: axis('ArrowDown', 'ArrowUp'),
-      fire: this.fireHeld,
+      // 比一幀還短的點擊（低幀率時常見）也要算：這一幀按下過就視為開火
+      fire: this.fireHeld || this.firePressed,
       firePressed: this.firePressed,
       selectTool: digit === 1 ? 'sword' : digit === 2 ? 'crossbow' : digit === 3 ? 'stone' : null,
       bottle: p.has('KeyQ'),
