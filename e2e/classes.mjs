@@ -318,7 +318,10 @@ await startPractice('huntress');
       const bolts = s.projectiles.filter((q) => q.kind === 'bolt').map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)},${q.z.toFixed(1)}`);
       console.log('INFO 獵手', p.x.toFixed(1), p.z.toFixed(1), 'hp', p.hp, '弩手', archer.state, archer.phase, 'bolts', bolts.join(' '), 'cue', s.cue.quickTarget);
     }
-    if (Math.abs(wrap(yawTo(p.x, p.z, archer.x, archer.z) - p.yaw)) > 0.05) await aimAt(archer.x, archer.y + 1.45, archer.z, 0.03);
+    // 視角（水平與俯仰）都要對準弩手；低幀率下方向鍵轉動會不足，所以每次都檢查兩個軸
+    const wantPitch = Math.atan2(archer.y + 1.45 - 1.55, Math.hypot(archer.x - p.x, archer.z - p.z));
+    if (Math.abs(wrap(yawTo(p.x, p.z, archer.x, archer.z) - p.yaw)) > 0.03 || Math.abs(wantPitch - p.pitch) > 0.03)
+      await aimAt(archer.x, archer.y + 1.45, archer.z, 0.02);
     await page.waitForTimeout(40);
   }
   await page.waitForTimeout(400);
