@@ -64,6 +64,67 @@ async function fight(s) {
     await shot(`backstab-${sneak.e.kind}`);
     return true;
   }
+  // 先處理所有「已鎖定」的遠距威脅：突進者的衝鋒線、弩手的瞄準
+  for (const o of near) {
+    const e = o.e;
+    if (e.state !== 'alert') continue;
+    if (e.kind === 'charger' && ((e.phase === 'windup' && e.locked) || e.phase === 'charge') && o.d < 11) {
+      const fx = -Math.sin(e.lockedYaw);
+      const fz = -Math.cos(e.lockedYaw);
+      const rx = p.x - e.x;
+      const rz = p.z - e.z;
+      const along = rx * fx + rz * fz;
+      const lateral = Math.abs(rx * fz - rz * fx);
+      if (along > -0.5 && lateral < 1.3) {
+        // 垂直於衝鋒線側移：選離線較遠的一側
+        await bot.releaseAll();
+        const side = rx * fz - rz * fx;
+        const rightX = Math.cos(p.yaw);
+        const rightZ = -Math.sin(p.yaw);
+        const perpX = side >= 0 ? fz : -fz;
+        const perpZ = side >= 0 ? -fx : fx;
+        const key = perpX * rightX + perpZ * rightZ >= 0 ? 'KeyD' : 'KeyA';
+        await bot.down(key);
+        await page.waitForTimeout(380);
+        await bot.up(key);
+        await shot('dodge-charger');
+        return true;
+      }
+    }
+  }
+  // 任何舉劍中的盾衛：離開它的揮擊範圍（往遠離它的方向退）
+  for (const o of near) {
+    const e = o.e;
+    if (e.kind === 'guard' && e.state === 'alert' && o.d < 3.1 && (e.phase === 'windup' || (e.phase === 'active' && e.phaseT < 0.08))) {
+      await bot.releaseAll();
+      const ax = (p.x - e.x) / (o.d || 1);
+      const az = (p.z - e.z) / (o.d || 1);
+      const fx = -Math.sin(p.yaw);
+      const fz = -Math.cos(p.yaw);
+      const rX = Math.cos(p.yaw);
+      const rZ = -Math.sin(p.yaw);
+      const f = ax * fx + az * fz;
+      const r = ax * rX + az * rZ;
+      const keys = [];
+      if (f > 0.35) keys.push('KeyW');
+      if (f < -0.35) keys.push('KeyS');
+      if (r > 0.35) keys.push('KeyD');
+      if (r < -0.35) keys.push('KeyA');
+      for (const k of keys) await bot.down(k);
+      await page.waitForTimeout(330);
+      await bot.releaseAll();
+      await shot('dodge-guard');
+      return true;
+    }
+  }
+  for (const o of near) {
+    const e = o.e;
+    if (e.kind === 'archer' && e.state === 'alert' && e.phase === 'aim' && e.locked && o.d > 2.5) {
+      await bot.releaseAll();
+      await sidestep(300);
+      return true;
+    }
+  }
   const t = near.find((o) => o.e.state === 'alert' && o.d < 6.5);
   if (!t) return false;
   const e = t.e;
@@ -72,6 +133,8 @@ async function fight(s) {
   if (p.tool !== 'sword') await bot.tap('Digit1');
   const face = yawTo(p.x, p.z, e.x, e.z);
   if (e.kind === 'guard') {
+    // 撤離時以逃跑為主：守衛比玩家慢，不擋路就不纏鬥
+    if (s.heartTaken && e.phase !== 'recovery') return false;
     await bot.turnTo(face, 0.2);
     if (e.phase === 'windup' || (e.phase === 'active' && e.phaseT < 0.08)) {
       // 讀到舉劍：往後退出揮擊範圍
@@ -81,8 +144,8 @@ async function fight(s) {
       await shot('dodge-guard');
       return true;
     }
-    if (e.phase === 'recovery' || (e.phase === 'active' && e.phaseT >= 0.08)) {
-      // 對方恢復中：上前出手
+    if ((e.phase === 'recovery' && e.phaseT < 0.3 && d < 3.2) || (e.phase === 'active' && e.phaseT >= 0.08)) {
+      // 對方恢復初期：上前出手（來得及在它恢復前命中）
       if (d > 2.1) {
         await bot.down('KeyW');
         await page.waitForTimeout(Math.min(350, ((d - 1.8) / 4.5) * 1000));

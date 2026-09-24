@@ -159,3 +159,23 @@ describe('陷阱', () => {
     expect(w2.player.hp).toBe(w2.player.maxHp - TRAP.damage);
   });
 });
+
+describe('可讀性與公平性', () => {
+  function guardScenario(reactFrames: number, backFrames: number): number {
+    const w = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 12.4, state: 'idle', yaw: Math.PI }]);
+    const g = w.enemies[0]!;
+    becomeAlert(w, g);
+    const dt = 1 / 60;
+    for (let k = 0; g.phase !== 'windup' && k < 3000; k++) w.frame(dt, emptyInput(0, 0));
+    for (let i = 0; i < reactFrames; i++) w.frame(dt, emptyInput(0, 0));
+    for (let i = 0; i < backFrames; i++) w.frame(dt, { ...emptyInput(0, 0), moveZ: -1 });
+    for (let i = 0; i < 60; i++) w.frame(dt, { ...emptyInput(0, 0), wait: true });
+    return w.player.hp;
+  }
+
+  it('盾衛舉劍後，慢動作中 2 秒內往後退 1/6 秒就能躲開；站著不動會被打中', () => {
+    expect(guardScenario(120, 0)).toBe(7);
+    expect(guardScenario(120, 10)).toBe(10);
+    expect(guardScenario(200, 10)).toBe(10);
+  });
+});

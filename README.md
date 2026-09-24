@@ -111,7 +111,7 @@ npm run preview    # http://127.0.0.1:4173/ 預覽打包結果
 ```bash
 npm run typecheck   # TypeScript strict
 npm run lint        # ESLint
-npm test            # Vitest：時間規則、戰鬥、空爆、感知、AI、生成、完整流程（55 項）
+npm test            # Vitest：時間規則、戰鬥、空爆、感知、AI、生成、完整流程（56 項）
 npm run build
 ```
 
