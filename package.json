@@ -1,0 +1,32 @@
+{
+  "name": "superdungeon",
+  "private": true,
+  "version": "0.1.0",
+  "description": "《沉眠之心》— 第一人稱慢動作地城潛入原型（Three.js + TypeScript + Vite）",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "e2e": "node e2e/run-all.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/three": "0.180.0",
+    "eslint": "9.39.5",
+    "playwright": "1.56.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.2",
+    "vite": "7.3.6",
+    "vitest": "3.2.7"
+  }
+}
