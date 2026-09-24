@@ -144,7 +144,7 @@ await startPractice('warrior');
     // 面向盾衛等待（慢動作中）；舉劍期間不轉身，專心等鎖定
     const p = s.player;
     if (g.phase === 'windup') {
-      if (g.locked && !counterShot) await shot('warrior-counter-ready');
+      // 等鎖定時不做任何耗時的事（截圖在軟體渲染下要 1–2 秒，會錯過窗口）
       await page.waitForTimeout(15);
       continue;
     }
