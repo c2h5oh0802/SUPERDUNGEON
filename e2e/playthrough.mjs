@@ -1,5 +1,5 @@
 // 完整冒險：潛入 → 取心 → 撤離 → 通關（或死亡）。
-// 用法：node e2e/playthrough.mjs <seed> [--headed]
+// 用法：node e2e/playthrough.mjs <seed> [--headed] [--class=warrior|huntress]
 import { Bot, OUT, launch, startRun, wrap, yawTo } from './lib.mjs';
 
 const seed = process.argv[2] ?? 'RUN1';
@@ -13,9 +13,12 @@ const log = (...a) => {
 };
 await page.goto(`${process.env.BASE_URL ?? 'http://127.0.0.1:5173/'}?dev=1&gfx=low`);
 await page.mouse.move(640, 360);
+const clsArg = process.argv.find((a) => a.startsWith('--class='));
+if (clsArg) await page.click(`.class-card[data-cls="${clsArg.slice(8)}"]`);
 await startRun(page, seed);
 const bot = new Bot(page, log);
 const lvl = await page.evaluate(() => window.__sd.level());
+log('class', (await bot.st()).player.cls);
 log('seed', seed, 'template', lvl.template, 'rooms', lvl.rooms.map((r) => `${r.key}:${r.layoutId}`).join(' '));
 await page.screenshot({ path: `${OUT}run-${seed}-start.png` });
 
