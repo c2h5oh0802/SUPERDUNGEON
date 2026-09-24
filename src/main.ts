@@ -52,6 +52,10 @@ export class App {
     this.applySettings();
     this.bindUi();
     window.addEventListener('resize', () => this.resize());
+    // 遊戲中滑鼠未鎖定（也不是備用模式）時，點畫面就重新要求鎖定（點擊本身是使用者手勢）
+    this.canvas.addEventListener('mousedown', () => {
+      if (this.mode === 'playing' && !this.input.locked && !this.input.fallback) void this.input.requestLock();
+    });
     this.resize();
     if (!this.settings.persistent) $('storage-note').textContent = '瀏覽器封鎖了本機儲存：設定只在本次遊玩有效。';
     const touchOnly = window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
@@ -154,10 +158,11 @@ export class App {
   // ---------- 流程 ----------
 
   /** 必須在使用者手勢中呼叫（取得滑鼠鎖定與啟用音訊）。 */
-  startRun(seed: string, practice: boolean): void {
+  startRun(seed: string, practice: boolean, fromGesture = true): void {
     this.sfx.unlock();
     this.intentionalUnlock = false;
-    const lockP = this.input.requestLock();
+    // 沒有使用者手勢時（練習場自動重置）不要求鎖定，也不改變目前的操作模式
+    const lockP = fromGesture ? this.input.requestLock() : Promise.resolve(this.input.locked || !this.input.fallback);
     this.seed = seed;
     this.practice = practice;
     this.mode = 'loading';
@@ -384,7 +389,7 @@ export class App {
           this.outcomeT += realDt;
           const delay = w.outcome === 'win' ? 0.8 : 1.6;
           if (this.outcomeT >= delay) {
-            if (this.practice && w.outcome === 'dead') this.startRun(this.seed, true);
+            if (this.practice && w.outcome === 'dead') this.startRun(this.seed, true, false);
             else this.showResults();
           }
         }
