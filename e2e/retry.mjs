@@ -22,10 +22,17 @@ const liveSnapshot = async () =>
   });
 
 /** 走進最近的敵人附近，按住空白讓時間流動直到死亡。 */
-async function dieNormally() {
-  for (let k = 0; k < 4000; k++) {
+async function dieNormally(maxMs = 150000) {
+  const t0 = Date.now();
+  let lastLog = 0;
+  for (let k = 0; k < 4000 && Date.now() - t0 < maxMs; k++) {
     const s = await bot.st();
     if (s.mode === 'results') return true;
+    if (Date.now() - lastLog > 10000) {
+      lastLog = Date.now();
+      const e = s.enemies.filter((x) => x.alive).map((x) => `${x.kind}:${x.state}/${x.phase}@${Math.hypot(x.x - s.player.x, x.z - s.player.z).toFixed(1)}`);
+      console.log('（進度）', s.mode, 'hp', s.player.hp, 'pos', s.player.x.toFixed(1), s.player.z.toFixed(1), 'world', s.time.toFixed(1), 'fallback', s.fallback, 'locked', s.locked, e.slice(0, 4).join(' '));
+    }
     if (s.outcome === 'dead') {
       await page.waitForTimeout(200);
       continue;
