@@ -102,6 +102,18 @@ async function fight(s) {
     }
     if (d <= 3.0) {
       globalThis.__why = `bait guard ${e.id} d=${d.toFixed(2)} phase=${e.phase} state=${e.state}`;
+      const key = `bait${e.id}`;
+      globalThis[key] = globalThis[key] ?? s.realTime;
+      if (s.realTime - globalThis[key] > 2.5) {
+        // 對方遲遲不出手：主動上前
+        globalThis[key] = undefined;
+        await bot.down('KeyW');
+        await page.waitForTimeout(Math.min(300, ((d - 1.8) / 4.5) * 1000));
+        await bot.up('KeyW');
+        await bot.click();
+        await bot.waitIdle(1500);
+        return true;
+      }
       await page.waitForTimeout(80);
       return true;
     }
@@ -160,10 +172,13 @@ async function fight(s) {
 /** 沿路徑走到目標附近；途中處理門、戰鬥與治療。 */
 async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
   const t0 = Date.now();
-  let lastProgress = Date.now();
+  let lastProgress = 0;
   let lastD = Infinity;
+  let gameNow = 0;
   while (Date.now() - t0 < maxMs) {
     const s = await bot.st();
+    gameNow = s.realTime ?? 0;
+    if (!lastProgress) lastProgress = gameNow;
     if (s.mode === 'results' || s.outcome !== 'none') {
       await bot.releaseAll();
       return 'ended';
@@ -187,7 +202,11 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
     }
     if (!globalThis.__lp || Math.hypot(p.x - globalThis.__lp.x, p.z - globalThis.__lp.z) > 0.8 || s.player.action) {
       globalThis.__lp = { x: p.x, z: p.z };
-      lastProgress = Date.now();
+      lastProgress = gameNow;
+    }
+    if (!globalThis.__lastLog || gameNow - globalThis.__lastLog > 10) {
+      globalThis.__lastLog = gameNow;
+      log('progress game', gameNow.toFixed(1), 'world', s.time.toFixed(1), 'pos', p.x.toFixed(1), p.z.toFixed(1), 'hp', p.hp, 'heart', s.heartTaken);
     }
     void lastD;
     // 治療
@@ -205,11 +224,11 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
       await bot.releaseAll();
       log('no path from', p.x.toFixed(1), p.z.toFixed(1));
       await page.waitForTimeout(200);
-      if (Date.now() - lastProgress > 30000) return 'stuck';
+      if (gameNow - lastProgress > 25) return 'stuck';
       continue;
     }
     const closed = s.doors.find((dd) => !dd.arch && dd.progress < 0.99 && Math.hypot(dd.cx - p.x, dd.cz - p.z) < 1.8);
-    if (Date.now() - lastProgress > 4000 && (globalThis.__dbg2 ?? 0) < 1) {
+    if (gameNow - lastProgress > 6 && (globalThis.__dbg2 ?? 0) < 1) {
       globalThis.__dbg2 = 1;
       for (let q = 0; q < 8; q++) {
         const z = await page.evaluate(() => { const s = window.__sd.state(); return [s.player.x.toFixed(3), s.player.z.toFixed(3), s.lastWorldDt.toFixed(4), s.lastRealDt.toFixed(4), s.player.yaw.toFixed(3), JSON.stringify(window.__sd.inputState().held)]; });
@@ -217,7 +236,7 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
         await page.waitForTimeout(100);
       }
     }
-    if (Date.now() - lastProgress > 4000 && (globalThis.__dbg ?? 0) < 3) {
+    if (gameNow - lastProgress > 6 && (globalThis.__dbg ?? 0) < 3) {
       globalThis.__dbg = (globalThis.__dbg ?? 0) + 1;
       log('DEBUG stall p', p.x.toFixed(2), p.z.toFixed(2), 'yaw', p.yaw.toFixed(2), 'path', JSON.stringify(path.slice(0, 3).map((q) => [q.x.toFixed(2), q.z.toFixed(2)])), 'closed', JSON.stringify(closed), 'action', JSON.stringify(p.action),
         'doors', JSON.stringify(s.doors.filter((dd) => Math.hypot(dd.cx - p.x, dd.cz - p.z) < 4)),
@@ -261,7 +280,7 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
     }
     await bot.down('KeyW');
     await page.waitForTimeout(60);
-    if (Date.now() - lastProgress > 30000) {
+    if (gameNow - lastProgress > 25) {
       await bot.releaseAll();
       return 'stuck';
     }
@@ -293,7 +312,7 @@ if (r === 'arrived') {
   await shot('awake');
   r = await goTo(stairs.front.x, stairs.front.z, 0.8, 300000);
   log('to stairs:', r);
-  if (r === 'arrived') await useAt(stairs.front.x - stairs.rise.x * 1.5, stairs.front.z - stairs.rise.z * 1.5, 'stairs');
+  if (r === 'arrived') await useAt(stairs.front.x + stairs.rise.x * 1.5, stairs.front.z + stairs.rise.z * 1.5, 'stairs');
 }
 await page.waitForTimeout(1500);
 const fin = await bot.st();

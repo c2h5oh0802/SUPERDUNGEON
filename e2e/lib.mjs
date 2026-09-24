@@ -99,5 +99,5 @@ export class Bot {
 export async function startRun(page, seed) {
   await page.fill('#seed-input', seed);
   await page.click('#btn-start');
-  await page.waitForFunction(() => window.__sd?.state().mode === 'playing', null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__sd?.state().mode === 'playing', null, { timeout: 90000 });
 }

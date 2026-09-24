@@ -216,6 +216,11 @@ export class App {
     $('btn-restart').textContent = this.practice ? '重置練習' : '重新開始（同種子）';
     this.show('screen-pause');
     this.sfx.suspend();
+    // 暫停時一定釋放滑鼠，讓玩家能點「繼續」
+    if (this.input.locked) {
+      this.intentionalUnlock = true;
+      this.input.exitLock();
+    }
   }
 
   private resume(): void {
@@ -310,9 +315,8 @@ export class App {
     const dmg = Object.entries(s.damageTaken)
       .map(([k, v]) => `${k} ${v}`)
       .join('、');
-    const lastHurt = [...w.events].reverse().find((e) => e.type === 'death');
     const rows: Array<[string, string]> = [
-      ['結果', win ? '帶著沉眠之心離開' : `死亡${lastHurt?.source ? `（${lastHurt.source}）` : ''}`],
+      ['結果', win ? '帶著沉眠之心離開' : `死亡${w.deathCause ? `（${w.deathCause}）` : ''}`],
       ['沉眠之心', w.heartTaken ? '已取得' : '未取得'],
       ['真實時間', mmss(s.realTime)],
       ['世界時間', mmss(s.worldTime)],
@@ -344,7 +348,8 @@ export class App {
         drawMap($<HTMLCanvasElement>('map-canvas'), w);
         $('map-title').textContent = `地圖${this.practice ? '' : ` · 種子 ${this.seed}`}`;
         this.show('screen-map');
-      } else if (raw.escape && !this.input.locked) {
+      } else if (raw.escape) {
+        // 鎖定中按 Esc 通常由瀏覽器解除鎖定；若頁面仍收到 Esc，也直接暫停
         this.pause('');
       } else {
         const s = this.settings.value;

@@ -104,3 +104,13 @@ describe('完整流程（模擬層，移除敵人以單獨驗證路線、門、�
     expect(w.time).toBe(t0);
   });
 });
+
+describe('結算資訊', () => {
+  it('記錄致命一擊的來源', () => {
+    const w = new World(generateLevel('FLOW1'));
+    w.damagePlayer(3, '盾衛的劍', w.player.x, w.player.z);
+    w.damagePlayer(99, '突進者的衝撞', w.player.x, w.player.z);
+    expect(w.deathCause).toBe('突進者的衝撞');
+    expect(w.stats.damageTaken['盾衛的劍']).toBe(3);
+  });
+});

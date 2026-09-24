@@ -42,6 +42,8 @@ export class World {
   lastWorldDt = 0;
   lastRealDt = 0;
   outcome: Outcome = 'none';
+  /** 致命一擊的來源（結算顯示用）。 */
+  deathCause: string | null = null;
   heartTaken = false;
   awakened = false;
   /** 開啟中的祭壇（介面顯示選擇時世界暫停）。 */
@@ -258,6 +260,7 @@ export class World {
       p.hp = 0;
       p.dead = true;
       this.outcome = 'dead';
+      this.deathCause = source;
       this.emit({ type: 'death', source });
     }
   }

@@ -101,7 +101,8 @@ export class Viewmodel {
     const gemG = new THREE.OctahedronGeometry(0.045, 0).scale(1, 1.35, 1);
     this.geos.push(gemG);
     this.heartGem = new THREE.Mesh(gemG, gemMat);
-    this.heartGem.position.set(-0.36, -0.3, -0.55);
+    this.heartGem.position.set(-0.3, -0.25, -0.62);
+    this.heartGem.scale.setScalar(0.55);
     this.heartGem.visible = false;
     this.camera.add(this.heartGem);
   }

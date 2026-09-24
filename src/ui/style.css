@@ -745,3 +745,6 @@ button.ghost {
   font-size: 14px;
   z-index: 10;
 }
+:root {
+  color-scheme: dark;
+}
