@@ -1,5 +1,6 @@
 // 瀏覽器邊界測試：主選單按鈕、設定儲存被封鎖、失焦／分頁切換、Esc、視窗縮放、
 // 受限 iframe、手機提示、連續重開不殘留資源。
+import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { BASE, OUT, launch, startRun } from './lib.mjs';
 
@@ -175,7 +176,11 @@ const check = (name, ok, detail = '') => {
 // 4) 受限 iframe（沒有 allow-pointer-lock）
 {
   const { browser, page, errors } = await launch();
-  await page.goto(`${BASE}e2e/iframe-host.html`);
+  // 宿主頁由測試直接提供（同源），dev 伺服器與只提供 dist/ 的 preview 都能用
+  const hostUrl = `${BASE}__iframe-host.html`;
+  const hostHtml = readFileSync(new URL('./iframe-host.html', import.meta.url), 'utf8');
+  await page.route(hostUrl, (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: hostHtml }));
+  await page.goto(hostUrl);
   const frame = page.frameLocator('#game');
   await frame.locator('#seed-input').fill('FRAME1');
   await frame.locator('#btn-start').click();
