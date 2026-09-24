@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ENEMIES, SMOKE } from '../config';
+import { ENEMIES, PLAYER, SMOKE } from '../config';
 import { clamp, forwardFromYaw, smoothstep } from '../core/math';
 import type { GameEvent, Projectile } from '../sim/types';
 import type { World } from '../sim/world';
@@ -15,6 +15,8 @@ interface ProjVis {
   obj: THREE.Object3D;
   trail: THREE.Vector3[];
   color: THREE.Color;
+  /** 已換成「被擊開」的外觀。 */
+  deflected: boolean;
 }
 
 interface Spark {
@@ -54,6 +56,10 @@ export class FxVisual {
   private smokeTex = makeSmokeTexture();
   private aimLines = new Map<number, THREE.Mesh>();
   private streaks = new Map<number, THREE.Mesh>();
+  private wedges = new Map<number, THREE.Mesh>();
+  private wedgeGeo: THREE.BufferGeometry;
+  private wedgeMat = new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+  private matDeflected = new THREE.MeshBasicMaterial({ color: 0xffe08a });
   private swordArc: THREE.Mesh;
   private swordArcMat: THREE.MeshBasicMaterial;
   private geos: THREE.BufferGeometry[] = [];
@@ -93,7 +99,11 @@ export class FxVisual {
     this.stoneGeo = new THREE.IcosahedronGeometry(0.07, 0);
     this.bottleGeo = new THREE.SphereGeometry(0.15, 10, 8);
     this.geos.push(this.arrowGeo, this.boltGeo, this.stoneGeo, this.bottleGeo);
-    this.mats.push(this.matArrow, this.matBolt, this.matStone, this.matBottle, this.aimMat, this.streakMat);
+    this.mats.push(this.matArrow, this.matBolt, this.matStone, this.matBottle, this.aimMat, this.streakMat, this.wedgeMat, this.matDeflected);
+    // 盾衛鎖定後的揮擊範圍：地上的扇形（朝 -z 為正前方，與角色 yaw 慣例一致）
+    const half = ((ENEMIES.guard.arcDeg / 2) * Math.PI) / 180;
+    this.wedgeGeo = new THREE.RingGeometry(0.5, ENEMIES.guard.reach + PLAYER.radius, 20, 1, Math.PI / 2 - half, half * 2).rotateX(-Math.PI / 2).translate(0, 0.04, 0);
+    this.geos.push(this.wedgeGeo);
 
     // 劍的揮擊弧：鎖定方向上的一道扇形尾跡（僅視覺，不是碰撞體）
     const arcG = new THREE.RingGeometry(0.9, 2.0, 24, 1, -Math.PI * 0.28, Math.PI * 0.56);
@@ -134,6 +144,15 @@ export class FxVisual {
         case 'enemyDeath':
           this.burst(x, (e.y ?? 0) + 1, z, 18, [0.9, 0.85, 1], 2, 0.6);
           break;
+        case 'counter':
+          this.burst(x, y, z, 34, [1, 0.88, 0.45], 5, 0.45);
+          break;
+        case 'deflect':
+          this.burst(x, y, z, 24, [1, 0.9, 0.55], 4.5, 0.35);
+          break;
+        case 'intercept':
+          this.burst(x, y, z, 24, [0.5, 1, 0.9], 4, 0.4);
+          break;
         default:
       }
     }
@@ -168,7 +187,8 @@ export class FxVisual {
     switch (p.kind) {
       case 'arrow': {
         obj.add(new THREE.Mesh(this.arrowGeo, this.matArrow));
-        color = new THREE.Color(0xf2c14e);
+        // 獵手疾射的箭：青綠尾跡
+        color = new THREE.Color(p.interceptId >= 0 ? 0x3fe0c0 : 0xf2c14e);
         break;
       }
       case 'bolt': {
@@ -186,7 +206,7 @@ export class FxVisual {
         break;
     }
     this.group.add(obj);
-    return { obj, trail: [], color };
+    return { obj, trail: [], color, deflected: false };
   }
 
   update(realTime: number): void {
@@ -204,6 +224,12 @@ export class FxVisual {
       if (!v) {
         v = this.projMesh(p);
         this.projs.set(p.id, v);
+      }
+      if (p.deflected && !v.deflected) {
+        // 被戰士擊開的弩矢：換成金色
+        v.deflected = true;
+        (v.obj.children[0] as THREE.Mesh).material = this.matDeflected;
+        v.color = new THREE.Color(0xffd070);
       }
       v.obj.position.set(p.pos.x, p.pos.y, p.pos.z);
       const sp = Math.hypot(p.vel.x, p.vel.y, p.vel.z);
@@ -343,6 +369,7 @@ export class FxVisual {
     const w = this.world;
     const seenAim = new Set<number>();
     const seenStreak = new Set<number>();
+    const seenWedge = new Set<number>();
     for (const e of w.enemies) {
       if (!e.alive) continue;
       if (e.kind === 'archer' && e.phase === 'aim' && e.aimPoint) {
@@ -374,6 +401,18 @@ export class FxVisual {
         mat.color.setRGB(1, e.locked ? 0.15 : 0.45 - 0.25 * k, 0.1);
         m.visible = true;
       }
+      if (e.kind === 'guard' && ((e.phase === 'windup' && e.locked) || e.phase === 'active')) {
+        seenWedge.add(e.id);
+        let m = this.wedges.get(e.id);
+        if (!m) {
+          m = new THREE.Mesh(this.wedgeGeo, this.wedgeMat);
+          this.group.add(m);
+          this.wedges.set(e.id, m);
+        }
+        m.position.set(e.x, e.y, e.z);
+        m.rotation.y = e.lockedYaw;
+        m.visible = true;
+      }
       if (e.kind === 'charger' && ((e.phase === 'windup' && e.locked) || e.phase === 'charge')) {
         seenStreak.add(e.id);
         let m = this.streaks.get(e.id);
@@ -393,6 +432,8 @@ export class FxVisual {
     }
     for (const [id, m] of this.aimLines) if (!seenAim.has(id)) m.visible = false;
     for (const [id, m] of this.streaks) if (!seenStreak.has(id)) m.visible = false;
+    for (const [id, m] of this.wedges) if (!seenWedge.has(id)) m.visible = false;
+    this.wedgeMat.opacity = 0.22 + 0.16 * Math.abs(Math.sin(realTime * 14));
   }
 
   private updateSwordArc(): void {

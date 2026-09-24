@@ -1,6 +1,8 @@
-import { PLAYER, runeInfo, type RuneId } from '../config';
+import { CLASSES, PLAYER, classInfo, runeInfo, type RuneId } from '../config';
 import { angleDiff, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
+import { AIM_EYE_Y } from '../sim/aim';
+import { interceptable } from '../sim/classSys';
 import type { GameEvent } from '../sim/types';
 import type { World } from '../sim/world';
 
@@ -24,6 +26,11 @@ export class Hud {
   private bottles = $('bottles');
   private potions = $('potions');
   private icons = $('icons');
+  private targets = $('targets');
+  private cueEl = $('cue');
+  private crosshair = $('crosshair');
+  private badge = $('class-badge');
+  private tmarks = new Map<number, HTMLDivElement>();
   private hurtArcs = $('hurt-arcs');
   private vignette = $('vignette');
   private lockBanner = $('lock-banner');
@@ -33,6 +40,7 @@ export class Hud {
   private visT = 0;
   private last: Record<string, string | number | boolean> = {};
   private hintT = 0;
+  private hintQueue: Array<{ text: string; dur: number }> = [];
   private shownHints = new Set<string>();
   private vignT = 0;
 
@@ -47,10 +55,14 @@ export class Hud {
   reset(): void {
     for (const el of this.iconEls.values()) el.remove();
     this.iconEls.clear();
+    for (const el of this.tmarks.values()) el.remove();
+    this.tmarks.clear();
     this.visible.clear();
     this.toasts.innerHTML = '';
     this.hurtArcs.innerHTML = '';
     this.hintEl.textContent = '';
+    this.hintT = 0;
+    this.hintQueue = [];
     this.last = {};
     this.vignT = 0;
     this.vignette.style.opacity = '0';
@@ -72,9 +84,14 @@ export class Hud {
     window.setTimeout(() => el.remove(), dur * 1000 + 450);
   }
 
+  /** 一次顯示一則提示；顯示中的提示不會被新的蓋掉，新的排隊（最多 3 則）。 */
   hint(key: string, text: string, dur = 6): void {
     if (this.shownHints.has(key)) return;
     this.shownHints.add(key);
+    if (this.hintT > 0) {
+      if (this.hintQueue.length < 3) this.hintQueue.push({ text, dur });
+      return;
+    }
     this.hintEl.textContent = text;
     this.hintT = dur;
   }
@@ -130,6 +147,19 @@ export class Hud {
         case 'bottleBreak':
           if (e.air) this.toast('空中擊破！', 'good', 1.4);
           break;
+        case 'counter':
+          this.toast(e.kind === 'charger' ? '反擊！衝鋒被擋下' : e.kind === 'guard' ? '反擊！盾衛失衡' : '反擊！', 'good', 1.4);
+          break;
+        case 'deflect':
+          this.toast('擊開！', 'good', 1.2);
+          break;
+        case 'intercept':
+          this.toast('截擊！弩矢被擊落', 'good', 1.4);
+          break;
+        case 'throw':
+          if (e.kind === 'bottle' && p.cls === 'huntress')
+            this.hint('cls-huntress-bottle', '獵手：瓶子還在空中時，按 2 拿弩、把準星對準它，出現「疾射」就左鍵——它會在你選的位置炸開。', 7);
+          break;
         case 'enemyWindup':
           if (e.kind === 'archer') this.hint('archer', '紅線是弩手的瞄準線：線變亮代表已鎖定方向，側移就能躲開弩矢。');
           if (e.kind === 'charger') this.hint('charger', '突進者低頭蓄勢後會沿地上的橘線直線衝撞：閃開，讓它撞牆會暈眩。');
@@ -145,6 +175,15 @@ export class Hud {
 
   update(w: World, r: GameRenderer, realDt: number): void {
     const p = w.player;
+    this.set('cls', p.cls, () => {
+      const info = classInfo(p.cls);
+      this.badge.className = p.cls;
+      this.badge.innerHTML = `${info.name}<small>${info.abilities
+        .slice(0, 2)
+        .map((a) => a.name)
+        .join('・')}</small>`;
+    });
+    this.updateCue(w);
     // 生命
     this.set('hp', `${p.hp}/${p.maxHp}`, () => {
       this.hpEl.innerHTML = '';
@@ -216,13 +255,81 @@ export class Hud {
     // 提示計時
     if (this.hintT > 0) {
       this.hintT -= realDt;
-      if (this.hintT <= 0) this.hintEl.textContent = '';
+      if (this.hintT <= 0) {
+        const next = this.hintQueue.shift();
+        this.hintEl.textContent = next ? next.text : '';
+        this.hintT = next ? next.dur : 0;
+      }
     }
     // 受傷暗角
     this.vignT = Math.max(0, this.vignT - realDt);
     const lowHp = p.hp <= Math.max(3, p.maxHp * 0.3) && !p.dead ? 0.35 : 0;
     this.vignette.style.opacity = String(Math.max(lowHp, this.vignT * 1.2));
     this.updateIcons(w, r, realDt);
+    this.updateTargets(w, r);
+  }
+
+  /** 準星旁的職業提示：提示出現＝現在按下去有效（與模擬層同一個判定）。 */
+  private updateCue(w: World): void {
+    const p = w.player;
+    let cls = '';
+    let text = '';
+    if (!p.dead && !p.action) {
+      if (p.cls === 'warrior' && w.cue.counter && p.tool === 'sword') {
+        cls = 'counter';
+        text = '反擊';
+        this.hint('cls-warrior-counter', '戰士：敵人的攻擊鎖定、就在眼前時，準星下出現「反擊」——現在揮劍會更快出手並打斷它（弩矢會被打回去）。', 7);
+      } else if (p.cls === 'warrior' && w.cue.counter) {
+        cls = 'dim';
+        text = '1 換劍：反擊';
+      } else if (p.cls === 'huntress' && w.cue.quickTarget >= 0) {
+        if (p.tool === 'crossbow' && p.arrows > 0) {
+          cls = 'quick';
+          text = '疾射';
+        } else {
+          cls = 'dim';
+          text = p.arrows > 0 ? '2 換弩：疾射' : '沒有弩箭';
+        }
+      }
+    }
+    this.set('cue', `${cls}|${text}`, () => {
+      this.cueEl.className = cls;
+      this.cueEl.textContent = text;
+      this.crosshair.classList.toggle('cue-counter', cls === 'counter');
+      this.crosshair.classList.toggle('cue-quick', cls === 'quick');
+    });
+  }
+
+  /** 獵手：標出射程內、看得到的可截擊飛行物；準星鎖定中的那一個會亮起。 */
+  private updateTargets(w: World, r: GameRenderer): void {
+    const p = w.player;
+    const seen = new Set<number>();
+    if (p.cls === 'huntress' && !p.dead) {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
+      for (const q of w.projectiles) {
+        if (!interceptable(q)) continue;
+        if (Math.hypot(q.pos.x - eye.x, q.pos.y - eye.y, q.pos.z - eye.z) > CLASSES.huntress.assistRange) continue;
+        if (w.grid.segmentHit(eye, q.pos) !== null) continue;
+        const pos = r.project(q.pos.x, q.pos.y, q.pos.z);
+        if (!pos) continue;
+        seen.add(q.id);
+        let el = this.tmarks.get(q.id);
+        if (!el) {
+          el = document.createElement('div');
+          this.targets.appendChild(el);
+          this.tmarks.set(q.id, el);
+        }
+        el.className = `tmark ${q.kind}${w.cue.quickTarget === q.id ? ' hot' : ''}`;
+        el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px)`;
+      }
+    }
+    for (const [id, el] of this.tmarks) {
+      if (seen.has(id)) continue;
+      el.remove();
+      this.tmarks.delete(id);
+    }
   }
 
   private updateIcons(w: World, r: GameRenderer, realDt: number): void {

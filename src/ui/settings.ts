@@ -1,4 +1,5 @@
 // 設定：優先存在 localStorage；被封鎖或不可用時退回本次工作階段（不會崩潰）。
+import { ALL_CLASSES, type PlayerClass } from '../config';
 
 export interface Settings {
   sensitivity: number;
@@ -9,6 +10,8 @@ export interface Settings {
   pixelRatio: number;
   reducedMotion: boolean;
   seenIntro: boolean;
+  /** 上次選的職業。 */
+  cls: PlayerClass;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -20,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pixelRatio: 1.5,
   reducedMotion: false,
   seenIntro: false,
+  cls: 'warrior',
 };
 
 const KEY = 'superdungeon.settings.v1';
@@ -72,5 +76,6 @@ function sanitize(s: Settings): Settings {
     pixelRatio: num(s.pixelRatio, 0.75, 2, 1.5),
     reducedMotion: !!s.reducedMotion,
     seenIntro: !!s.seenIntro,
+    cls: ALL_CLASSES.includes(s.cls) ? s.cls : 'warrior',
   };
 }

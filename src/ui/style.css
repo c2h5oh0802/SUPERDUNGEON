@@ -748,3 +748,199 @@ button.ghost {
 :root {
   color-scheme: dark;
 }
+
+/* ---------- 職業 ---------- */
+.class-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 auto 6px;
+  max-width: 560px;
+  text-align: left;
+}
+
+@media (max-width: 560px) {
+  .class-picker {
+    grid-template-columns: 1fr;
+  }
+}
+
+.class-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 14px;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--panel-edge);
+  border-radius: 9px;
+}
+
+.class-card[aria-checked='true'][data-cls='warrior'] {
+  border-color: var(--gold);
+  background: rgba(242, 193, 78, 0.09);
+  box-shadow: 0 0 0 1px rgba(242, 193, 78, 0.35) inset;
+}
+
+.class-card[aria-checked='true'][data-cls='huntress'] {
+  border-color: var(--teal);
+  background: rgba(63, 224, 192, 0.08);
+  box-shadow: 0 0 0 1px rgba(63, 224, 192, 0.3) inset;
+}
+
+.cls-name {
+  font-family: var(--serif);
+  font-size: 19px;
+  letter-spacing: 0.12em;
+}
+
+.class-card[data-cls='warrior'] .cls-name {
+  color: var(--gold);
+}
+
+.class-card[data-cls='huntress'] .cls-name {
+  color: var(--teal);
+}
+
+.cls-promise {
+  font-size: 13px;
+  color: #d8cfbf;
+  line-height: 1.5;
+}
+
+.cls-abil {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.cls-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+.help-classes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.help-classes h4 {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  letter-spacing: 0.08em;
+}
+
+.help-classes ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 700px) {
+  .help-classes {
+    grid-template-columns: 1fr;
+  }
+}
+
+#class-badge {
+  font-family: var(--serif);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+#class-badge.warrior {
+  color: var(--gold);
+}
+
+#class-badge.huntress {
+  color: var(--teal);
+}
+
+#class-badge small {
+  font-family: var(--sans);
+  letter-spacing: 0;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+/* 準星旁的職業提示：出現＝現在按下去有效 */
+#cue {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 24px);
+  transform: translateX(-50%);
+  font-family: var(--serif);
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  padding: 1px 8px 1px 11px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#cue:empty {
+  display: none;
+}
+
+#cue.counter {
+  color: #1c1406;
+  background: var(--gold);
+  box-shadow: 0 0 14px rgba(242, 193, 78, 0.7);
+}
+
+#cue.quick {
+  color: #062019;
+  background: var(--teal);
+  box-shadow: 0 0 14px rgba(63, 224, 192, 0.65);
+}
+
+#cue.dim {
+  color: var(--teal);
+  background: rgba(10, 8, 20, 0.55);
+  letter-spacing: 0.05em;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+#crosshair.cue-counter .ring-bg {
+  stroke: var(--gold);
+  stroke-width: 3;
+  opacity: 0.85;
+}
+
+#crosshair.cue-quick .ring-bg {
+  stroke: var(--teal);
+  stroke-width: 3;
+  opacity: 0.85;
+}
+
+/* 獵手：可截擊的飛行物標記 */
+#targets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tmark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(63, 224, 192, 0.55);
+}
+
+.tmark.bolt {
+  border-color: rgba(255, 140, 90, 0.7);
+}
+
+.tmark.hot {
+  border: 2.5px solid var(--teal);
+  box-shadow: 0 0 10px rgba(63, 224, 192, 0.8);
+}

@@ -217,6 +217,7 @@ export function updatePlayerAction(w: World, dt: number): void {
       break;
   }
   if (done || a.t >= a.windup + a.active + a.recovery - 1e-9) {
+    w.lastAction = { kind: a.kind, spent: a.t, counter: a.counter, countered: a.countered, quick: a.quick };
     p.action = null;
     if (p.desiredTool !== p.tool) p.tool = p.desiredTool;
   }

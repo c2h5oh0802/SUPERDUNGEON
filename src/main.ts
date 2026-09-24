@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { runeInfo, type RuneId } from './config';
+import { ALL_CLASSES, classInfo, runeInfo, type PlayerClass, type RuneId } from './config';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -32,6 +32,8 @@ export class App {
   mode: Mode = 'menu';
   seed = '';
   practice = false;
+  /** 目前這一局的職業。 */
+  cls: PlayerClass = 'warrior';
   private yaw = 0;
   private pitch = 0;
   private intentionalUnlock = false;
@@ -50,6 +52,8 @@ export class App {
     });
     this.input.attach();
     this.applySettings();
+    this.cls = this.settings.value.cls;
+    this.fillClassTexts();
     this.bindUi();
     window.addEventListener('resize', () => this.resize());
     // 遊戲中滑鼠未鎖定（也不是備用模式）時，點畫面就重新要求鎖定（點擊本身是使用者手勢）
@@ -69,7 +73,40 @@ export class App {
     for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   }
 
+  /** 職業卡與說明文字由 config 的數值生成。 */
+  private fillClassTexts(): void {
+    for (const card of Array.from(document.querySelectorAll<HTMLButtonElement>('.class-card'))) {
+      const info = classInfo(card.dataset.cls as PlayerClass);
+      card.querySelector('.cls-name')!.textContent = info.name;
+      card.querySelector('.cls-promise')!.textContent = `「${info.promise}」`;
+      card.querySelector('.cls-abil')!.textContent = info.abilities.map((a) => a.name).join('・');
+    }
+    $('help-classes').innerHTML = ALL_CLASSES.map((id) => {
+      const info = classInfo(id);
+      const items = info.abilities.map((a) => `<li><b>${a.name}</b>：${a.text}</li>`).join('');
+      return `<div><h4 class="${id}">${info.name}</h4><p class="muted">「${info.promise}」</p><ul>${items}</ul></div>`;
+    }).join('');
+    this.selectClass(this.cls);
+  }
+
+  private selectClass(cls: PlayerClass): void {
+    this.cls = cls;
+    if (this.settings.value.cls !== cls) this.settings.update({ cls });
+    for (const card of Array.from(document.querySelectorAll<HTMLButtonElement>('.class-card')))
+      card.setAttribute('aria-checked', String(card.dataset.cls === cls));
+  }
+
+  private otherClass(): PlayerClass {
+    return this.cls === 'warrior' ? 'huntress' : 'warrior';
+  }
+
   private bindUi(): void {
+    for (const card of Array.from(document.querySelectorAll<HTMLButtonElement>('.class-card')))
+      card.addEventListener('click', () => {
+        this.sfx.unlock();
+        this.sfx.ui('click');
+        this.selectClass(card.dataset.cls as PlayerClass);
+      });
     const click = (id: string, fn: () => void) =>
       $(id).addEventListener('click', () => {
         this.sfx.unlock();
@@ -95,6 +132,10 @@ export class App {
     click('btn-pause-settings', () => this.openSettings('pause'));
     click('btn-quit', () => this.toMenu());
     click('btn-retry', () => this.startRun(this.seed, this.practice));
+    click('btn-swap', () => {
+      this.selectClass(this.otherClass());
+      this.startRun(this.seed, this.practice);
+    });
     click('btn-new', () => this.startRun(randomSeed(), false));
     click('btn-menu', () => this.toMenu());
     click('btn-mobile-continue', () => this.show('screen-menu'));
@@ -167,13 +208,14 @@ export class App {
     this.practice = practice;
     this.mode = 'loading';
     this.hud.show(false);
-    $('loading-seed').textContent = practice ? '練習場' : `種子 ${seed}`;
+    const info = classInfo(this.cls);
+    $('loading-seed').textContent = `${info.name} · ${practice ? '練習場' : `種子 ${seed}`}`;
     this.show('screen-loading');
     window.setTimeout(() => {
       this.renderer.clearWorld();
       this.world = null;
       const level = generateLevel(seed, { practice });
-      const w = new World(level);
+      const w = new World(level, { cls: this.cls });
       this.world = w;
       this.yaw = level.spawn.yaw;
       this.pitch = 0;
@@ -188,10 +230,14 @@ export class App {
         this.hud.setLockBanner(!ok);
         if (!ok) this.flashLockFail();
         this.enterPlaying();
+        const clsHint =
+          this.cls === 'warrior'
+            ? '戰士：盾衛舉劍鎖定（地上橘色扇形）、突進者衝過來、弩矢飛到眼前時，準星下出現「反擊」——揮劍就能打斷或擊開。'
+            : '獵手：拿著弩、準星對準空中的煙霧瓶或飛來的弩矢，出現「疾射」——左鍵幾乎不花時間，箭會修正去截擊它。';
         const hint = practice
-          ? '練習場：左側有睡著的盾衛可以練習背刺，右邊房間有弩手與突進者。補給台（E）可補滿物資。'
-          : '靜止時世界以慢動作流動；移動、攻擊、使用道具時，世界以正常速度前進。';
-        this.hud.hint(`start${this.runCount}`, hint, 8);
+          ? `練習場：左邊有睡著與巡邏的盾衛，右邊房間有高台弩手與突進者，補給台（E）可補滿物資。${clsHint}`
+          : `靜止時世界以慢動作流動；移動、攻擊、使用道具時，世界以正常速度前進。${clsHint}`;
+        this.hud.hint(`start${this.runCount}`, hint, 10);
       });
     }, 30);
   }
@@ -216,7 +262,7 @@ export class App {
     if (this.mode !== 'playing' && this.mode !== 'map') return;
     this.mode = 'paused';
     this.input.clear();
-    $('pause-info').textContent = `${this.practice ? '練習場' : `種子 ${this.seed}`} ${reason}`;
+    $('pause-info').textContent = `${classInfo(this.cls).name} · ${this.practice ? '練習場' : `種子 ${this.seed}`} ${reason}`;
     $('resume-msg').classList.add('hidden');
     $('btn-restart').textContent = this.practice ? '重置練習' : '重新開始（同種子）';
     this.show('screen-pause');
@@ -314,7 +360,8 @@ export class App {
     const win = w.outcome === 'win';
     $('res-title').textContent = win ? '成功撤離！' : '你倒下了';
     const tpl = `${w.level.templateName}${w.level.mirrored ? '（鏡像）' : ''}`;
-    $('res-sub').textContent = this.practice ? '練習場' : `種子 ${this.seed} · 地城「${tpl}」 · 時間：慢動作`;
+    const info = classInfo(w.player.cls);
+    $('res-sub').textContent = `${info.name} · ${this.practice ? '練習場' : `種子 ${this.seed} · 地城「${tpl}」`}`;
     const s = w.stats;
     const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
     const dmg = Object.entries(s.damageTaken)
@@ -327,6 +374,7 @@ export class App {
       ['世界時間', mmss(s.worldTime)],
       ['擊倒敵人', `${s.kills}（背刺 ${s.backstabs} 次）`],
       ['弩／投石命中', `${s.shotHits} / ${s.shots}`],
+      w.player.cls === 'warrior' ? ['反擊／擊開', `${s.counters} / ${s.deflects}`] : ['疾射／截擊弩矢', `${s.quickshots} / ${s.intercepts}`],
       ['空中擊破瓶子', String(s.airbursts)],
       ['煙霧瓶／藥水', `${s.bottlesThrown} / ${s.potionsUsed}`],
       ['打開寶箱', String(s.chests)],
@@ -335,6 +383,7 @@ export class App {
     ];
     $('res-stats').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
     $('btn-retry').textContent = this.practice ? '重置練習' : '同種子再試';
+    $('btn-swap').textContent = `換成${classInfo(this.otherClass()).name}${this.practice ? '重置練習' : '（同種子）'}`;
     this.show('screen-results');
   }
 

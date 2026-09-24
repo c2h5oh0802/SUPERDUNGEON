@@ -23,6 +23,7 @@
       </div>
       <div id="lock-banner" class="hidden">此環境無法鎖定滑鼠：按住<b>右鍵拖曳</b>或用<b>方向鍵</b>轉視角，左鍵仍是攻擊。</div>
       <div id="icons"></div>
+      <div id="targets"></div>
       <div id="crosshair">
         <svg viewBox="0 0 64 64" aria-hidden="true">
           <circle cx="32" cy="32" r="2.2" class="dot" />
@@ -31,10 +32,12 @@
         </svg>
         <div id="hurt-arcs"></div>
       </div>
+      <div id="cue"></div>
       <div id="prompt"></div>
       <div id="toasts"></div>
       <div id="hint"></div>
       <div class="hud-bottom-left">
+        <div id="class-badge"></div>
         <div id="hp"></div>
         <div id="heart-status" class="hidden">◆ 攜帶沉眠之心</div>
         <div id="runes"></div>
@@ -58,6 +61,11 @@
         <h1>沉眠之心</h1>
         <p class="sub">SUPERDUNGEON · 第一人稱慢動作地城潛入</p>
         <p class="pitch">潛入一座沉睡的地城，用慢動作讀懂每一個危險；取走沉眠之心後整座地城甦醒，你得活著把它帶出去。</p>
+        <div class="class-picker" role="radiogroup" aria-label="選擇職業">
+          <button class="class-card" data-cls="warrior" role="radio" aria-checked="true"><span class="cls-name"></span><span class="cls-promise"></span><span class="cls-abil"></span></button>
+          <button class="class-card" data-cls="huntress" role="radio" aria-checked="false"><span class="cls-name"></span><span class="cls-promise"></span><span class="cls-abil"></span></button>
+        </div>
+        <p class="cls-note">兩個職業的裝備與物資完全相同，差別只在「規則特權」。</p>
         <div class="menu-actions">
           <button id="btn-start" class="primary">開始冒險</button>
           <div class="seed-row">
@@ -105,12 +113,14 @@
             </ul>
             <h3>敵人</h3>
             <ul>
-              <li><b>盾衛</b>：舉劍後揮擊，方向會鎖定；正面盾牌擋箭，頭部可打。</li>
+              <li><b>盾衛</b>：舉劍後揮擊，鎖定方向時地上出現橘色扇形；正面盾牌擋箭，頭部可打。</li>
               <li><b>弩手</b>：紅色瞄準線，鎖定後發射；任何命中都會打斷瞄準。</li>
               <li><b>突進者</b>：低頭蓄勢後直線衝撞；撞牆會暈眩並受雙倍傷害。</li>
             </ul>
           </div>
         </div>
+        <h3>職業</h3>
+        <div id="help-classes" class="help-classes"></div>
         <button class="back">返回</button>
       </div>
     </section>
@@ -169,6 +179,7 @@
         <div id="res-stats" class="stats"></div>
         <div class="menu-row">
           <button id="btn-retry" class="primary">同種子再試</button>
+          <button id="btn-swap">換職業（同種子）</button>
           <button id="btn-new">新種子</button>
           <button id="btn-menu">回主畫面</button>
         </div>

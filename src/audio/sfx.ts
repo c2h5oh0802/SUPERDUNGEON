@@ -294,6 +294,27 @@ export class Sfx {
         case 'trapSpike':
           this.noise(0.18, 0.35, 'highpass', 4000, 2500, 2, pos);
           break;
+        case 'counter':
+          // 反擊：金屬重擊＋上揚的鈴音
+          this.tone('sine', 110, 55, 0.3, 0.5, pos);
+          for (const f of [1180, 1770, 2650]) this.tone('triangle', f, f * 0.985, 0.45, 0.12, pos);
+          this.tone('sine', 880, 1320, 0.25, 0.1, null, 0.05);
+          break;
+        case 'deflect':
+          // 擊開：清脆的「叮」
+          this.tone('triangle', 2400, 2250, 0.3, 0.2, pos);
+          this.tone('sine', 3600, 3400, 0.18, 0.08, pos);
+          this.noise(0.05, 0.3, 'highpass', 5000, 3000, 1, pos);
+          break;
+        case 'quickshot':
+          // 疾射：短促的弦音
+          this.noise(0.05, 0.4, 'bandpass', 2600, 1400, 3);
+          this.tone('triangle', 520, 780, 0.1, 0.15);
+          break;
+        case 'intercept':
+          this.noise(0.08, 0.4, 'highpass', 4200, 2600, 1, pos);
+          this.tone('sine', 1600, 900, 0.2, 0.14, pos);
+          break;
         default:
       }
     }

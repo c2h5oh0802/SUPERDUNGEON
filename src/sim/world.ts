@@ -81,6 +81,8 @@ export class World {
     intercepts: 0,
   };
   readonly cue: ClassCue = { counter: null, quickTarget: -1 };
+  /** 最近一個結束的行動（實際花掉的世界時間與類型），供介面與驗證讀取。 */
+  lastAction: { kind: string; spent: number; counter: boolean; countered: boolean; quick: boolean } | null = null;
   nextId = 1;
   private revealT = 0;
 

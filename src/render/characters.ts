@@ -407,6 +407,15 @@ export class EnemyVisual {
         t.j.armR = [lerp(0.3, 0.35, k), 0, lerp(-0.45, 0.12, k)];
         t.j.elbowR = [lerp(-0.2, 1.05, k), 0, 0];
         t.j.torso = [lerp(-0.25, 0, k), lerp(0.45, 0, k), 0];
+      } else if (e.phase === 'stagger') {
+        // 被反擊：後仰、盾牌甩開（正面露出身體）
+        snap = true;
+        const wob = Math.sin(p * 9) * 0.12;
+        t.j.torso = [0.4, 0.35 + wob, 0];
+        t.j.head = [0.3, 0, 0.15];
+        t.j.armL = [0.1, 0, -1.2];
+        t.j.elbowL = [0.2, 0, 0];
+        t.j.armR = [0.5, 0, 0.8];
       }
     } else if (e.kind === 'archer') {
       const a = ENEMIES.archer;
