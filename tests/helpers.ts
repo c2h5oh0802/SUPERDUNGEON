@@ -1,4 +1,4 @@
-import { WORLD } from '../src/config';
+import { WORLD, type PlayerClass } from '../src/config';
 import type { EnemySpawn, LevelData } from '../src/gen/generator';
 import { Grid, T, type DoorState } from '../src/sim/grid';
 import { emptyInput, type FrameInput } from '../src/sim/types';
@@ -115,6 +115,6 @@ export function finishAction(w: World, dt = 1 / 60, maxFrames = 2000): number {
   return total;
 }
 
-export function makeWorld(rows = OPEN_ROOM, enemies: Parameters<typeof testLevel>[1] = []): World {
-  return new World(testLevel(rows, enemies));
+export function makeWorld(rows = OPEN_ROOM, enemies: Parameters<typeof testLevel>[1] = [], cls: PlayerClass = 'warrior'): World {
+  return new World(testLevel(rows, enemies), { cls });
 }

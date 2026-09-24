@@ -72,7 +72,7 @@ export interface DamageInfo {
   z: number;
 }
 
-const PLAYER_WEAPONS = new Set(['sword', 'arrow', 'stone']);
+const PLAYER_WEAPONS = new Set(['sword', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive) return;
@@ -404,6 +404,15 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
       e.phaseT += dt;
       if (e.phaseT >= s.recovery) e.phase = 'none';
       return;
+    case 'stagger':
+      // 被戰士反擊：失衡、盾牌放下，不能攻擊
+      e.phaseT += dt;
+      e.moving = false;
+      if (e.phaseT >= s.stagger) {
+        e.phase = 'none';
+        e.phaseT = 0;
+      }
+      return;
     default:
       e.phaseT += dt;
       if (e.phaseT >= 0.5) e.phase = 'none';
@@ -518,6 +527,8 @@ function fireBolt(w: World, e: Enemy): void {
     hitSet: new Set(),
     next: { ...origin },
     avgVel: { x: 0, y: 0, z: 0 },
+    interceptId: -1,
+    deflected: false,
   };
   w.projectiles.push(proj);
   e.phase = 'reload';

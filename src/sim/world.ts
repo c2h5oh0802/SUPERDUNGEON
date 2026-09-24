@@ -1,8 +1,9 @@
-import { ENEMIES, PLAYER, SMOKE, TIME, type RuneId } from '../config';
+import { ENEMIES, PLAYER, SMOKE, TIME, type PlayerClass, type RuneId } from '../config';
 import { segSphere, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
 import type { LevelData } from '../gen/generator';
 import { Grid } from './grid';
+import { counterThreat, quickshotTarget, type CounterThreat } from './classSys';
 import { Nav } from './nav';
 import { updateEnemies, onNoise, createEnemy, awakenDungeon } from './enemySys';
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
@@ -23,6 +24,17 @@ import type {
 } from './types';
 
 export type Outcome = 'none' | 'win' | 'dead';
+
+export interface WorldOptions {
+  /** 職業（預設戰士）。 */
+  cls?: PlayerClass;
+}
+
+/** 職業提示：每幀結束時計算，介面與開發工具讀取（不影響判定）。 */
+export interface ClassCue {
+  counter: CounterThreat | null;
+  quickTarget: number;
+}
 
 export class World {
   readonly level: LevelData;
@@ -63,16 +75,22 @@ export class World {
     realTime: 0,
     worldTime: 0,
     chests: 0,
+    counters: 0,
+    deflects: 0,
+    quickshots: 0,
+    intercepts: 0,
   };
+  readonly cue: ClassCue = { counter: null, quickTarget: -1 };
   nextId = 1;
   private revealT = 0;
 
-  constructor(level: LevelData) {
+  constructor(level: LevelData, opts: WorldOptions = {}) {
     this.level = level;
     this.grid = level.grid;
     this.enav = new Nav(this.grid, Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius));
     this.explored = new Uint8Array(this.grid.w * this.grid.h);
     this.player = {
+      cls: opts.cls ?? 'warrior',
       x: level.spawn.x,
       z: level.spawn.z,
       yaw: level.spawn.yaw,
@@ -202,7 +220,13 @@ export class World {
       this.reveal();
     }
     this.interactTarget = findInteractTarget(this);
+    this.updateCue();
     return worldDt;
+  }
+
+  updateCue(): void {
+    this.cue.counter = counterThreat(this);
+    this.cue.quickTarget = quickshotTarget(this)?.id ?? -1;
   }
 
   /** 以受限子步推進世界時間。 */

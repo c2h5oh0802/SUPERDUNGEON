@@ -123,6 +123,8 @@ export const ENEMIES = {
     damage: 3,
     reach: 2.3,
     arcDeg: 90,
+    /** 被戰士反擊斬打斷後的失衡時間（盾牌放下、不能攻擊）。 */
+    stagger: 1.0,
   },
   archer: {
     hp: 3,
@@ -226,6 +228,95 @@ export function runeInfo(id: RuneId): RuneInfo {
 }
 
 export const ALL_RUNES: RuneId[] = ['pierce', 'swiftBlade', 'shadow', 'vigor'];
+
+// ---------- 職業：相同裝備與資源，差別只在「規則特權」 ----------
+
+export const CLASSES = {
+  warrior: {
+    /** 反擊斬：威脅已鎖定、就在眼前時揮劍，出手更快。 */
+    counterSwing: { windup: 0.05, active: 0.12, recovery: 0.23 },
+    /** 近戰威脅（盾衛鎖定、突進者鎖定或衝鋒中）在這個距離內才算「就在眼前」。 */
+    counterRange: 3.2,
+    /** 突進者衝鋒中：太近時已經來不及出手。 */
+    counterMinChargeDist: 1.3,
+    /** 弩矢在這個距離區間內、且會從身邊 boltPassDist 內經過，才算來得及擊開。 */
+    boltReadyMax: 5.0,
+    boltReadyMin: 1.2,
+    boltPassDist: 2.0,
+    /** 擊開：揮劍作用期間，劍的範圍再加這個餘量內的弩矢會被打回去。 */
+    deflectMargin: 0.3,
+    deflectSpeed: 30,
+    deflectBody: 3,
+    deflectHead: 6,
+  },
+  huntress: {
+    /** 疾射：準星對準空中的飛行物時，射擊幾乎不花世界時間。 */
+    quickshot: { windup: 0.02, active: 0, recovery: 0.08 },
+    /** 準星與飛行物的夾角在這個角度內才會修正（度）。 */
+    assistConeDeg: 6,
+    assistRange: 22,
+    /** 疾射箭對「指定目標」的交會半徑（一般箭對瓶子是 0.21 m）。 */
+    interceptRadius: 0.35,
+  },
+} as const;
+
+export type PlayerClass = keyof typeof CLASSES;
+export const ALL_CLASSES: PlayerClass[] = ['warrior', 'huntress'];
+
+export interface ClassInfo {
+  id: PlayerClass;
+  name: string;
+  promise: string;
+  abilities: Array<{ name: string; text: string }>;
+}
+
+/** 職業說明由上方數值生成，確保文字與效果一致。 */
+export function classInfo(id: PlayerClass): ClassInfo {
+  const sw = ACTIONS.sword;
+  const swTotal = sw.windup + sw.active + sw.recovery;
+  const cb = ACTIONS.crossbow;
+  const cbTotal = cb.windup + cb.active + cb.recovery;
+  if (id === 'warrior') {
+    const w = CLASSES.warrior;
+    const cs = w.counterSwing;
+    return {
+      id,
+      name: '戰士',
+      promise: '敵人已經出手了，但我仍然能走進他的攻擊節奏裡反擊。',
+      abilities: [
+        {
+          name: '反擊斬',
+          text: `敵人的攻擊已鎖定、就在眼前時揮劍：出手 ${fmt(sw.windup)} → ${fmt(cs.windup)} 秒。命中會打斷攻擊：盾衛失衡 ${fmt(ENEMIES.guard.stagger)} 秒（盾牌放下），突進者暈眩 ${fmt(ENEMIES.charger.stun)} 秒。`,
+        },
+        {
+          name: '擊開',
+          text: `揮劍時碰到飛來的弩矢，會把它朝準星方向打回去（身體 ${w.deflectBody}、頭部 ${w.deflectHead} 傷害，不耗弩箭）。`,
+        },
+        {
+          name: '收招',
+          text: `反擊或擊開成功時，這一劍不用收招（一般揮劍 ${fmt(swTotal)} 秒，其中收招 ${fmt(sw.recovery)} 秒）。`,
+        },
+      ],
+    };
+  }
+  const h = CLASSES.huntress;
+  const qs = h.quickshot;
+  return {
+    id,
+    name: '獵手',
+    promise: '東西都已經飛出去了，但我仍然可以改變結果。',
+    abilities: [
+      {
+        name: '疾射',
+        text: `拿著弩、準星對準空中的飛行物（自己丟出的煙霧瓶、敵人的弩矢）${h.assistConeDeg}° 內：射擊只花 ${fmt(qs.windup + qs.active + qs.recovery)} 秒（一般 ${fmt(cbTotal)} 秒）。`,
+      },
+      {
+        name: '截擊',
+        text: `疾射的箭會修正到與目標交會（${h.assistRange} m 內、不穿牆）：打中煙霧瓶就在空中炸開，打中弩矢就把它擊落，箭繼續往前飛。`,
+      },
+    ],
+  };
+}
 
 export const RENDER = {
   maxPixelRatio: 1.5,

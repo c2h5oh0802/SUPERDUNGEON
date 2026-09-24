@@ -1,5 +1,7 @@
-import { ACTIONS, NOISE, PLAYER, PROJECTILES, RUNES, SWORD } from '../config';
+import { ACTIONS, CLASSES, NOISE, PLAYER, PROJECTILES, RUNES, SWORD } from '../config';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
+import { AIM_EYE_Y, aimPoint } from './aim';
+import { applyCounter, counterThreat, deflectBolts, interceptVelocity, quickshotTarget } from './classSys';
 import { damageEnemy } from './enemySys';
 import { setDoor } from './propSys';
 import type { World } from './world';
@@ -13,9 +15,11 @@ export function actionTotal(kind: ActionKind, swift: boolean): number {
   return (d.windup + d.active + d.recovery) * mul;
 }
 
-function startAction(w: World, kind: ActionKind, targetId = -1): void {
+type Timing = { windup: number; active: number; recovery: number };
+
+function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = ACTIONS[kind]): void {
   const p = w.player;
-  const d = ACTIONS[kind];
+  const d = timing;
   const mul = kind === 'sword' && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
   p.action = {
     kind,
@@ -27,6 +31,9 @@ function startAction(w: World, kind: ActionKind, targetId = -1): void {
     lockedYaw: p.yaw,
     hitSet: new Set(),
     targetId,
+    counter: false,
+    countered: false,
+    quick: false,
   };
 }
 
@@ -64,6 +71,21 @@ export function startActions(w: World, input: FrameInput): void {
     if (p.tool === 'crossbow' && p.arrows <= 0) {
       if (input.firePressed) w.emit({ type: 'dryFire', text: '沒有弩箭' });
       return;
+    }
+    // 戰士：威脅已鎖定、就在眼前 → 反擊斬
+    if (p.tool === 'sword' && counterThreat(w)) {
+      startAction(w, 'sword', -1, CLASSES.warrior.counterSwing);
+      p.action!.counter = true;
+      return;
+    }
+    // 獵手：準星對準空中的飛行物 → 疾射
+    if (p.tool === 'crossbow') {
+      const target = quickshotTarget(w);
+      if (target) {
+        startAction(w, 'crossbow', target.id, CLASSES.huntress.quickshot);
+        p.action!.quick = true;
+        return;
+      }
     }
     startAction(w, TOOL_ACTION[p.tool]);
   }
@@ -163,7 +185,12 @@ export function updatePlayerAction(w: World, dt: number): void {
         w.emit({ type: 'swing' });
         swordWallCheck(w);
       }
-      if (a.t >= a.windup && prevT < a.windup + a.active) swordHits(w);
+      if (a.t >= a.windup && prevT < a.windup + a.active) {
+        swordHits(w);
+        if (deflectBolts(w) > 0) a.countered = true;
+        // 反擊或擊開成功：這一劍不用收招
+        if (a.countered) a.recovery = 0;
+      }
       break;
     case 'crossbow':
     case 'stone':
@@ -189,7 +216,7 @@ export function updatePlayerAction(w: World, dt: number): void {
     case 'door':
       break;
   }
-  if (done) {
+  if (done || a.t >= a.windup + a.active + a.recovery - 1e-9) {
     p.action = null;
     if (p.desiredTool !== p.tool) p.tool = p.desiredTool;
   }
@@ -227,22 +254,16 @@ function swordHits(w: World): void {
     if (sneak) dmg *= SWORD.sneakMultiplier;
     if (e.kind === 'charger' && e.phase === 'stun') dmg *= 2;
     if (sneak) w.stats.backstabs++;
+    // 戰士：命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
+    if (applyCounter(w, e)) a.countered = true;
     damageEnemy(w, e, dmg, { source: 'sword', sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'combat');
   }
 }
 
-/** 從眼睛沿視線找瞄準點（地形），讓出手點偏移後仍命中準星。 */
-function aimPoint(w: World, eye: V3, dir: V3): V3 {
-  const far = { x: eye.x + dir.x * 60, y: eye.y + dir.y * 60, z: eye.z + dir.z * 60 };
-  const hit = w.grid.segmentHit(eye, far);
-  const d = hit ? Math.max(2.5, hit.t * 60) : 60;
-  return { x: eye.x + dir.x * d, y: eye.y + dir.y * d, z: eye.z + dir.z * d };
-}
-
 export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'): Projectile {
   const p = w.player;
-  const eye = { x: p.x, y: PLAYER.eyeHeight - 0.05, z: p.z };
+  const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
   const f = forwardFromYaw(p.yaw);
   const rx = Math.cos(p.yaw);
   const rz = -Math.sin(p.yaw);
@@ -277,6 +298,19 @@ export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'):
     if (kind === 'crossbow') p.arrows--;
     w.emit({ type: kind === 'crossbow' ? 'fire' : 'throw', kind: pk });
   }
+  // 獵手疾射：修正到與目標在同一時刻交會（目標已消失就照準星射出）
+  let interceptId = -1;
+  const a = p.action;
+  if (kind === 'crossbow' && a?.quick) {
+    w.stats.quickshots++;
+    const target = w.projectiles.find((q) => q.id === a.targetId && q.alive);
+    const v = target ? interceptVelocity(origin, spec.speed, spec.gravity, target) : null;
+    if (v) {
+      vel = v;
+      interceptId = target!.id;
+    }
+    w.emit({ type: 'quickshot', id: interceptId, kind: target?.kind ?? '' });
+  }
   const proj: Projectile = {
     id: w.nextId++,
     kind: pk,
@@ -291,6 +325,8 @@ export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'):
     hitSet: new Set(),
     next: { ...origin },
     avgVel: { ...vel },
+    interceptId,
+    deflected: false,
   };
   w.projectiles.push(proj);
   return proj;

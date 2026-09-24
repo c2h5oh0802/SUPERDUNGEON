@@ -1,4 +1,4 @@
-import type { RuneId } from '../config';
+import type { PlayerClass, RuneId } from '../config';
 import type { V2, V3 } from '../core/math';
 import type { EnemyKind } from '../gen/rooms';
 import type { PickupKind } from '../gen/generator';
@@ -16,9 +16,16 @@ export interface ActionState {
   lockedYaw: number;
   hitSet: Set<number>;
   targetId: number;
+  /** 戰士：這一劍是反擊斬（出手更快）。 */
+  counter: boolean;
+  /** 戰士：這一劍已成功反擊或擊開（跳過收招）。 */
+  countered: boolean;
+  /** 獵手：這一發是疾射；截擊目標為 targetId。 */
+  quick: boolean;
 }
 
 export interface Player {
+  cls: PlayerClass;
   x: number;
   z: number;
   yaw: number;
@@ -110,6 +117,10 @@ export interface Projectile {
   /** 本子步的預定終點與平均速度（供同時空交會判定）。 */
   next: V3;
   avgVel: V3;
+  /** 獵手疾射：要截擊的飛行物 id（-1 表示沒有）。 */
+  interceptId: number;
+  /** 被戰士擊開的弩矢（改由玩家擁有）。 */
+  deflected: boolean;
 }
 
 export interface Smoke {
@@ -202,7 +213,11 @@ export type GameEventType =
   | 'noise'
   | 'resupply'
   | 'toolSwitch'
-  | 'fullInventory';
+  | 'fullInventory'
+  | 'counter'
+  | 'deflect'
+  | 'quickshot'
+  | 'intercept';
 
 export interface GameEvent {
   type: GameEventType;
@@ -234,6 +249,10 @@ export interface RunStats {
   realTime: number;
   worldTime: number;
   chests: number;
+  counters: number;
+  deflects: number;
+  quickshots: number;
+  intercepts: number;
 }
 
 export interface FrameInput {

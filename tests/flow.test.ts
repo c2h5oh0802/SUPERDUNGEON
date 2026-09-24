@@ -49,10 +49,16 @@ function interactWith(w: World, x: number, z: number): void {
 }
 
 describe('完整流程（模擬層，移除敵人以單獨驗證路線、門、取心、撤離與勝利條件）', () => {
-  for (const seed of ['FLOW1', 'FLOW2', 'FLOW3', 'FLOW4']) {
-    it(`種子 ${seed}：入口 → 沉眠之心 → 入口石階 → 通關`, () => {
+  for (const [seed, cls] of [
+    ['FLOW1', 'warrior'],
+    ['FLOW2', 'huntress'],
+    ['FLOW3', 'warrior'],
+    ['FLOW4', 'huntress'],
+  ] as const) {
+    it(`種子 ${seed}（${cls}）：入口 → 沉眠之心 → 入口石階 → 通關`, () => {
       const l = generateLevel(seed);
-      const w = new World(l);
+      const w = new World(l, { cls });
+      expect(w.player.cls).toBe(cls);
       w.enemies.length = 0;
       const h = l.heart!;
       const s = l.stairs!;

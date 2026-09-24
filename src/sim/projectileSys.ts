@@ -1,4 +1,4 @@
-import { ENEMIES, PLAYER, PROJECTILES, SMOKE } from '../config';
+import { CLASSES, ENEMIES, PLAYER, PROJECTILES, SMOKE } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
 import { damageEnemy, enemyForward } from './enemySys';
 import type { World } from './world';
@@ -6,8 +6,9 @@ import type { Enemy, Projectile } from './types';
 
 interface Hit {
   t: number;
-  type: 'wall' | 'bottle' | 'enemy' | 'player';
+  type: 'wall' | 'bottle' | 'bolt' | 'enemy' | 'player';
   wallKind?: string;
+  /** 被空中擊中的飛行物（瓶子或被截擊的弩矢）。 */
   bottle?: Projectile;
   bottleTau?: number;
   enemy?: Enemy;
@@ -56,15 +57,20 @@ function findHit(w: World, p: Projectile, a: V3, b: V3, dt: number, tStart: numb
   const wall = w.grid.segmentHit(a, b, false, p.radius);
   if (wall) best = { t: wall.t, type: 'wall', wallKind: wall.kind };
   if (p.owner === 'player' && p.kind !== 'bottle') {
-    // 同時空交會：瓶子與箭／石在同一子步內都在移動
+    // 同時空交會：瓶子（或獵手截擊的弩矢）與箭／石在同一子步內都在移動
     const remain = dt * (1 - tStart);
     for (const bt of w.projectiles) {
-      if (bt.kind !== 'bottle' || !bt.alive || p.hitSet.has(bt.id)) continue;
+      if (bt === p || !bt.alive || p.hitSet.has(bt.id)) continue;
+      const designated = p.interceptId === bt.id;
+      let r: number;
+      if (bt.kind === 'bottle') r = designated ? Math.max(CLASSES.huntress.interceptRadius, p.radius + bt.radius) : p.radius + bt.radius;
+      else if (bt.kind === 'bolt' && designated && bt.owner !== 'player') r = CLASSES.huntress.interceptRadius;
+      else continue;
       const bPos = lerp3(bt.pos, bt.next, tStart);
-      const tau = movingSpheresTOI(a, p.avgVel, bPos, bt.avgVel, p.radius + bt.radius, remain);
+      const tau = movingSpheresTOI(a, p.avgVel, bPos, bt.avgVel, r, remain);
       if (tau < 0) continue;
       const t = remain > 0 ? tau / remain : 0;
-      if (!best || t < best.t) best = { t, type: 'bottle', bottle: bt, bottleTau: dt * tStart + tau };
+      if (!best || t < best.t) best = { t, type: bt.kind === 'bottle' ? 'bottle' : 'bolt', bottle: bt, bottleTau: dt * tStart + tau };
     }
   }
   const ch = charHit(w, p, a, b);
@@ -108,8 +114,12 @@ export function updateProjectiles(w: World, dt: number): void {
     };
     p.avgVel = { x: (p.next.x - p.pos.x) / dt, y: (p.next.y - p.pos.y) / dt, z: (p.next.z - p.pos.z) / dt };
   }
-  // 2) 箭、石、弩矢先結算（可在空中擊破瓶子），再結算瓶子
-  const order = w.projectiles.filter((p) => p.alive && p.kind !== 'bottle').concat(w.projectiles.filter((p) => p.alive && p.kind === 'bottle'));
+  // 2) 玩家的箭、石（含被擊開的弩矢）先結算：可在空中擊破瓶子、截擊弩矢；再結算敵人的弩矢，最後是瓶子
+  const alive = w.projectiles.filter((p) => p.alive);
+  const order = alive
+    .filter((p) => p.kind !== 'bottle' && p.owner === 'player')
+    .concat(alive.filter((p) => p.kind !== 'bottle' && p.owner !== 'player'))
+    .concat(alive.filter((p) => p.kind === 'bottle'));
   for (const p of order) {
     if (!p.alive) continue;
     let tStart = 0;
@@ -134,6 +144,18 @@ export function updateProjectiles(w: World, dt: number): void {
           break;
         }
         // 箭穿過瓶子繼續飛
+        tStart = tAbs;
+        a = at;
+        continue;
+      }
+      if (hit.type === 'bolt') {
+        // 獵手截擊：弩矢被擊落，箭繼續飛
+        const b = hit.bottle!;
+        const bAt = { x: b.pos.x + b.avgVel.x * hit.bottleTau!, y: b.pos.y + b.avgVel.y * hit.bottleTau!, z: b.pos.z + b.avgVel.z * hit.bottleTau! };
+        b.alive = false;
+        p.hitSet.add(b.id);
+        w.stats.intercepts++;
+        w.emit({ type: 'intercept', id: b.id, x: bAt.x, y: bAt.y, z: bAt.z });
         tStart = tAbs;
         a = at;
         continue;
@@ -196,21 +218,26 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
   const hz = p.vel.z / sp;
   const f = enemyForward(e);
   const fromFront = hx * f.x + hz * f.z < -0.35;
-  // 盾衛：正面盾牌擋住射向身體的箭與石
-  if (e.kind === 'guard' && !head && fromFront && e.phase !== 'stun' && e.state !== 'sleep') {
+  // 盾衛：正面盾牌擋住射向身體的箭與石（被反擊而失衡時盾牌放下）
+  if (e.kind === 'guard' && !head && fromFront && e.phase !== 'stun' && e.phase !== 'stagger' && e.state !== 'sleep') {
     p.alive = false;
     w.emit({ type: 'shield', x: at.x, y: at.y, z: at.z, id: e.id });
     if (p.kind === 'arrow') w.addPickup('arrows', 1, e.x + f.x * (e.radius + 0.4), 0.05, e.z + f.z * (e.radius + 0.4), null);
     w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 6, 'shield');
     return false;
   }
-  const spec = p.kind === 'arrow' ? PROJECTILES.arrow : PROJECTILES.stone;
+  const spec =
+    p.kind === 'arrow'
+      ? PROJECTILES.arrow
+      : p.kind === 'bolt'
+        ? { head: CLASSES.warrior.deflectHead, body: CLASSES.warrior.deflectBody }
+        : PROJECTILES.stone;
   let dmg: number = head ? spec.head : spec.body;
   if (e.kind === 'charger' && e.phase === 'charge' && fromFront) dmg = Math.ceil(dmg * ENEMIES.charger.frontArmorMul);
   if (e.kind === 'charger' && e.phase === 'stun') dmg *= ENEMIES.charger.stunDamageMul;
-  w.stats.shotHits++;
+  if (!p.deflected) w.stats.shotHits++;
   p.hitSet.add(e.id);
-  damageEnemy(w, e, dmg, { source: p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z });
+  damageEnemy(w, e, dmg, { source: p.deflected ? 'deflect' : p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z });
   w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 8, 'combat');
   if (p.kind === 'arrow' && p.pierceLeft > 0) {
     p.pierceLeft--;

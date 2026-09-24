@@ -33,6 +33,8 @@ function inject(w: World, p: Partial<Projectile> & Pick<Projectile, 'kind' | 'po
     hitSet: new Set(),
     next: { ...p.pos },
     avgVel: { ...p.vel },
+    interceptId: -1,
+    deflected: false,
     ...p,
   };
   w.projectiles.push(proj);
