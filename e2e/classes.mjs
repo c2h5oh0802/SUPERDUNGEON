@@ -230,9 +230,17 @@ await startPractice('huntress');
   check('獵手：疾射只花很少世界時間（< 0.2 秒，一般射擊 0.8 秒）', spent !== null && spent < 0.2, spent === null ? '沒有射擊' : `${spent.toFixed(3)} 秒`);
 }
 {
-  // 高台弩手：面向弩手；弩矢飛來時準星自然在它的路線上 → 出現「疾射」就射
-  await walkTo(26.5, 9.5, 0.7);
-  await walkTo(RANGE_SPOT.x, RANGE_SPOT.z, 0.5);
+  // 高台弩手：面向弩手；弩矢飛來時準星自然在它的路線上 → 出現「疾射」就射。
+  // 先重置練習場（空爆的聲響會吵醒練習場的盾衛並一路跟過來），
+  // 再以狀態注入把獵手放到射擊場站位（只擺位置；截擊本身是正常輸入）。
+  await bot.releaseAll();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if ((await st()).mode !== 'paused') await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.click('#btn-restart');
+  await page.waitForFunction(() => window.__sd?.state().mode === 'playing' && window.__sd.state().time < 0.5, null, { timeout: 90000 });
+  await page.evaluate(([x, z]) => window.__sd.debug.teleport(x, z), [RANGE_SPOT.x, RANGE_SPOT.z]);
+  console.log('INFO 狀態注入：獵手傳送到射擊場站位', RANGE_SPOT.x, RANGE_SPOT.z);
   await bot.tap('Digit2');
   const t0 = Date.now();
   let readyShot = false;
@@ -253,12 +261,13 @@ await startPractice('huntress');
     if (s.cue.quickTarget >= 0 && !p.action && p.arrows > 0) {
       const tq = s.projectiles.find((q) => q.id === s.cue.quickTarget);
       if (tq && tq.kind === 'bolt') {
-        if (!readyShot) {
-          readyShot = true;
-          await shot('huntress-intercept-ready');
-        }
         await bot.click(30);
         await bot.waitIdle();
+        if (!readyShot) {
+          readyShot = true;
+          console.log('INFO 截擊出手', JSON.stringify((await st()).lastAction));
+          await shot('huntress-intercept-fired');
+        }
         continue;
       }
     }
