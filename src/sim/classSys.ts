@@ -51,14 +51,15 @@ export function counterThreat(w: World): CounterThreat | null {
     const dz = e.z - p.z;
     const d = Math.hypot(dx, dz);
     if (!inFront(w, e.x, e.z)) continue;
+    const reach = SWORD.reach + c.counterLunge + e.radius;
     if (e.kind === 'guard') {
       // 反擊斬的作用要在盾衛揮下之前開始
       const remain = ENEMIES.guard.windup - e.phaseT;
-      if (d <= SWORD.reach + e.radius && remain >= cs.windup - 0.01) return { kind: 'guard', id: e.id };
+      if (d <= reach && remain >= cs.windup - 0.01) return { kind: 'guard', id: e.id };
     } else if (e.kind === 'archer') {
-      if (d <= SWORD.reach + e.radius) return { kind: 'archer', id: e.id };
+      if (d <= reach) return { kind: 'archer', id: e.id };
     } else if (e.phase === 'windup') {
-      if (d <= SWORD.reach + e.radius + 0.1) return { kind: 'charger', id: e.id };
+      if (d <= reach) return { kind: 'charger', id: e.id };
     } else {
       // 衝鋒中：要在衝鋒線上、還沒撞到
       if (d > c.counterRange || d < c.counterMinChargeDist) continue;

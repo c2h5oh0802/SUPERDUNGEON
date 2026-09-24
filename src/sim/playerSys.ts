@@ -238,12 +238,14 @@ function swordHits(w: World): void {
   const p = w.player;
   const a = p.action!;
   const half = ((SWORD.arcDeg / 2) * Math.PI) / 180;
+  // 戰士的反擊斬往前踏半步
+  const reach = SWORD.reach + (a.counter ? CLASSES.warrior.counterLunge : 0);
   for (const e of w.enemies) {
     if (!e.alive || a.hitSet.has(e.id)) continue;
     const dx = e.x - p.x;
     const dz = e.z - p.z;
     const d = Math.hypot(dx, dz);
-    if (d > SWORD.reach + e.radius) continue;
+    if (d > reach + e.radius) continue;
     const ang = yawFromDir(dx, dz);
     if (Math.abs(angleDiff(ang, a.lockedYaw)) > half && d > e.radius + 0.25) continue;
     if (e.y > 2.0) continue;

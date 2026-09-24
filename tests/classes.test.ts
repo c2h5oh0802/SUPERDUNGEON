@@ -244,6 +244,25 @@ describe('戰士：反擊斬', () => {
     expect(w.player.hp).toBe(PLAYER.maxHp);
   });
 
+  it('盾衛在「打得到我、但一般揮劍搆不到它」的距離（2.6 m）鎖定：反擊斬踏半步仍然來得及', () => {
+    // 注入：盾衛在 2.6 m 處、已鎖定的舉劍中（實際遊玩時，舉劍開始後雙方位置變動就會出現這個距離）
+    const w = alertGuardAhead('warrior', 2.6);
+    const g = w.enemies[0]!;
+    g.phase = 'windup';
+    g.phaseT = ENEMIES.guard.trackUntil + 0.01;
+    g.locked = true;
+    g.lockedYaw = g.yaw;
+    w.updateCue();
+    const d = Math.hypot(g.x - w.player.x, g.z - w.player.z);
+    expect(d).toBeGreaterThan(2.45);
+    expect(d).toBeLessThanOrEqual(ENEMIES.guard.reach + PLAYER.radius);
+    expect(w.cue.counter?.kind).toBe('guard');
+    act(w);
+    expect(w.stats.counters).toBe(1);
+    expect(g.phase).toBe('stagger');
+    expect(w.player.hp).toBe(PLAYER.maxHp);
+  });
+
   it('太早出手（盾衛還在追蹤、尚未鎖定）：只是普通傷害，盾衛照樣揮下', () => {
     const w = alertGuardAhead('warrior');
     const g = w.enemies[0]!;
@@ -286,7 +305,9 @@ describe('戰士：反擊斬', () => {
     expect(c.phase).toBe('stun');
     expect(w.player.hp).toBe(PLAYER.maxHp);
     expect(w.stats.counters).toBe(1);
-    // 暈眩中追擊受雙倍傷害
+    // 反擊斬踏半步、可能在一般揮劍搆不到的距離擋下它：走近再追擊，暈眩中受雙倍傷害
+    const p = w.player;
+    for (let k = 0; k < 600 && Math.hypot(c.x - p.x, c.z - p.z) > 2.0; k++) w.frame(dt, input(w, { moveZ: 1 }));
     act(w);
     const hits = w.events.filter((e) => e.type === 'hitEnemy');
     expect(hits.map((e) => e.amount)).toEqual([4, 8]);

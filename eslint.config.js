@@ -27,6 +27,7 @@ export default tseslint.config(
         globalThis: 'readonly',
         localStorage: 'readonly',
         DOMException: 'readonly',
+        MouseEvent: 'readonly',
         Event: 'readonly',
       },
     },

@@ -235,6 +235,8 @@ export const CLASSES = {
   warrior: {
     /** 反擊斬：威脅已鎖定、就在眼前時揮劍，出手更快。 */
     counterSwing: { windup: 0.05, active: 0.12, recovery: 0.23 },
+    /** 反擊斬往前踏半步：劍的範圍加長，蓋過盾衛揮擊的範圍（盾衛 2.3 + 玩家半徑 0.35）。 */
+    counterLunge: 0.3,
     /** 近戰威脅（盾衛鎖定、突進者鎖定或衝鋒中）在這個距離內才算「就在眼前」。 */
     counterRange: 3.2,
     /** 突進者衝鋒中：太近時已經來不及出手。 */
@@ -286,7 +288,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       abilities: [
         {
           name: '反擊斬',
-          text: `敵人的攻擊已鎖定、就在眼前時揮劍：出手 ${fmt(sw.windup)} → ${fmt(cs.windup)} 秒。命中會打斷攻擊：盾衛失衡 ${fmt(ENEMIES.guard.stagger)} 秒（盾牌放下），突進者暈眩 ${fmt(ENEMIES.charger.stun)} 秒。`,
+          text: `敵人的攻擊已鎖定、就在眼前時揮劍：出手 ${fmt(sw.windup)} → ${fmt(cs.windup)} 秒，並往前踏半步（範圍 +${fmt(w.counterLunge)} m）。命中會打斷攻擊：盾衛失衡 ${fmt(ENEMIES.guard.stagger)} 秒（盾牌放下），突進者暈眩 ${fmt(ENEMIES.charger.stun)} 秒。`,
         },
         {
           name: '擊開',

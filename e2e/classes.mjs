@@ -17,6 +17,19 @@ await page.goto(`${BASE}?dev=1&gfx=low`);
 await page.mouse.move(320, 180);
 
 const st = () => bot.st();
+
+/**
+ * 時機關鍵的點擊：直接對畫面送出 DOM 滑鼠事件（與真實點擊走同一個輸入處理流程）。
+ * 這個環境裡自動化工具的 page.mouse 要 0.6–1.4 秒才送達頁面（實測），
+ * 會吃掉大部分「反擊」窗口（慢動作下約 1.6 秒真實時間）；真人的輸入延遲只有一幀。
+ */
+async function fastClick() {
+  await page.evaluate(() => {
+    const c = document.getElementById('game');
+    c.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true }));
+    setTimeout(() => window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true })), 30);
+  });
+}
 // 射擊場裡弩手（高台、面向南）視野內的站位；踏板在 (24.5, 11.5) 與 (31.5, 11.5)
 const RANGE_SPOT = { x: 29.5, z: 11.0 };
 const shot = (name) => page.screenshot({ path: `${OUT}cls-${name}.png` });
@@ -131,11 +144,9 @@ await startPractice('warrior');
       };
       const r0 = Date.now();
       console.log('INFO 看到反擊提示時', gp(s));
-      await page.mouse.down({ button: 'left' });
+      await fastClick();
       const r1 = Date.now();
-      await page.waitForTimeout(50);
-      await page.mouse.up({ button: 'left' });
-      const r2 = Date.now();
+      const r2 = r1;
       for (let k = 0; k < 200; k++) {
         const x = await st();
         if (x.player.action) {
@@ -194,11 +205,11 @@ await startPractice('warrior');
     if (s.stats.deflects >= 1 && (s.enemies.find((e) => e.kind === 'archer')?.alive === false || Date.now() - t0 > 30000)) break;
     if (s.cue.counter && !s.player.action) {
       kinds[s.cue.counter.kind] = (kinds[s.cue.counter.kind] ?? 0) + 1;
+      await fastClick();
       if (s.cue.counter.kind === 'bolt' && !deflectShot) {
         deflectShot = true;
         await shot('warrior-deflect-ready');
       }
-      await bot.click();
       await page.waitForTimeout(60);
       continue;
     }
@@ -257,7 +268,8 @@ await startPractice('huntress');
       ready = true;
       check('獵手：準星對準空中的瓶子時出現「疾射」', s2.cueText === '疾射', s2.cueText);
       // 看到提示就出手（截圖在出手後；軟體渲染下截圖要 1–2 秒，瓶子會飛出錐角）
-      await bot.click(30);
+      await fastClick();
+      for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
       await bot.waitIdle();
       const la = (await st()).lastAction;
       spent = la && la.quick ? la.spent : null;
@@ -309,7 +321,8 @@ await startPractice('huntress');
       const tq = s.projectiles.find((q) => q.id === s.cue.quickTarget);
       // 弩矢還在 3.5 m 外就出手（越近角度變化越快；軟體渲染約 8 fps，按鍵要一幀以上才生效）
       if (tq && tq.kind === 'bolt' && Math.hypot(tq.x - p.x, tq.z - p.z) >= 3.5) {
-        await bot.click(30);
+        await fastClick();
+        for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
         await bot.waitIdle();
         if (!readyShot) {
           readyShot = true;
