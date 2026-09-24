@@ -283,6 +283,16 @@ kbd {
   display: none;
 }
 
+/* 矮的視窗：提示縮小、往下放，不要蓋到準星 */
+@media (max-height: 520px) {
+  #hint {
+    bottom: 64px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-width: min(460px, calc(100vw - 32px));
+  }
+}
+
 .hud-bottom-left {
   position: absolute;
   left: 16px;
