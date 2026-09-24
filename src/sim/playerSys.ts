@@ -68,6 +68,8 @@ export function startActions(w: World, input: FrameInput): void {
     return;
   }
   if (input.fire) {
+    // 疾射只有 0.1 秒，比一次普通點擊還短：按住不放不能連發，下一發要重新按下
+    if (p.tool === 'crossbow' && !input.firePressed && w.lastAction?.quick) return;
     if (p.tool === 'crossbow' && p.arrows <= 0) {
       if (input.firePressed) w.emit({ type: 'dryFire', text: '沒有弩箭' });
       return;

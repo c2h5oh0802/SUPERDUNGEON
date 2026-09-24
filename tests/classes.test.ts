@@ -174,6 +174,23 @@ describe('職業：時間特權只在預期條件下出現', () => {
     expect(h.stats.quickshots).toBe(1);
   });
 
+  it('疾射比一次點擊還短：按住左鍵不會接著連發，要重新按下才會射下一發', () => {
+    const h = makeWorld(OPEN_ROOM, [], 'huntress');
+    useTool(h, 'crossbow');
+    const b = throwBottle(h);
+    face(h, b.pos.x, b.pos.z, b.pos.y);
+    h.frame(dt, input(h, { fire: true, firePressed: true }));
+    // 按住不放（fire 持續為 true、沒有新的按下）
+    for (let k = 0; k < 120; k++) h.frame(dt, input(h, { fire: true }));
+    expect(h.stats.quickshots).toBe(1);
+    expect(h.stats.shots).toBe(1);
+    expect(h.player.arrows).toBe(PLAYER.startArrows - 1);
+    // 重新按下：照常射擊（沒有目標了，是一般射擊）
+    h.frame(dt, input(h, { fire: true, firePressed: true }));
+    expect(h.player.action?.kind).toBe('crossbow');
+    expect(h.player.action?.quick).toBe(false);
+  });
+
   it('邊走邊疾射：移動與行動仍取最大值、不加總，世界速率 ≤ 1', () => {
     const h = makeWorld(OPEN_ROOM, [], 'huntress');
     useTool(h, 'crossbow');
