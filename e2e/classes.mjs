@@ -162,8 +162,10 @@ await startPractice('warrior');
     globalThis.__lastHp = p.hp;
     if (g.phase === 'windup') {
       globalThis.__lastSeen = `phaseT=${g.phaseT.toFixed(3)} locked=${g.locked} d=${Math.hypot(g.x - p.x, g.z - p.z).toFixed(2)} ang=${Math.abs(wrap(yawTo(p.x, p.z, g.x, g.z) - p.yaw)).toFixed(2)} cue=${JSON.stringify(s.cue.counter)} dt=${s.lastWorldDt.toFixed(4)}/${s.lastRealDt.toFixed(3)}`;
-      // 等鎖定時不做任何耗時的事（截圖在軟體渲染下要 1–2 秒，會錯過窗口）
-      await page.waitForTimeout(15);
+      // 等鎖定時不做耗時的事（截圖在軟體渲染下要 1–2 秒，會錯過窗口）；
+      // 但盾衛在劍的範圍（±50°）外就先轉向它（轉身不花世界時間，真人用滑鼠會直接轉過去）
+      if (Math.abs(wrap(yawTo(p.x, p.z, g.x, g.z) - p.yaw)) > 0.6) await bot.turnTo(yawTo(p.x, p.z, g.x, g.z), 0.25);
+      else await page.waitForTimeout(15);
       continue;
     }
     if (Math.abs(wrap(yawTo(p.x, p.z, g.x, g.z) - p.yaw)) > 0.2) await bot.turnTo(yawTo(p.x, p.z, g.x, g.z), 0.1);
