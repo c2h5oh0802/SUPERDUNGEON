@@ -203,16 +203,23 @@ await startPractice('huntress');
     await aimAt(b.x, b.y, b.z, 0.04);
     const s2 = await st();
     const b2 = s2.projectiles.find((q) => q.id === b.id);
+    // 還在上升、提示已出現：趁等待時截圖（不影響出手時機）
+    if (b2 && s2.cue.quickTarget === b.id && b2.vy >= 1.2 && !globalThis.__qsShot) {
+      globalThis.__qsShot = true;
+      await shot('huntress-quick-ready');
+      continue;
+    }
     // 等瓶子過了最高點（自己選一個比較晚的引爆點）
     if (b2 && s2.cue.quickTarget === b.id && b2.vy < 0.5) {
       ready = true;
       check('獵手：準星對準空中的瓶子時出現「疾射」', s2.cueText === '疾射', s2.cueText);
-      await shot('huntress-quick-ready');
+      // 看到提示就出手（截圖在出手後；軟體渲染下截圖要 1–2 秒，瓶子會飛出錐角）
       await bot.click(30);
       await bot.waitIdle();
       const la = (await st()).lastAction;
       spent = la && la.quick ? la.spent : null;
       console.log('INFO 疾射行動', JSON.stringify(la));
+      await shot('huntress-quick-fired');
       break;
     }
   }
