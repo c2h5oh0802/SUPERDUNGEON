@@ -60,7 +60,7 @@ async function fight(s) {
   const sneak = near.find((o) => o.e.state !== 'alert' && o.d < 2.3);
   if (sneak) {
     await bot.releaseAll();
-    if (p.tool !== 'sword') await bot.tap('Digit1');
+    if (p.tool !== p.slots[0]) await bot.tap('Digit1');
     await bot.turnTo(yawTo(p.x, p.z, sneak.e.x, sneak.e.z), 0.15);
     await bot.click();
     await bot.waitIdle(1500);
@@ -133,7 +133,7 @@ async function fight(s) {
   const e = t.e;
   const d = t.d;
   await bot.releaseAll();
-  if (p.tool !== 'sword') await bot.tap('Digit1');
+  if (p.tool !== p.slots[0]) await bot.tap('Digit1');
   const face = yawTo(p.x, p.z, e.x, e.z);
   if (e.kind === 'guard') {
     // 撤離時以逃跑為主：守衛比玩家慢，不擋路就不纏鬥

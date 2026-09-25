@@ -958,7 +958,6 @@ button.ghost {
   margin: -9px 0 0 -9px;
   border-radius: 2px;
   border: 2px solid #c6b6ff;
-  rotate: 45deg;
   box-shadow: 0 0 8px rgba(198, 182, 255, 0.7);
 }
 

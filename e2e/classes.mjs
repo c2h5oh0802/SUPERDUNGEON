@@ -1,4 +1,4 @@
-// 職業驗證（練習場）：以正常操作輸入（WASD、方向鍵轉向、1/2/Q、左鍵）做出各職業的核心動作。
+// 職業驗證（練習場）：以正常操作輸入（WASD、方向鍵或滑鼠轉向、1/2/3/Q/F、左鍵）做出各職業的核心動作。
 // 何時出手、往哪裡轉，是透過 ?dev=1 讀取狀態決定的（狀態讀取輔助，不是真人操作）；
 // 「現在出手有效」的判定讀的是畫面上同一個提示（state().cue），不是另外算的。
 import { Bot, OUT, launch, wrap, yawTo } from './lib.mjs';
@@ -34,6 +34,44 @@ async function fastClick() {
 const RANGE_SPOT = { x: 29.5, z: 11.0 };
 const shot = (name) => page.screenshot({ path: `${OUT}cls-${name}.png` });
 
+/**
+ * 精確轉向：送出真正的滑鼠移動事件（與玩家移動滑鼠走同一條輸入路徑）。
+ * 滑鼠鎖定時直接移動；無法鎖定（無頭瀏覽器）時用遊戲的備用操作「按住右鍵拖曳」。
+ * 軟體渲染約 8 fps，方向鍵一幀就轉 0.27 rad，獵人之眼需要更細的角度。
+ */
+async function mouseLook(dyaw, dpitch) {
+  const k = 0.0022;
+  await page.evaluate(
+    ([mx, my]) => {
+      const c = document.getElementById('game');
+      const locked = document.pointerLockElement === c;
+      if (!locked) c.dispatchEvent(new MouseEvent('mousedown', { button: 2, bubbles: true, cancelable: true }));
+      const n = Math.max(1, Math.ceil(Math.max(Math.abs(mx), Math.abs(my)) / 200));
+      for (let i = 0; i < n; i++) document.dispatchEvent(new MouseEvent('mousemove', { movementX: mx / n, movementY: my / n, bubbles: true }));
+      if (!locked) window.dispatchEvent(new MouseEvent('mouseup', { button: 2, bubbles: true }));
+    },
+    [-dyaw / k, -dpitch / k],
+  );
+  await page.waitForFunction(() => window.__sd.state().lastRealDt > 0, null, { timeout: 2000 });
+  await page.waitForTimeout(260);
+}
+
+async function lookAt(yaw, pitch, tol = 0.006) {
+  for (let i = 0; i < 6; i++) {
+    const p = (await st()).player;
+    const dy = wrap(yaw - p.yaw);
+    const dp = pitch - p.pitch;
+    if (Math.abs(dy) < tol && Math.abs(dp) < tol) return true;
+    await mouseLook(dy, dp);
+  }
+  return false;
+}
+
+async function lookAtPoint(x, y, z, tol = 0.006) {
+  const p = (await st()).player;
+  return lookAt(yawTo(p.x, p.z, x, z), Math.atan2(y - 1.55, Math.hypot(x - p.x, z - p.z)), tol);
+}
+
 // ---------- 1) 選擇職業 ----------
 await page.click('.class-card[data-cls="huntress"]');
 check('點選獵手卡片後被選取', (await page.getAttribute('.class-card[data-cls="huntress"]', 'aria-checked')) === 'true');
@@ -43,9 +81,17 @@ await page.reload();
 await page.mouse.move(320, 180);
 check('重新整理後仍是獵手', (await page.getAttribute('.class-card[data-cls="huntress"]', 'aria-checked')) === 'true');
 const cardText = await page.textContent('.class-card[data-cls="warrior"]');
-check('職業卡顯示名稱、承諾與能力', cardText.includes('戰士') && cardText.includes('反擊斬') && cardText.includes('擊開'), cardText.slice(0, 40));
+check('職業卡顯示名稱、承諾與起始武器', cardText.includes('戰士') && cardText.includes('長劍') && cardText.includes('臂盾'), cardText.slice(0, 40));
+const hDetail = await page.textContent('#class-detail');
+check(
+  '選中獵手：展開完整說明（起始裝備、職業規則、擅長與弱點、代表性的一刻）',
+  ['起始裝備', '獵弓', '藥劑箭', '麻痺箭', '獵人之眼', '擅長與弱點', '代表性的一刻'].every((k) => hDetail.includes(k)),
+  hDetail.slice(0, 60),
+);
 await shot('menu');
 await page.click('.class-card[data-cls="warrior"]');
+const wDetail = await page.textContent('#class-detail');
+check('選中戰士：說明換成戰士（長劍、臂盾、反擊斬、盾推）', ['長劍', '臂盾', '投擲石', '反擊斬', '盾推的結果'].every((k) => wDetail.includes(k)), wDetail.slice(0, 60));
 
 async function startPractice(cls) {
   await page.click(`.class-card[data-cls="${cls}"]`);
@@ -56,6 +102,9 @@ async function startPractice(cls) {
   check(`練習場以${cls === 'warrior' ? '戰士' : '獵手'}開始`, s.player.cls === cls, s.player.cls);
   const badge = await page.textContent('#class-badge');
   check('HUD 顯示目前職業', badge.includes(cls === 'warrior' ? '戰士' : '獵手'), badge);
+  const tools = await page.textContent('#tools');
+  const want = cls === 'warrior' ? ['長劍', '投擲石', '臂盾'] : ['獵刀', '獵弓', '麻痺箭'];
+  check('工具列顯示這個職業的武器', want.every((k) => tools.includes(k)), tools);
 }
 
 async function toMenu() {
@@ -109,6 +158,17 @@ async function enterRange(label) {
   await page.waitForFunction(() => window.__sd?.state().mode === 'playing' && window.__sd.state().time < 0.5, null, { timeout: 90000 });
   await page.evaluate(([x, z]) => window.__sd.debug.teleport(x, z), [RANGE_SPOT.x, RANGE_SPOT.z]);
   console.log(`INFO 狀態注入：${label}傳送到射擊場站位`, RANGE_SPOT.x, RANGE_SPOT.z);
+}
+
+/** 重置練習場（暫停選單「重置練習」），不移動玩家。 */
+async function resetPractice(label) {
+  await bot.releaseAll();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if ((await st()).mode !== 'paused') await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.click('#btn-restart');
+  await page.waitForFunction(() => window.__sd?.state().mode === 'playing' && window.__sd.state().time < 0.5, null, { timeout: 90000 });
+  console.log(`INFO 重置練習場：${label}`);
 }
 
 async function aimAt(x, y, z, tol = 0.03) {
@@ -191,6 +251,68 @@ await startPractice('warrior');
   if (!counterShot) check('戰士：盾衛鎖定時準星下出現「反擊」', false, '沒有等到反擊時機');
 }
 {
+  // 臂盾：把睡著的盾衛往最近的牆推。一次推 2 m；還沒撞到牆，就繞回它與牆的反方向再推一次
+  await resetPractice('戰士盾推');
+  const s0 = await st();
+  const g = s0.enemies.find((e) => e.kind === 'guard' && e.alive && e.state === 'sleep');
+  let dir = null;
+  for (let r = 1.5; r <= 6 && g && !dir; r += 0.5) {
+    for (let k = 0; k < 16 && !dir; k++) {
+      const a = (k / 16) * Math.PI * 2;
+      const dx = Math.cos(a);
+      const dz = Math.sin(a);
+      const wall = !(await page.evaluate(([x, z, bx, bz]) => window.__sd.lineOfSight(x, 1, z, bx, 1, bz), [g.x, g.z, g.x + dx * r, g.z + dz * r]));
+      const room = await page.evaluate(([x, z, bx, bz]) => window.__sd.lineOfSight(x, 1, z, bx, 1, bz), [g.x, g.z, g.x - dx * 2.2, g.z - dz * 2.2]);
+      if (wall && room) dir = { dx, dz, r };
+    }
+  }
+  if (!g || !dir) check('戰士：把盾衛推去撞牆', false, '找不到牆');
+  else {
+    console.log('INFO 推向牆', JSON.stringify(dir));
+    await walkTo(g.x - dir.dx * 1.45, g.z - dir.dz * 1.45, 0.3);
+    let first = true;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 50000) {
+      const s = await st();
+      if (s.stats.wallSlams >= 1 || s.player.dead || s.mode !== 'playing') break;
+      const gg = s.enemies.find((e) => e.id === g.id);
+      if (!gg || !gg.alive) break;
+      const p = s.player;
+      if (gg.pushing || p.action) {
+        await page.waitForTimeout(40);
+        continue;
+      }
+      // 站位：盾衛與牆的反方向
+      const want = { x: gg.x - dir.dx * 1.5, z: gg.z - dir.dz * 1.5 };
+      const off = Math.hypot(want.x - p.x, want.z - p.z);
+      if (s.cue.push === g.id && off < 0.45) {
+        await lookAtPoint(gg.x, 1.2, gg.z, 0.05);
+        const s2 = await st();
+        if (s2.cue.push !== g.id) continue;
+        if (first) check('戰士：盾衛就在身前時出現「盾推」提示', s2.cueText === '盾推', `cue.push=${s2.cue.push} text=${s2.cueText}`);
+        first = false;
+        console.log('INFO 盾推', `player=(${p.x.toFixed(1)},${p.z.toFixed(1)}) guard=(${gg.x.toFixed(1)},${gg.z.toFixed(1)}) ${gg.state}/${gg.phase}`);
+        await bot.tap('KeyF');
+        await bot.waitIdle();
+        continue;
+      }
+      if (off > 0.25) {
+        await lookAt(yawTo(p.x, p.z, want.x, want.z), 0, 0.08);
+        await bot.down('KeyW');
+        await page.waitForTimeout(Math.min(250, off * 250));
+        await bot.up('KeyW');
+      } else await page.waitForTimeout(40);
+    }
+    await page.waitForTimeout(300);
+    const s = await st();
+    const g2 = s.enemies.find((e) => e.id === g.id);
+    await shot('warrior-shield-wall');
+    check('戰士：盾推把盾衛推去撞牆（失衡）', s.stats.pushes >= 1 && s.stats.wallSlams >= 1, `pushes=${s.stats.pushes} wallSlams=${s.stats.wallSlams} phase=${g2?.phase}`);
+    const la = s.lastAction;
+    check('戰士：盾推花完整行動時間（0.4 秒）', !!la && la.kind === 'shield' && Math.abs(la.spent - 0.4) < 0.02, JSON.stringify(la));
+  }
+}
+{
   // 高台弩手：站在它的視野內；有「反擊」提示就揮劍（弩矢或衝過來的突進者）
   await enterRange('戰士');
   const t0 = Date.now();
@@ -229,12 +351,46 @@ await startPractice('warrior');
   await page.waitForTimeout(600);
   await shot('warrior-after-range');
   const a = (await st()).enemies.find((e) => e.kind === 'archer');
-  console.log('INFO 弩手', a.alive ? `存活 hp=${a.hp}` : '被擊倒', ' 戰士生命', s.player.hp, ' 反擊', s.stats.counters, ' 擊開', s.stats.deflects, ' 弩箭', s.player.arrows);
+  console.log('INFO 弩手', a.alive ? `存活 hp=${a.hp}` : '被擊倒', ' 戰士生命', s.player.hp, ' 反擊', s.stats.counters, ' 擊開', s.stats.deflects, ' 投擲石', s.player.stones);
 }
 await toMenu();
 
-// ---------- 3) 獵手：疾射空爆與截擊弩矢 ----------
+// ---------- 3) 獵手：獵人之眼空爆、麻痺箭、冰寒箭 ----------
 await startPractice('huntress');
+{
+  // 麻痺箭：射睡著的盾衛（靜止目標，身體沒有盾擋）
+  const s0 = await st();
+  const g = s0.enemies.find((e) => e.kind === 'guard' && e.alive && e.state === 'sleep');
+  if (!g) check('獵手：麻痺箭讓盾衛定格', false, '找不到睡著的盾衛');
+  else {
+    const p0 = s0.player;
+    const d0 = Math.hypot(g.x - p0.x, g.z - p0.z);
+    const f = Math.max(0, (d0 - 6) / d0);
+    await walkTo(p0.x + (g.x - p0.x) * f, p0.z + (g.z - p0.z) * f, 0.8);
+    await bot.tap('Digit3');
+    const pre = await st();
+    check('獵手：按 3 拿藥劑箭（麻痺）', pre.player.tool === 'tipped' && pre.player.tipKind === 'paralysis', `${pre.player.tool}/${pre.player.tipKind}`);
+    await lookAtPoint(g.x, 1.0, g.z, 0.01);
+    await fastClick();
+    for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
+    let frozen = null;
+    for (let k = 0; k < 200; k++) {
+      const x = await st();
+      const gg = x.enemies.find((e) => e.id === g.id);
+      if (gg && gg.paralyzeT > 0) {
+        frozen = gg;
+        break;
+      }
+      if (!x.projectiles.some((q) => q.kind === 'arrow') && !x.player.action) break;
+      await page.waitForTimeout(30);
+    }
+    await shot('huntress-paralysis');
+    const s = await st();
+    check('獵手：麻痺箭命中，盾衛的時間軸暫停', !!frozen, frozen ? `paralyzeT=${frozen.paralyzeT.toFixed(2)} phase=${frozen.phase}` : `tipHits=${s.stats.tipHits}`);
+    check('獵手：藥劑箭少了一支（麻痺 2 → 1）', s.player.tipped.paralysis === 1, JSON.stringify(s.player.tipped));
+  }
+}
+await resetPractice('獵手空爆');
 {
   await bot.tap('Digit2');
   await bot.turnTo(-Math.PI / 2 + 0.25, 0.05);
@@ -246,109 +402,95 @@ await startPractice('huntress');
     await page.waitForTimeout(30);
   }
   await bot.waitIdle();
-  // 在慢動作中追著瓶子瞄準，等它飛到拋物線下降段（自己選的引爆點）再射
-  let ready = false;
-  let spent = null;
+  const s1 = await st();
+  const eye0 = s1.cue.eye[0];
+  check('獵人之眼：空中的瓶子有落點圈與提前量標記', !!eye0 && !!eye0.landing && !!eye0.aim, JSON.stringify(eye0 ?? null).slice(0, 80));
+  const marks = await page.locator('#targets .tmark.lead').count();
+  check('獵人之眼：畫面上出現提前量標記（菱形）', marks >= 1, `marks=${marks}`);
+  await shot('huntress-eye');
+  // 跟著標記轉動滑鼠，等瓶子過了最高點、準星對上標記（提示「放箭」）就射
+  let fired = false;
   const t0 = Date.now();
-  while (Date.now() - t0 < 20000) {
+  while (Date.now() - t0 < 25000 && !fired) {
     const s = await st();
     const b = s.projectiles.find((q) => q.kind === 'bottle');
-    if (!b) break;
-    await aimAt(b.x, b.y, b.z, 0.04);
-    const s2 = await st();
-    const b2 = s2.projectiles.find((q) => q.id === b.id);
-    // 還在上升、提示已出現：趁等待時截圖（不影響出手時機）
-    if (b2 && s2.cue.quickTarget === b.id && b2.vy >= 1.2 && !globalThis.__qsShot) {
-      globalThis.__qsShot = true;
-      await shot('huntress-quick-ready');
-      continue;
-    }
-    // 等瓶子過了最高點（自己選一個比較晚的引爆點）
-    if (b2 && s2.cue.quickTarget === b.id && b2.vy < 0.5) {
-      ready = true;
-      check('獵手：準星對準空中的瓶子時出現「疾射」', s2.cueText === '疾射', s2.cueText);
-      // 看到提示就出手（截圖在出手後；軟體渲染下截圖要 1–2 秒，瓶子會飛出錐角）
-      await fastClick();
-      for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
-      await bot.waitIdle();
-      const la = (await st()).lastAction;
-      spent = la && la.quick ? la.spent : null;
-      console.log('INFO 疾射行動', JSON.stringify(la));
-      // 行動結束後世界回到慢動作：等箭飛到（瓶子與箭都不在空中）再檢查
-      for (let k = 0; k < 400; k++) {
-        const x = await st();
-        if (!x.projectiles.some((q) => q.kind === 'bottle' || q.kind === 'arrow')) break;
-        await page.waitForTimeout(50);
-      }
-      await shot('huntress-quick-fired');
-      const ev = await page.evaluate(() =>
-        window.__sd
-          .events()
-          .filter((e) => ['quickshot', 'fire', 'bottleBreak', 'hitWall', 'hitEnemy', 'shield', 'throw'].includes(e.type))
-          .map((e) => `${e.type}:${e.kind ?? ''}${e.air !== undefined ? (e.air ? ':air' : ':ground') : ''}@${[e.x, e.y, e.z].map((v) => (typeof v === 'number' ? v.toFixed(1) : '-')).join(',')} t=${e.t.toFixed(2)}`),
-      );
-      console.log('INFO 空爆事件', ev.join(' | '));
+    const e = s.cue.eye[0];
+    if (!b || !e || !e.aim) {
+      console.log('INFO 瓶子', b ? `y=${b.y.toFixed(2)} vy=${b.vy.toFixed(2)}` : '已落地', 'eye', JSON.stringify(e ?? null));
       break;
     }
+    await lookAt(e.aim.yaw, e.aim.pitch, 0.008);
+    const s2 = await st();
+    const e2 = s2.cue.eye[0];
+    console.log('INFO 瞄準標記', e2?.aim ? `dYaw=${wrap(e2.aim.yaw - s2.player.yaw).toFixed(4)} dPitch=${(e2.aim.pitch - s2.player.pitch).toFixed(4)}` : '-', 'cue', s2.cueText);
+    if (s2.cueText === '放箭') {
+      await fastClick();
+      fired = true;
+    }
   }
-  await page.waitForTimeout(500);
-  const s = await st();
-  await shot('huntress-airburst');
-  check('獵手：等到下降段再引爆，疾射空中擊破瓶子', ready && s.stats.airbursts >= 1 && s.stats.quickshots >= 1, `airbursts=${s.stats.airbursts} quickshots=${s.stats.quickshots}`);
-  check('獵手：疾射只花很少世界時間（< 0.2 秒，一般射擊 0.8 秒）', spent !== null && spent < 0.2, spent === null ? '沒有射擊' : `${spent.toFixed(3)} 秒`);
-}
-{
-  // 高台弩手：面向弩手；弩矢飛來時準星自然在它的路線上 → 出現「疾射」就射
-  await enterRange('獵手');
-  await bot.tap('Digit2');
-  const t0 = Date.now();
-  let readyShot = false;
-  while (Date.now() - t0 < 60000) {
-    const s = await st();
-    if (s.player.dead || s.mode !== 'playing') break;
-    if (s.stats.intercepts >= 1) break;
-    const p = s.player;
-    const charger = s.enemies.find((e) => e.kind === 'charger' && e.alive && ((e.phase === 'windup' && e.locked) || e.phase === 'charge'));
-    if (charger) {
-      // 突進者鎖定：往側面閃開（移動會推進世界時間）
-      await bot.releaseAll();
-      await bot.down('KeyA');
-      await page.waitForTimeout(350);
-      await bot.up('KeyA');
-      continue;
-    }
-    if (s.cue.quickTarget >= 0 && !p.action && p.arrows > 0) {
-      const tq = s.projectiles.find((q) => q.id === s.cue.quickTarget);
-      // 弩矢還在 3.5 m 外就出手（越近角度變化越快；軟體渲染約 8 fps，按鍵要一幀以上才生效）
-      if (tq && tq.kind === 'bolt' && Math.hypot(tq.x - p.x, tq.z - p.z) >= 3.5) {
-        await fastClick();
-        for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
-        await bot.waitIdle();
-        if (!readyShot) {
-          readyShot = true;
-          console.log('INFO 截擊出手', JSON.stringify((await st()).lastAction));
-          await shot('huntress-intercept-fired');
-        }
-        continue;
-      }
-    }
-    const archer = s.enemies.find((e) => e.kind === 'archer' && e.alive);
-    if (!archer) break;
-    if (!globalThis.__alog || Date.now() - globalThis.__alog > 3000) {
-      globalThis.__alog = Date.now();
-      const bolts = s.projectiles.filter((q) => q.kind === 'bolt').map((q) => `${q.x.toFixed(1)},${q.y.toFixed(1)},${q.z.toFixed(1)}`);
-      console.log('INFO 獵手', p.x.toFixed(1), p.z.toFixed(1), 'hp', p.hp, '弩手', archer.state, archer.phase, 'bolts', bolts.join(' '), 'cue', s.cue.quickTarget);
-    }
-    // 視角（水平與俯仰）都要對準弩手；低幀率下方向鍵轉動會不足，所以每次都檢查兩個軸
-    const wantPitch = Math.atan2(archer.y + 1.45 - 1.55, Math.hypot(archer.x - p.x, archer.z - p.z));
-    if (Math.abs(wrap(yawTo(p.x, p.z, archer.x, archer.z) - p.yaw)) > 0.03 || Math.abs(wantPitch - p.pitch) > 0.03)
-      await aimAt(archer.x, archer.y + 1.45, archer.z, 0.02);
-    await page.waitForTimeout(40);
+  for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
+  await bot.waitIdle();
+  const la = (await st()).lastAction;
+  for (let k = 0; k < 400; k++) {
+    const x = await st();
+    if (!x.projectiles.some((q) => q.kind === 'bottle' || q.kind === 'arrow')) break;
+    await page.waitForTimeout(50);
   }
   await page.waitForTimeout(400);
   const s = await st();
-  await shot('huntress-after-range');
-  check('獵手：疾射截擊飛來的弩矢', s.stats.intercepts >= 1, `intercepts=${s.stats.intercepts} quickshots=${s.stats.quickshots} hp=${s.player.hp}`);
+  await shot('huntress-airburst');
+  check('獵手：對準提前量標記射擊，瓶子在空中炸開', fired && s.stats.airbursts >= 1, `fired=${fired} airbursts=${s.stats.airbursts}`);
+  check('獵手：這一箭照常花完整射擊時間（0.8 秒，沒有時間特權）', !!la && la.kind === 'bow' && Math.abs(la.spent - 0.8) < 0.02, JSON.stringify(la));
+}
+{
+  // 冰寒箭：射擊場的突進者（衝鋒以外的時候射它）
+  await enterRange('獵手');
+  await bot.tap('Digit3');
+  await bot.tap('Digit3');
+  const pre = await st();
+  check('獵手：再按一次 3 切換成冰寒箭', pre.player.tipKind === 'chill', pre.player.tipKind);
+  let chilled = null;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 60000 && !chilled) {
+    const s = await st();
+    if (s.player.dead || s.mode !== 'playing') {
+      console.log('INFO 獵手倒下', JSON.stringify(s.stats.damageTaken));
+      break;
+    }
+    const c = s.enemies.find((e) => e.kind === 'charger' && e.alive);
+    if (!c) break;
+    if (!globalThis.__clog || Date.now() - globalThis.__clog > 2500) {
+      globalThis.__clog = Date.now();
+      console.log('INFO 突進者', c.state, c.phase, `d=${Math.hypot(c.x - s.player.x, c.z - s.player.z).toFixed(1)} hp=${s.player.hp} dmg=${JSON.stringify(s.stats.damageTaken)}`);
+    }
+    if (c.slowT > 0) {
+      chilled = c;
+      break;
+    }
+    if (c.phase !== 'charge' && !s.player.action && !s.projectiles.some((q) => q.kind === 'arrow')) {
+      await lookAtPoint(c.x, 1.0, c.z, 0.01);
+      const s3 = await st();
+      const c3 = s3.enemies.find((e) => e.id === c.id);
+      console.log('INFO 冰寒箭出手', `phase=${c3.phase} d=${Math.hypot(c3.x - s3.player.x, c3.z - s3.player.z).toFixed(1)} tool=${s3.player.tool} hp=${s3.player.hp}`);
+      await fastClick();
+      for (let k = 0; k < 100 && !(await st()).player.action; k++) await page.waitForTimeout(10);
+      await bot.waitIdle();
+      continue;
+    }
+    if (c.phase === 'charge') {
+      // 衝鋒來了：側移閃開
+      await bot.down('KeyA');
+      await page.waitForTimeout(300);
+      await bot.up('KeyA');
+      continue;
+    }
+    // 看向突進者，等它蓄勢
+    if (Math.abs(wrap(yawTo(s.player.x, s.player.z, c.x, c.z) - s.player.yaw)) > 0.15) await bot.turnTo(yawTo(s.player.x, s.player.z, c.x, c.z), 0.1);
+    await page.waitForTimeout(40);
+  }
+  await shot('huntress-chill');
+  const s = await st();
+  check('獵手：冰寒箭命中突進者，時間軸變慢', !!chilled, chilled ? `slowT=${chilled.slowT.toFixed(2)} phase=${chilled.phase}` : `tipHits=${s.stats.tipHits} hp=${s.player.hp}`);
 }
 
 check('全程無 console 錯誤', errors.length === 0, errors.join(' | '));

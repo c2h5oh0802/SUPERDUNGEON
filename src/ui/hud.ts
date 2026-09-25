@@ -387,7 +387,8 @@ export class Hud {
         this.tmarks.set(e.id, el);
       }
       el.className = 'tmark lead';
-      el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px)`;
+      // 菱形：先平移再旋轉（旋轉放在平移前面會連位移一起轉掉）
+      el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px) rotate(45deg)`;
     }
     for (const [id, el] of this.tmarks) {
       if (seen.has(id)) continue;

@@ -49,7 +49,7 @@ for (let attempt = 1; attempt <= 3 && !success; attempt++) {
   // 面向東方的開闊處、略微抬頭
   await bot.turnTo(-Math.PI / 2 + 0.25, 0.05);
   await bot.pitchTo(0.28, 0.05);
-  await bot.tap('Digit3');
+  await bot.tap('Digit2');
   await page.waitForTimeout(100);
   const before = await bot.st();
   if (before.player.bottles <= 0) {
