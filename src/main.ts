@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, classInfo, runeInfo, type PlayerClass, type RuneId } from './config';
+import { ALL_CLASSES, classInfo, runeInfo, type ClassInfo, type PlayerClass, type RuneId } from './config';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -18,7 +18,7 @@ type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'rune' | 'result
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const SCREENS = ['screen-menu', 'screen-help', 'screen-settings', 'screen-pause', 'screen-rune', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
+const SCREENS = ['screen-menu', 'screen-help', 'screen-class', 'screen-settings', 'screen-pause', 'screen-rune', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
 
 export class App {
   readonly canvas = $<HTMLCanvasElement>('game');
@@ -73,18 +73,31 @@ export class App {
     for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   }
 
+  /** 職業完整說明（起始裝備、職業規則、擅長與弱點、代表性的一刻），全部由 config 的數值生成。 */
+  static classDetailHtml(info: ClassInfo): string {
+    const gear = info.loadout.map((l) => `<li><kbd>${l.key}</kbd><b class="nm">${l.name}</b>：${l.text}</li>`).join('');
+    const rules = info.abilities.map((a) => `<li><b class="nm">${a.name}</b>：${a.text}</li>`).join('');
+    const moments = info.moments.map((m) => `<li>${m}</li>`).join('');
+    return [
+      `<p class="cd-summary">${info.summary}</p>`,
+      `<h4>起始裝備</h4><ul>${gear}</ul><p class="muted">${info.common}</p>`,
+      `<h4>職業規則</h4><ul>${rules}</ul>`,
+      `<h4>擅長與弱點</h4><ul><li>${info.strengths}</li><li>${info.weaknesses}</li></ul>`,
+      `<h4>代表性的一刻</h4><ul>${moments}</ul>`,
+    ].join('');
+  }
+
   /** 職業卡與說明文字由 config 的數值生成。 */
   private fillClassTexts(): void {
     for (const card of Array.from(document.querySelectorAll<HTMLButtonElement>('.class-card'))) {
       const info = classInfo(card.dataset.cls as PlayerClass);
       card.querySelector('.cls-name')!.textContent = info.name;
       card.querySelector('.cls-promise')!.textContent = `「${info.promise}」`;
-      card.querySelector('.cls-abil')!.textContent = info.abilities.map((a) => a.name).join('・');
+      card.querySelector('.cls-abil')!.textContent = info.loadout.map((l) => l.name).join('・');
     }
     $('help-classes').innerHTML = ALL_CLASSES.map((id) => {
       const info = classInfo(id);
-      const items = info.abilities.map((a) => `<li><b>${a.name}</b>：${a.text}</li>`).join('');
-      return `<div><h4 class="${id}">${info.name}</h4><p class="muted">「${info.promise}」</p><ul>${items}</ul></div>`;
+      return `<div><h4 class="${id}">${info.name}</h4><p class="muted">「${info.promise}」</p><div class="class-detail ${id}">${App.classDetailHtml(info)}</div></div>`;
     }).join('');
     this.selectClass(this.cls);
   }
@@ -94,6 +107,18 @@ export class App {
     if (this.settings.value.cls !== cls) this.settings.update({ cls });
     for (const card of Array.from(document.querySelectorAll<HTMLButtonElement>('.class-card')))
       card.setAttribute('aria-checked', String(card.dataset.cls === cls));
+    const el = $('class-detail');
+    el.className = `class-detail ${cls}`;
+    el.innerHTML = App.classDetailHtml(classInfo(cls));
+  }
+
+  private openClassScreen(): void {
+    const info = classInfo(this.cls);
+    $('class-screen-title').textContent = `${info.name}「${info.promise}」`;
+    const body = $('class-screen-body');
+    body.className = `class-detail ${this.cls}`;
+    body.innerHTML = App.classDetailHtml(info);
+    this.show('screen-class');
   }
 
   private otherClass(): PlayerClass {
@@ -130,6 +155,8 @@ export class App {
     click('btn-resume', () => this.resume());
     click('btn-restart', () => this.startRun(this.seed, this.practice));
     click('btn-pause-settings', () => this.openSettings('pause'));
+    click('btn-pause-class', () => this.openClassScreen());
+    click('btn-class-back', () => this.show('screen-pause'));
     click('btn-quit', () => this.toMenu());
     click('btn-retry', () => this.startRun(this.seed, this.practice));
     click('btn-swap', () => {
@@ -232,8 +259,8 @@ export class App {
         this.enterPlaying();
         const clsHint =
           this.cls === 'warrior'
-            ? '戰士：盾衛舉劍鎖定（地上橘色扇形）、突進者衝過來、弩矢飛到眼前時，準星下出現「反擊」——揮劍就能打斷或擊開。'
-            : '獵手：拿著弩、準星對準空中的煙霧瓶或飛來的弩矢，出現「疾射」——左鍵幾乎不花時間，箭會修正去截擊它。';
+            ? '戰士（1 長劍、2 投擲石、右鍵/F 臂盾）：敵人的攻擊鎖定、就在眼前時準星下出現「反擊」；敵人貼身時出現「盾推」。'
+            : '獵手（1 獵刀、2 獵弓、3 藥劑箭）：麻痺箭讓敵人的時間軸暫停，冰寒箭讓它變慢；再按一次 3 切換。暫停選單有完整職業說明。';
         const hint = practice
           ? '練習場：左邊有睡著與巡邏的盾衛，右邊房間有高台弩手與突進者，補給台（E）可補滿物資。'
           : '靜止時世界以慢動作流動；移動、攻擊、使用道具時，世界以正常速度前進。';
@@ -375,8 +402,13 @@ export class App {
       ['真實時間', mmss(s.realTime)],
       ['世界時間', mmss(s.worldTime)],
       ['擊倒敵人', `${s.kills}（背刺 ${s.backstabs} 次）`],
-      ['弩／投石命中', `${s.shotHits} / ${s.shots}`],
-      w.player.cls === 'warrior' ? ['反擊／擊開', `${s.counters} / ${s.deflects}`] : ['疾射／截擊弩矢', `${s.quickshots} / ${s.intercepts}`],
+      [w.player.cls === 'warrior' ? '投擲石命中' : '射箭命中', `${s.shotHits} / ${s.shots}`],
+      ...(w.player.cls === 'warrior'
+        ? ([
+            ['反擊／擊開', `${s.counters} / ${s.deflects}`],
+            ['盾推／撞牆／格擋', `${s.pushes} / ${s.wallSlams} / ${s.blocks}`],
+          ] as Array<[string, string]>)
+        : ([['藥劑箭命中', String(s.tipHits)]] as Array<[string, string]>)),
       ['空中擊破瓶子', String(s.airbursts)],
       ['煙霧瓶／藥水', `${s.bottlesThrown} / ${s.potionsUsed}`],
       ['打開寶箱', String(s.chests)],
@@ -422,7 +454,8 @@ export class App {
           pitch: this.pitch,
           fire: raw.fire,
           firePressed: raw.firePressed,
-          selectTool: raw.selectTool,
+          selectSlot: raw.digit,
+          shield: raw.shield,
           bottle: raw.bottle,
           interact: raw.interact,
           potion: raw.potion,

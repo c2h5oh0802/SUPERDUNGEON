@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, ENEMIES, PERCEPTION, PLAYER, RUNES, runeInfo } from '../src/config';
+import { ACTIONS, CLASSES, ENEMIES, PERCEPTION, PLAYER, RUNES, runeInfo } from '../src/config';
 import { fireProjectile } from '../src/sim/playerSys';
 import { emptyInput, type Projectile } from '../src/sim/types';
 import type { World } from '../src/sim/world';
@@ -13,8 +13,8 @@ function swing(w: World): void {
 }
 
 function shoot(w: World, pitch = 0, yaw = w.player.yaw): void {
-  w.player.tool = 'crossbow';
-  w.player.desiredTool = 'crossbow';
+  w.player.tool = 'bow';
+  w.player.desiredTool = 'bow';
   w.frame(dt, { ...emptyInput(yaw, pitch), fire: true, firePressed: true });
   finishAction(w);
   // 讓箭飛完
@@ -33,8 +33,8 @@ function inject(w: World, p: Partial<Projectile> & Pick<Projectile, 'kind' | 'po
     hitSet: new Set(),
     next: { ...p.pos },
     avgVel: { ...p.vel },
-    interceptId: -1,
     deflected: false,
+    tip: null,
     ...p,
   };
   w.projectiles.push(proj);
@@ -120,12 +120,12 @@ const WALL_ROWS = [
   '####################',
 ];
 
-describe('弩與投射物', () => {
+describe('弓與投射物', () => {
   it('箭被牆擋住，不穿過薄牆（長幀＋最高速），並留下可撿回的箭', () => {
-    const w = makeWorld(WALL_ROWS, [{ kind: 'archer', x: 9.5, z: 6.5, state: 'sleep' }]);
+    const w = makeWorld(WALL_ROWS, [{ kind: 'archer', x: 9.5, z: 6.5, state: 'sleep' }], 'huntress');
     const arrows = w.player.arrows;
-    w.player.tool = 'crossbow';
-    w.player.desiredTool = 'crossbow';
+    w.player.tool = 'bow';
+    w.player.desiredTool = 'bow';
     w.frame(dt, { ...emptyInput(0, 0), fire: true, firePressed: true });
     // 長幀：每幀 0.1 秒世界時間
     for (let k = 0; k < 60; k++) w.frame(0.25, { ...emptyInput(0, 0), wait: true });
@@ -140,24 +140,24 @@ describe('弩與投射物', () => {
   });
 
   it('貼牆射擊時，箭不會從牆的另一側生成', () => {
-    const w = makeWorld(WALL_ROWS);
+    const w = makeWorld(WALL_ROWS, [], 'huntress');
     w.player.z = 10 + PLAYER.radius + 0.01;
-    const p = fireProjectile(w, 'crossbow');
+    const p = fireProjectile(w, 'bow');
     expect(p.pos.z).toBeGreaterThanOrEqual(10);
   });
 
   it('頭部命中有固定加成；盾衛正面擋住射向身體的箭', () => {
     // 正面身體：被盾擋
-    const w1 = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 8.5, state: 'idle', yaw: Math.PI }]);
+    const w1 = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 8.5, state: 'idle', yaw: Math.PI }], 'huntress');
     shoot(w1, Math.atan2(1.1 - 1.55, 6));
     expect(w1.enemies[0]!.hp).toBe(ENEMIES.guard.hp);
     expect(w1.events.some((e) => e.type === 'shield')).toBe(true);
     // 正面頭部：命中 6
-    const w2 = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 8.5, state: 'idle', yaw: Math.PI }]);
+    const w2 = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 8.5, state: 'idle', yaw: Math.PI }], 'huntress');
     shoot(w2, Math.atan2(ENEMIES.guard.headY - 1.55, 6));
     expect(w2.enemies[0]!.hp).toBe(ENEMIES.guard.hp - 6);
     // 背面身體：命中 3
-    const w3 = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 8.5, state: 'idle', yaw: 0 }]);
+    const w3 = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 8.5, state: 'idle', yaw: 0 }], 'huntress');
     shoot(w3, Math.atan2(1.1 - 1.55, 6));
     expect(w3.enemies[0]!.hp).toBe(ENEMIES.guard.hp - 3);
   });
@@ -167,12 +167,12 @@ describe('弩與投射物', () => {
       { kind: 'charger' as const, x: 9.5, z: 10.5, state: 'sleep' as const },
       { kind: 'charger' as const, x: 9.5, z: 7.5, state: 'sleep' as const },
     ];
-    const w0 = makeWorld(undefined, line);
+    const w0 = makeWorld(undefined, line, 'huntress');
     shoot(w0, Math.atan2(1.1 - 1.55, 4));
     expect(w0.enemies[0]!.hp).toBeLessThan(ENEMIES.charger.hp);
     expect(w0.enemies[1]!.hp).toBe(ENEMIES.charger.hp);
 
-    const w1 = makeWorld(undefined, line);
+    const w1 = makeWorld(undefined, line, 'huntress');
     w1.applyRune('pierce');
     shoot(w1, Math.atan2(1.1 - 1.55, 4));
     expect(w1.enemies[0]!.hp).toBeLessThan(ENEMIES.charger.hp);
@@ -181,7 +181,7 @@ describe('弩與投射物', () => {
   });
 
   it('煙霧阻斷視線，但不會刪除已射出的箭', () => {
-    const w = makeWorld(undefined, [{ kind: 'archer', x: 9.5, z: 6.5, state: 'idle', yaw: 0 }]);
+    const w = makeWorld(undefined, [{ kind: 'archer', x: 9.5, z: 6.5, state: 'idle', yaw: 0 }], 'huntress');
     w.smokes.push({ id: 999, x: 9.5, y: 1.2, z: 10.5, age: 1, radius: 2.5, air: false });
     const eye = { x: 9.5, y: 1.55, z: 14.5 };
     expect(w.canSee(eye, { x: 9.5, y: 1.5, z: 6.5 })).toBe(false);
@@ -222,7 +222,7 @@ describe('煙霧瓶與空爆', () => {
     for (let k = 0; k < 600 && (w.player.action || w.projectiles.length); k++) w.frame(dt, { ...emptyInput(0, 0), wait: true });
     expect(w.smokes.length).toBe(1);
     expect(w.smokes[0]!.air).toBe(false);
-    expect(w.player.bottles).toBe(PLAYER.startBottles - 1);
+    expect(w.player.bottles).toBe(CLASSES.warrior.start.bottles - 1);
   });
 
   it('以正常動作鏈（投瓶 → 投石）可以在空中擊破瓶子：窗口真實存在', () => {

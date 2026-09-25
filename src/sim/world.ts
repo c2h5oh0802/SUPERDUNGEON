@@ -1,9 +1,9 @@
-import { ENEMIES, PLAYER, SMOKE, TIME, type PlayerClass, type RuneId } from '../config';
+import { CLASSES, ENEMIES, PLAYER, SMOKE, TIME, type PlayerClass, type RuneId } from '../config';
 import { segSphere, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
 import type { LevelData } from '../gen/generator';
 import { Grid } from './grid';
-import { counterThreat, quickshotTarget, type CounterThreat } from './classSys';
+import { counterThreat, hunterEye, pushTarget, type CounterThreat, type HunterEye } from './classSys';
 import { Nav } from './nav';
 import { updateEnemies, onNoise, createEnemy, awakenDungeon } from './enemySys';
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
@@ -32,8 +32,12 @@ export interface WorldOptions {
 
 /** 職業提示：每幀結束時計算，介面與開發工具讀取（不影響判定）。 */
 export interface ClassCue {
+  /** 戰士：現在揮劍＝反擊斬。 */
   counter: CounterThreat | null;
-  quickTarget: number;
+  /** 戰士：現在盾推會推到的敵人（-1 表示沒有）。 */
+  push: number;
+  /** 獵手：空中煙霧瓶的提前量與落點。 */
+  eye: HunterEye[];
 }
 
 export class World {
@@ -77,12 +81,14 @@ export class World {
     chests: 0,
     counters: 0,
     deflects: 0,
-    quickshots: 0,
-    intercepts: 0,
+    pushes: 0,
+    blocks: 0,
+    wallSlams: 0,
+    tipHits: 0,
   };
-  readonly cue: ClassCue = { counter: null, quickTarget: -1 };
+  readonly cue: ClassCue = { counter: null, push: -1, eye: [] };
   /** 最近一個結束的行動（實際花掉的世界時間與類型），供介面與驗證讀取。 */
-  lastAction: { kind: string; spent: number; counter: boolean; countered: boolean; quick: boolean } | null = null;
+  lastAction: { kind: string; spent: number; counter: boolean; countered: boolean; tip: string | null } | null = null;
   nextId = 1;
   private revealT = 0;
 
@@ -91,8 +97,11 @@ export class World {
     this.grid = level.grid;
     this.enav = new Nav(this.grid, Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius));
     this.explored = new Uint8Array(this.grid.w * this.grid.h);
+    const cls = opts.cls ?? 'warrior';
+    const start = CLASSES[cls].start;
+    const slots = CLASSES[cls].slots;
     this.player = {
-      cls: opts.cls ?? 'warrior',
+      cls,
       x: level.spawn.x,
       z: level.spawn.z,
       yaw: level.spawn.yaw,
@@ -101,11 +110,15 @@ export class World {
       vz: 0,
       hp: PLAYER.maxHp,
       maxHp: PLAYER.maxHp,
-      arrows: PLAYER.startArrows,
-      bottles: PLAYER.startBottles,
-      potions: PLAYER.startPotions,
-      tool: 'sword',
-      desiredTool: 'sword',
+      slots,
+      arrows: start.arrows,
+      stones: start.stones,
+      tipped: { paralysis: start.paralysis, chill: start.chill },
+      tipKind: 'paralysis',
+      bottles: start.bottles,
+      potions: start.potions,
+      tool: slots[0]!,
+      desiredTool: slots[0]!,
       action: null,
       runes: [],
       hasHeart: false,
@@ -228,7 +241,8 @@ export class World {
 
   updateCue(): void {
     this.cue.counter = counterThreat(this);
-    this.cue.quickTarget = quickshotTarget(this)?.id ?? -1;
+    this.cue.push = pushTarget(this)?.id ?? -1;
+    this.cue.eye = hunterEye(this);
   }
 
   /** 以受限子步推進世界時間。 */

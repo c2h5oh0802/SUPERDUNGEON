@@ -57,6 +57,10 @@ export class FxVisual {
   private aimLines = new Map<number, THREE.Mesh>();
   private streaks = new Map<number, THREE.Mesh>();
   private wedges = new Map<number, THREE.Mesh>();
+  /** 獵人之眼：空中煙霧瓶的落點圈。 */
+  private landRings = new Map<number, THREE.Mesh>();
+  private landGeo = new THREE.RingGeometry(0.45, 0.6, 28).rotateX(-Math.PI / 2);
+  private landMat = new THREE.MeshBasicMaterial({ color: 0xc6b6ff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
   private wedgeGeo: THREE.BufferGeometry;
   private wedgeMat = new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
   private matDeflected = new THREE.MeshBasicMaterial({ color: 0xffe08a });
@@ -99,7 +103,8 @@ export class FxVisual {
     this.stoneGeo = new THREE.IcosahedronGeometry(0.07, 0);
     this.bottleGeo = new THREE.SphereGeometry(0.15, 10, 8);
     this.geos.push(this.arrowGeo, this.boltGeo, this.stoneGeo, this.bottleGeo);
-    this.mats.push(this.matArrow, this.matBolt, this.matStone, this.matBottle, this.aimMat, this.streakMat, this.wedgeMat, this.matDeflected);
+    this.mats.push(this.matArrow, this.matBolt, this.matStone, this.matBottle, this.aimMat, this.streakMat, this.wedgeMat, this.matDeflected, this.landMat);
+    this.geos.push(this.landGeo);
     // 盾衛鎖定後的揮擊範圍：地上的扇形（朝 -z 為正前方，與角色 yaw 慣例一致）
     const half = ((ENEMIES.guard.arcDeg / 2) * Math.PI) / 180;
     this.wedgeGeo = new THREE.RingGeometry(0.5, ENEMIES.guard.reach + PLAYER.radius, 20, 1, Math.PI / 2 - half, half * 2).rotateX(-Math.PI / 2).translate(0, 0.04, 0);
@@ -150,8 +155,20 @@ export class FxVisual {
         case 'deflect':
           this.burst(x, y, z, 24, [1, 0.9, 0.55], 4.5, 0.35);
           break;
-        case 'intercept':
-          this.burst(x, y, z, 24, [0.5, 1, 0.9], 4, 0.4);
+        case 'push':
+          if ((e.id ?? -1) >= 0) this.burst(x, y, z, 14, [0.9, 0.75, 0.5], 3, 0.3);
+          break;
+        case 'block':
+          this.burst(x, y, z, 22, [1, 0.8, 0.45], 4, 0.35);
+          break;
+        case 'bump':
+          this.burst(x, y, z, 26, [0.85, 0.75, 0.6], 3.5, 0.45);
+          break;
+        case 'tipHit':
+          this.burst(x, y, z, 30, e.kind === 'paralysis' ? [0.85, 0.6, 1] : [0.55, 0.85, 1], 3, 0.6);
+          break;
+        case 'helmet':
+          this.burst(x, y, z, 10, [0.9, 0.9, 0.8], 3, 0.25);
           break;
         default:
       }
@@ -187,8 +204,8 @@ export class FxVisual {
     switch (p.kind) {
       case 'arrow': {
         obj.add(new THREE.Mesh(this.arrowGeo, this.matArrow));
-        // 獵手疾射的箭：青綠尾跡
-        color = new THREE.Color(p.interceptId >= 0 ? 0x3fe0c0 : 0xf2c14e);
+        // 藥劑箭：麻痺紫、冰寒藍的尾跡
+        color = new THREE.Color(p.tip === 'paralysis' ? 0xc08cff : p.tip === 'chill' ? 0x7cc8ff : 0xf2c14e);
         break;
       }
       case 'bolt': {
@@ -434,11 +451,26 @@ export class FxVisual {
     for (const [id, m] of this.streaks) if (!seenStreak.has(id)) m.visible = false;
     for (const [id, m] of this.wedges) if (!seenWedge.has(id)) m.visible = false;
     this.wedgeMat.opacity = 0.22 + 0.16 * Math.abs(Math.sin(realTime * 14));
+    const seenLand = new Set<number>();
+    for (const eye of this.world.cue.eye) {
+      if (!eye.landing) continue;
+      seenLand.add(eye.id);
+      let m = this.landRings.get(eye.id);
+      if (!m) {
+        m = new THREE.Mesh(this.landGeo, this.landMat);
+        this.group.add(m);
+        this.landRings.set(eye.id, m);
+      }
+      m.position.set(eye.landing.x, Math.max(0.04, eye.landing.y + 0.04), eye.landing.z);
+      m.visible = true;
+    }
+    for (const [id, m] of this.landRings) if (!seenLand.has(id)) m.visible = false;
+    this.landMat.opacity = 0.4 + 0.25 * Math.abs(Math.sin(realTime * 6));
   }
 
   private updateSwordArc(): void {
     const a = this.world.player.action;
-    if (a && a.kind === 'sword' && a.t >= a.windup) {
+    if (a && (a.kind === 'sword' || a.kind === 'knife') && a.t >= a.windup) {
       const k = (a.t - a.windup) / Math.max(1e-3, a.active);
       const fade = a.t < a.windup + a.active ? 1 : 1 - smoothstep(0, 0.12, a.t - a.windup - a.active);
       this.swordArcMat.opacity = 0.32 * fade;

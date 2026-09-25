@@ -1,14 +1,31 @@
-import { CLASSES, PLAYER, classInfo, runeInfo, type RuneId } from '../config';
-import { angleDiff, yawFromDir } from '../core/math';
+import { PLAYER, TIP_NAMES, TOOL_NAMES, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
-import { AIM_EYE_Y } from '../sim/aim';
-import { interceptable } from '../sim/classSys';
-import type { GameEvent } from '../sim/types';
+import type { GameEvent, Player } from '../sim/types';
 import type { World } from '../sim/world';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const TOOL_NAMES = { sword: '劍', crossbow: '弩', stone: '投石' } as const;
+/** 工具列一格的數量文字。 */
+function toolCount(p: Player, t: Tool): string {
+  switch (t) {
+    case 'bow':
+      return String(p.arrows);
+    case 'stone':
+      return String(p.stones);
+    case 'tipped':
+      return `${p.tipped.paralysis}/${p.tipped.chill}`;
+    default:
+      return '';
+  }
+}
+
+function toolEmpty(p: Player, t: Tool): boolean {
+  if (t === 'bow') return p.arrows === 0;
+  if (t === 'stone') return p.stones === 0;
+  if (t === 'tipped') return p.tipped.paralysis + p.tipped.chill === 0;
+  return false;
+}
 
 export class Hud {
   private root = $('hud');
@@ -22,7 +39,7 @@ export class Hud {
   private hintEl = $('hint');
   private heartStatus = $('heart-status');
   private runesEl = $('runes');
-  private ammo = $('ammo');
+  private toolsEl = $('tools');
   private bottles = $('bottles');
   private potions = $('potions');
   private icons = $('icons');
@@ -34,7 +51,7 @@ export class Hud {
   private hurtArcs = $('hurt-arcs');
   private vignette = $('vignette');
   private lockBanner = $('lock-banner');
-  private toolEls = Array.from(document.querySelectorAll<HTMLElement>('.tool'));
+  private toolEls: HTMLElement[] = [];
   private iconEls = new Map<number, HTMLDivElement>();
   private visible = new Set<number>();
   private visT = 0;
@@ -104,11 +121,9 @@ export class Hud {
     const p = w.player;
     for (const e of events) {
       switch (e.type) {
-        case 'pickup': {
-          const name = e.kind === 'arrows' ? '弩箭' : e.kind === 'bottle' ? '煙霧瓶' : '藥水';
-          this.toast(`+${e.amount} ${name}`, 'good', 1.6);
+        case 'pickup':
+          this.toast(`+${e.amount} ${e.text ?? ''}`, 'good', 1.6);
           break;
-        }
         case 'playerHurt': {
           const a = yawFromDir((e.x ?? p.x) - p.x, (e.z ?? p.z) - p.z);
           const rel = angleDiff(a, p.yaw);
@@ -153,12 +168,33 @@ export class Hud {
         case 'deflect':
           this.toast('擊開！', 'good', 1.2);
           break;
-        case 'intercept':
-          this.toast('截擊！弩矢被擊落', 'good', 1.4);
+        case 'block':
+          this.toast(e.kind === 'charger' ? '擋下衝撞！' : e.kind === 'bolt' ? '盾擋下弩矢' : '盾擋下攻擊', 'good', 1.3);
+          break;
+        case 'bump':
+          if (e.kind === 'wall') this.toast('撞牆！失衡', 'good', 1.3);
+          else if (e.kind === 'ally') this.toast('撞在一起！踉蹌', 'good', 1.3);
+          else this.toast('突進者撞到同伴！', 'good', 1.3);
+          break;
+        case 'tipHit':
+          this.toast(e.kind === 'paralysis' ? '麻痺！時間軸暫停' : '冰寒！時間軸變慢', 'good', 1.4);
+          break;
+        case 'shield':
+          if (p.cls === 'huntress')
+            this.hint('cls-huntress-shield', '盾衛看到你拿著弓就舉盾前進：等它舉劍或收招的那一刻射頭，或繞到側面。', 7);
+          break;
+        case 'helmet':
+          this.toast('角盔擋住了', '', 1.2);
+          this.hint('cls-helmet', '突進者的角盔擋住正面的頭：閃過衝鋒、讓它撞牆暈眩，頭就會露出來。', 7);
+          break;
+        case 'toolSwitch':
+          if (e.kind === 'tipped') {
+            this.toast(`藥劑箭：${TIP_NAMES[p.tipKind]}（再按 3 切換）`, '', 1.4);
+          }
           break;
         case 'throw':
           if (e.kind === 'bottle' && p.cls === 'huntress')
-            this.hint('cls-huntress-bottle', '獵手：瓶子還在空中時，按 2 拿弩、把準星對準它，出現「疾射」就左鍵——它會在你選的位置炸開。', 7);
+            this.hint('cls-huntress-bottle', '獵人之眼：瓶子還在空中時拿著弓，準星對準菱形標記、出現「放箭」就左鍵——它會在空中炸開。地上的圈是它的落點。', 8);
           break;
         case 'enemyWindup':
           if (e.kind === 'archer') this.hint('archer', '紅線是弩手的瞄準線：線變亮代表已鎖定方向，側移就能躲開弩矢。');
@@ -178,10 +214,8 @@ export class Hud {
     this.set('cls', p.cls, () => {
       const info = classInfo(p.cls);
       this.badge.className = p.cls;
-      this.badge.innerHTML = `${info.name}<small>${info.abilities
-        .slice(0, 2)
-        .map((a) => a.name)
-        .join('・')}</small>`;
+      this.badge.innerHTML = `${info.name}<small>${info.loadout.map((l) => l.name).join('・')}</small>`;
+      this.buildTools(p);
     });
     this.updateCue(w);
     // 生命
@@ -214,9 +248,17 @@ export class Hud {
         el.classList.toggle('pending', t === p.desiredTool && t !== p.tool);
       }
     });
-    this.set('ammo', p.arrows, () => {
-      this.ammo.textContent = String(p.arrows);
-      this.ammo.classList.toggle('zero', p.arrows === 0);
+    this.set('ammo', `${p.arrows}|${p.stones}|${p.tipped.paralysis}|${p.tipped.chill}|${p.tipKind}`, () => {
+      for (const el of this.toolEls) {
+        const t = el.dataset.tool as Tool | 'shield';
+        if (t === 'shield') continue;
+        const em = el.querySelector('em');
+        if (em) {
+          em.textContent = toolCount(p, t);
+          em.classList.toggle('zero', toolEmpty(p, t));
+        }
+        if (t === 'tipped') el.querySelector('span')!.textContent = TIP_NAMES[p.tipKind as TipKind];
+      }
     });
     this.set('bottles', p.bottles, () => {
       this.bottles.textContent = String(p.bottles);
@@ -269,6 +311,18 @@ export class Hud {
     this.updateTargets(w, r);
   }
 
+  /** 依職業建立工具列：數字鍵對應的武器（與模擬層的 slots 相同），戰士另有臂盾。 */
+  private buildTools(p: Player): void {
+    const cells = p.slots.map(
+      (t, k) => `<div class="tool" data-tool="${t}"><kbd>${k + 1}</kbd><span>${TOOL_NAMES[t]}</span>${t === 'sword' || t === 'knife' ? '' : '<em></em>'}</div>`,
+    );
+    if (p.cls === 'warrior') cells.push('<div class="tool shield" data-tool="shield"><kbd>右鍵/F</kbd><span>臂盾</span></div>');
+    this.toolsEl.innerHTML = cells.join('');
+    this.toolEls = Array.from(this.toolsEl.querySelectorAll<HTMLElement>('.tool'));
+    delete this.last.tool;
+    delete this.last.ammo;
+  }
+
   /** 準星旁的職業提示：提示出現＝現在按下去有效（與模擬層同一個判定）。 */
   private updateCue(w: World): void {
     const p = w.player;
@@ -282,48 +336,58 @@ export class Hud {
       } else if (p.cls === 'warrior' && w.cue.counter) {
         cls = 'dim';
         text = '1 換劍：反擊';
-      } else if (p.cls === 'huntress' && w.cue.quickTarget >= 0) {
-        if (p.tool === 'crossbow' && p.arrows > 0) {
-          cls = 'quick';
-          text = '疾射';
-        } else {
-          cls = 'dim';
-          text = p.arrows > 0 ? '2 換弩：疾射' : '沒有弩箭';
-        }
+      } else if (p.cls === 'warrior' && w.cue.push >= 0) {
+        cls = 'push';
+        text = '盾推';
+        this.hint('cls-warrior-push', '戰士：敵人就在身前時出現「盾推」——右鍵或 F 把它推退 2 m：撞牆會失衡、撞到同伴會一起踉蹌。', 7);
+      } else if (p.cls === 'huntress' && this.onLead(w)) {
+        cls = 'quick';
+        text = '放箭';
       }
     }
     this.set('cue', `${cls}|${text}`, () => {
       this.cueEl.className = cls;
       this.cueEl.textContent = text;
-      this.crosshair.classList.toggle('cue-counter', cls === 'counter');
+      this.crosshair.classList.toggle('cue-counter', cls === 'counter' || cls === 'push');
       this.crosshair.classList.toggle('cue-quick', cls === 'quick');
     });
   }
 
-  /** 獵手：標出射程內、看得到的可截擊飛行物；準星鎖定中的那一個會亮起。 */
+  /** 準星是否已經對在獵人之眼的提前量標記上（容許誤差＝箭與瓶子的交會半徑）。 */
+  private onLead(w: World): boolean {
+    const p = w.player;
+    const view = dirFromYawPitch(p.yaw, p.pitch);
+    for (const e of w.cue.eye) {
+      if (!e.aim || !e.meet) continue;
+      const d = Math.hypot(e.meet.x - p.x, e.meet.y - PLAYER.eyeHeight, e.meet.z - p.z);
+      const tol = Math.atan2(0.15, Math.max(1, d));
+      const a = dirFromYawPitch(e.aim.yaw, e.aim.pitch);
+      const cos = view.x * a.x + view.y * a.y + view.z * a.z;
+      if (Math.acos(Math.min(1, cos)) <= tol) return true;
+    }
+    return false;
+  }
+
+  /** 獵人之眼：空中煙霧瓶的提前量標記（菱形）；落點圈由特效層畫在地上。 */
   private updateTargets(w: World, r: GameRenderer): void {
     const p = w.player;
     const seen = new Set<number>();
-    if (p.cls === 'huntress' && !p.dead) {
-      const W = window.innerWidth;
-      const H = window.innerHeight;
-      const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
-      for (const q of w.projectiles) {
-        if (!interceptable(q)) continue;
-        if (Math.hypot(q.pos.x - eye.x, q.pos.y - eye.y, q.pos.z - eye.z) > CLASSES.huntress.assistRange) continue;
-        if (w.grid.segmentHit(eye, q.pos) !== null) continue;
-        const pos = r.project(q.pos.x, q.pos.y, q.pos.z);
-        if (!pos) continue;
-        seen.add(q.id);
-        let el = this.tmarks.get(q.id);
-        if (!el) {
-          el = document.createElement('div');
-          this.targets.appendChild(el);
-          this.tmarks.set(q.id, el);
-        }
-        el.className = `tmark ${q.kind}${w.cue.quickTarget === q.id ? ' hot' : ''}`;
-        el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px)`;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    for (const e of w.cue.eye) {
+      if (!e.aim) continue;
+      const d = dirFromYawPitch(e.aim.yaw, e.aim.pitch);
+      const pos = r.project(p.x + d.x * 40, PLAYER.eyeHeight + d.y * 40, p.z + d.z * 40);
+      if (!pos) continue;
+      seen.add(e.id);
+      let el = this.tmarks.get(e.id);
+      if (!el) {
+        el = document.createElement('div');
+        this.targets.appendChild(el);
+        this.tmarks.set(e.id, el);
       }
+      el.className = 'tmark lead';
+      el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px)`;
     }
     for (const [id, el] of this.tmarks) {
       if (seen.has(id)) continue;
@@ -357,7 +421,7 @@ export class Hud {
         if (e.state === 'sleep') {
           cls = 'sleep';
           text = 'Zz';
-          this.hint('sleep', '睡著的敵人：從旁邊或背後用劍攻擊，造成 3 倍傷害。太靠近太久會吵醒它。');
+          this.hint('sleep', '睡著的敵人：從旁邊或背後用近戰武器攻擊，造成 3 倍傷害。太靠近太久會吵醒它。');
         } else if (e.state === 'alert') {
           cls = 'alert';
           text = '!';
@@ -392,7 +456,4 @@ export class Hud {
     }
   }
 
-  toolName(t: keyof typeof TOOL_NAMES): string {
-    return TOOL_NAMES[t];
-  }
 }

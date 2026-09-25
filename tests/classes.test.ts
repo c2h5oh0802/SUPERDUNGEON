@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, CLASSES, ENEMIES, PLAYER, classInfo, type PlayerClass } from '../src/config';
+import { ACTIONS, CLASSES, ENEMIES, MELEE, PLAYER, PROJECTILES, SHIELD, TIPS, classInfo, type PlayerClass } from '../src/config';
 import { yawFromDir } from '../src/core/math';
+import { generateLevel } from '../src/gen/validate';
 import { AIM_EYE_Y } from '../src/sim/aim';
 import { emptyInput, type FrameInput, type Projectile } from '../src/sim/types';
-import type { World } from '../src/sim/world';
+import { World } from '../src/sim/world';
 import { OPEN_ROOM, makeWorld } from './helpers';
 
-// 職業的規則特權：戰士（反擊斬、擊開）與獵手（疾射截擊）。
-// 這些測試只用玩家輸入（開火、視角）驅動，敵人照自己的狀態機行動；
-// 「注入」只用在需要精確擺放的飛行物（會在測試名稱中說明）。
+// 職業：明確的起始武器＋職業規則。
+// 戰士：長劍（反擊斬、擊開）、投擲石、臂盾（盾推）。獵手：獵刀、獵弓、藥劑箭（麻痺、冰寒）、獵人之眼。
+// 這些測試用玩家輸入（開火、視角、數字鍵）驅動，敵人照自己的狀態機行動；
+// 「注入」只用在需要精確擺放的飛行物或狀態（會在測試名稱或註解中說明）。
 
 const dt = 1 / 60;
-const SWORD_TOTAL = ACTIONS.sword.windup + ACTIONS.sword.active + ACTIONS.sword.recovery;
-const BOW_TOTAL = ACTIONS.crossbow.windup + ACTIONS.crossbow.active + ACTIONS.crossbow.recovery;
-const QS = CLASSES.huntress.quickshot;
-const QS_TOTAL = QS.windup + QS.active + QS.recovery;
+const total = (a: { windup: number; active: number; recovery: number }) => a.windup + a.active + a.recovery;
+const SWORD_TOTAL = total(ACTIONS.sword);
+const KNIFE_TOTAL = total(ACTIONS.knife);
+const BOW_TOTAL = total(ACTIONS.bow);
 const CS = CLASSES.warrior.counterSwing;
 
 function input(w: World, patch: Partial<FrameInput> = {}): FrameInput {
@@ -30,11 +32,19 @@ function idleUntil(w: World, cond: () => boolean, maxFrames = 20000): boolean {
   return cond();
 }
 
-/** 按一下左鍵並等行動結束；回傳這個行動花掉的世界時間。 */
+/** 按一下左鍵（或其他輸入）並等行動結束；回傳這個行動花掉的世界時間。 */
 function act(w: World, patch: Partial<FrameInput> = {}): number {
   const t0 = w.time;
   w.frame(dt, input(w, { fire: true, firePressed: true, ...patch }));
   for (let k = 0; k < 4000 && w.player.action; k++) w.frame(dt, input(w, patch.moveZ ? { moveZ: patch.moveZ } : {}));
+  return w.time - t0;
+}
+
+/** 盾推（右鍵或 F）並等行動結束。 */
+function push(w: World): number {
+  const t0 = w.time;
+  w.frame(dt, input(w, { shield: true }));
+  for (let k = 0; k < 4000 && w.player.action; k++) w.frame(dt, input(w));
   return w.time - t0;
 }
 
@@ -44,8 +54,14 @@ function face(w: World, x: number, z: number, y = AIM_EYE_Y): void {
   p.pitch = Math.atan2(y - AIM_EYE_Y, Math.hypot(x - p.x, z - p.z));
 }
 
-function useTool(w: World, tool: 'sword' | 'crossbow' | 'stone'): void {
-  w.frame(dt, input(w, { selectTool: tool }));
+/** 按數字鍵選工具。 */
+function slot(w: World, n: number): void {
+  w.frame(dt, input(w, { selectSlot: n }));
+}
+
+/** 等所有投射物結束。 */
+function settle(w: World): void {
+  idleUntil(w, () => w.projectiles.length === 0 && !w.player.action, 6000);
 }
 
 function alertGuardAhead(cls: PlayerClass, dist = 1.8): World {
@@ -64,11 +80,19 @@ function alertArcherAhead(cls: PlayerClass): World {
   return w;
 }
 
+function alertChargerAhead(cls: PlayerClass, dist: number): World {
+  const w = makeWorld(OPEN_ROOM, [{ kind: 'charger', x: 9.5, z: 14.5 - dist, yaw: Math.PI, state: 'idle' }], cls);
+  const c = w.enemies[0]!;
+  c.state = 'alert';
+  c.awareness = 1;
+  return w;
+}
+
 /** 注入：一個飛向玩家胸口的弩矢（由編號 999 的敵人射出）。 */
 function injectBolt(w: World, from: { x: number; y: number; z: number }): Projectile {
   const to = { x: w.player.x, y: 1.25, z: w.player.z };
   const d = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
-  const s = 18;
+  const s = PROJECTILES.bolt.speed;
   const vel = { x: ((to.x - from.x) / d) * s, y: ((to.y - from.y) / d) * s, z: ((to.z - from.z) / d) * s };
   const b: Projectile = {
     id: w.nextId++,
@@ -76,7 +100,7 @@ function injectBolt(w: World, from: { x: number; y: number; z: number }): Projec
     owner: 999,
     pos: { ...from },
     vel,
-    radius: 0.06,
+    radius: PROJECTILES.bolt.radius,
     gravity: 0,
     age: 0,
     alive: true,
@@ -84,8 +108,8 @@ function injectBolt(w: World, from: { x: number; y: number; z: number }): Projec
     hitSet: new Set(),
     next: { ...from },
     avgVel: { ...vel },
-    interceptId: -1,
     deflected: false,
+    tip: null,
   };
   w.projectiles.push(b);
   return b;
@@ -101,128 +125,114 @@ function throwBottle(w: World, pitch = 0.25): Projectile {
   return b;
 }
 
-describe('職業：時間特權只在預期條件下出現', () => {
-  it('兩個職業的一般揮劍與射擊都照常支付世界時間', () => {
+describe('起始裝備：兩個職業拿的東西不同', () => {
+  it('戰士：1 長劍、2 投擲石 ×3，沒有箭；獵手：1 獵刀、2 獵弓（8 支箭）、3 藥劑箭（麻痺 2、冰寒 2）', () => {
+    const w = makeWorld(OPEN_ROOM, [], 'warrior');
+    expect(w.player.slots).toEqual(['sword', 'stone']);
+    expect(w.player.tool).toBe('sword');
+    expect([w.player.stones, w.player.arrows]).toEqual([3, 0]);
+    const h = makeWorld(OPEN_ROOM, [], 'huntress');
+    expect(h.player.slots).toEqual(['knife', 'bow', 'tipped']);
+    expect(h.player.tool).toBe('knife');
+    expect([h.player.arrows, h.player.stones, h.player.tipped.paralysis, h.player.tipped.chill]).toEqual([8, 0, 2, 2]);
+    for (const x of [w, h]) expect([x.player.bottles, x.player.potions, x.player.hp]).toEqual([1, 1, PLAYER.maxHp]);
+  });
+
+  it('數字鍵依職業對應工具；戰士沒有第 3 格；獵手再按一次 3 切換麻痺／冰寒', () => {
+    const w = makeWorld(OPEN_ROOM, [], 'warrior');
+    slot(w, 2);
+    expect(w.player.tool).toBe('stone');
+    slot(w, 3);
+    expect(w.player.tool).toBe('stone');
+    const h = makeWorld(OPEN_ROOM, [], 'huntress');
+    slot(h, 2);
+    expect(h.player.tool).toBe('bow');
+    slot(h, 3);
+    expect([h.player.tool, h.player.tipKind]).toEqual(['tipped', 'paralysis']);
+    slot(h, 3);
+    expect(h.player.tipKind).toBe('chill');
+    slot(h, 3);
+    expect(h.player.tipKind).toBe('paralysis');
+  });
+
+  it('彈藥袋依職業轉換：戰士撿到投擲石、獵手撿到一般箭；戰士撿不起箭', () => {
     for (const cls of ['warrior', 'huntress'] as const) {
       const w = makeWorld(OPEN_ROOM, [], cls);
-      expect(act(w)).toBeCloseTo(SWORD_TOTAL, 2);
-      useTool(w, 'crossbow');
-      expect(act(w)).toBeCloseTo(BOW_TOTAL, 2);
-      expect(w.stats.counters + w.stats.quickshots).toBe(0);
+      const before = cls === 'warrior' ? w.player.stones : w.player.arrows;
+      w.addPickup('ammo', 2, w.player.x, 0.15, w.player.z - 0.5, null);
+      w.frame(dt, input(w));
+      const after = cls === 'warrior' ? w.player.stones : w.player.arrows;
+      expect(after - before).toBe(2);
     }
+    const w = makeWorld(OPEN_ROOM, [], 'warrior');
+    const arrows = w.addPickup('arrows', 1, w.player.x, 0.15, w.player.z - 0.5, null);
+    w.frame(dt, input(w));
+    expect(arrows.taken).toBe(false);
+    expect(w.player.arrows).toBe(0);
   });
 
-  it('獵手：準星對準自己丟出的瓶子才是疾射；偏離、或換成戰士，都是一般射擊', () => {
-    // 對準瓶子 → 疾射
-    const h = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(h, 'crossbow');
-    const b = throwBottle(h);
-    face(h, b.pos.x, b.pos.z, b.pos.y);
-    expect(h.cue.quickTarget).toBe(b.id);
-    expect(act(h)).toBeCloseTo(QS_TOTAL, 2);
-    expect(h.stats.quickshots).toBe(1);
-    // 準星偏 15° → 一般射擊
-    const h2 = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(h2, 'crossbow');
-    const b2 = throwBottle(h2);
-    face(h2, b2.pos.x, b2.pos.z, b2.pos.y);
-    h2.player.yaw += (15 * Math.PI) / 180;
-    h2.updateCue();
-    expect(h2.cue.quickTarget).toBe(-1);
-    expect(act(h2)).toBeCloseTo(BOW_TOTAL, 2);
-    // 戰士同樣的情況 → 沒有疾射
-    const wr = makeWorld(OPEN_ROOM, [], 'warrior');
-    useTool(wr, 'crossbow');
-    const b3 = throwBottle(wr);
-    face(wr, b3.pos.x, b3.pos.z, b3.pos.y);
-    expect(act(wr)).toBeCloseTo(BOW_TOTAL, 2);
-    expect(wr.stats.quickshots).toBe(0);
+  it('同一個種子：兩個職業的關卡與地上物資完全相同（生成與職業無關）', () => {
+    const level = () => generateLevel('CLASSSEED', {});
+    const a = new World(level(), { cls: 'warrior' });
+    const b = new World(level(), { cls: 'huntress' });
+    const pick = (x: World) => x.pickups.map((k) => [k.kind, k.amount, k.x, k.z]);
+    expect(pick(a)).toEqual(pick(b));
+    expect(pick(a).length).toBeGreaterThan(0);
+    expect(a.pickups.every((k) => k.kind !== 'arrows')).toBe(true);
+    expect(a.enemies.map((e) => [e.kind, e.x, e.z])).toEqual(b.enemies.map((e) => [e.kind, e.x, e.z]));
   });
 
-  it('疾射不會連鎖：目標只能截擊一次，之後的射擊回到一般時間；石頭與自己的箭都不是目標', () => {
+  it('投擲石有限：丟到牆上會落地、可以撿回；丟完就不能再丟', () => {
+    const rows = OPEN_ROOM.map((r, j) => (j === 11 ? '#' + '#'.repeat(18) + '#' : r));
+    const w = makeWorld(rows, [], 'warrior');
+    slot(w, 2);
+    w.player.yaw = 0;
+    w.player.pitch = 0;
+    for (let k = 0; k < 3; k++) {
+      act(w);
+      settle(w);
+    }
+    expect(w.player.stones).toBe(0);
+    expect(w.pickups.filter((k) => k.kind === 'stone' && !k.taken).length).toBe(3);
+    const t0 = w.time;
+    w.frame(dt, input(w, { fire: true, firePressed: true }));
+    expect(w.player.action).toBeNull();
+    expect(w.events.some((e) => e.type === 'dryFire')).toBe(true);
+    expect(w.time - t0).toBeLessThan(0.01);
+    for (let k = 0; k < 300 && w.player.stones < 3; k++) w.frame(dt, input(w, { moveZ: 1 }));
+    expect(w.player.stones).toBe(3);
+  });
+});
+
+describe('時間規則：兩個職業的行動都照常支付世界時間', () => {
+  it('長劍、獵刀、獵弓、藥劑箭、投擲石、盾推都花完整的行動時間；沒有零成本的行動', () => {
+    const w = makeWorld(OPEN_ROOM, [], 'warrior');
+    expect(act(w)).toBeCloseTo(SWORD_TOTAL, 2);
+    slot(w, 2);
+    expect(act(w)).toBeCloseTo(total(ACTIONS.stone), 2);
+    expect(push(w)).toBeCloseTo(total(ACTIONS.shield), 2);
     const h = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(h, 'crossbow');
-    const b = throwBottle(h);
-    face(h, b.pos.x, b.pos.z, b.pos.y);
-    expect(act(h)).toBeCloseTo(QS_TOTAL, 2);
-    expect(h.stats.airbursts).toBe(1);
-    // 瓶子已破：同一個方向再射 → 一般射擊
-    h.updateCue();
-    expect(h.cue.quickTarget).toBe(-1);
+    expect(act(h)).toBeCloseTo(KNIFE_TOTAL, 2);
+    slot(h, 2);
     expect(act(h)).toBeCloseTo(BOW_TOTAL, 2);
-    // 丟出去的石頭不是目標
-    useTool(h, 'stone');
-    h.player.pitch = 0.2;
-    h.frame(dt, input(h, { fire: true, firePressed: true }));
-    for (let k = 0; k < 3 && h.player.action; k++) h.frame(dt, input(h));
-    const stone = h.projectiles.find((q) => q.kind === 'stone');
-    expect(stone).toBeTruthy();
-    face(h, stone!.pos.x, stone!.pos.z, stone!.pos.y);
-    h.updateCue();
-    expect(h.cue.quickTarget).toBe(-1);
-    // 自己剛射出的箭也不是目標
-    for (let k = 0; k < 400 && h.player.action; k++) h.frame(dt, input(h));
-    useTool(h, 'crossbow');
-    h.frame(dt, input(h, { fire: true, firePressed: true }));
-    for (let k = 0; k < 400 && h.player.action; k++) h.frame(dt, input(h));
-    const arrow = h.projectiles.find((q) => q.kind === 'arrow');
-    if (arrow) {
-      face(h, arrow.pos.x, arrow.pos.z, arrow.pos.y);
-      h.updateCue();
-      expect(h.cue.quickTarget).toBe(-1);
-    }
-    expect(h.stats.quickshots).toBe(1);
-  });
-
-  it('疾射比一次點擊還短：按住左鍵不會接著連發，要重新按下才會射下一發', () => {
-    const h = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(h, 'crossbow');
-    const b = throwBottle(h);
-    face(h, b.pos.x, b.pos.z, b.pos.y);
-    h.frame(dt, input(h, { fire: true, firePressed: true }));
-    // 按住不放（fire 持續為 true、沒有新的按下）
-    for (let k = 0; k < 120; k++) h.frame(dt, input(h, { fire: true }));
-    expect(h.stats.quickshots).toBe(1);
-    expect(h.stats.shots).toBe(1);
-    expect(h.player.arrows).toBe(PLAYER.startArrows - 1);
-    // 重新按下：照常射擊（沒有目標了，是一般射擊）
-    h.frame(dt, input(h, { fire: true, firePressed: true }));
-    expect(h.player.action?.kind).toBe('crossbow');
-    expect(h.player.action?.quick).toBe(false);
-  });
-
-  it('邊走邊疾射：移動與行動仍取最大值、不加總，世界速率 ≤ 1', () => {
-    const h = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(h, 'crossbow');
-    const b = throwBottle(h);
-    face(h, b.pos.x, b.pos.z, b.pos.y);
+    slot(h, 3);
+    expect(act(h)).toBeCloseTo(BOW_TOTAL, 2);
+    expect(h.player.tipped.paralysis).toBe(1);
+    // 獵手沒有臂盾：按右鍵／F 不做任何事、不花時間
     const t0 = h.time;
-    let maxRate = 0;
-    h.frame(dt, input(h, { fire: true, firePressed: true, moveX: 1 }));
-    maxRate = Math.max(maxRate, h.lastWorldDt / h.lastRealDt);
-    let frames = 1;
-    while (h.player.action && frames < 100) {
-      h.frame(dt, input(h, { moveX: 1 }));
-      maxRate = Math.max(maxRate, h.lastWorldDt / h.lastRealDt);
-      frames++;
-    }
-    expect(maxRate).toBeLessThanOrEqual(1 + 1e-9);
-    // 行動本身只花疾射的時間（邊走邊射也不會多付）
-    expect(h.time - t0).toBeCloseTo(QS_TOTAL, 1);
-    expect(h.stats.quickshots).toBe(1);
+    h.frame(dt, input(h, { shield: true }));
+    expect(h.player.action).toBeNull();
+    expect(h.time - t0).toBeLessThan(0.01);
   });
 
-  it('戰士：沒有鎖定的威脅時是一般揮劍；反擊斬成功時不用收招', () => {
-    const w = alertGuardAhead('warrior');
-    const g = w.enemies[0]!;
-    expect(w.cue.counter).toBeNull();
-    expect(idleUntil(w, () => g.phase === 'windup' && g.locked)).toBe(true);
-    expect(w.cue.counter?.kind).toBe('guard');
-    const spent = act(w);
-    expect(w.stats.counters).toBe(1);
-    // 反擊斬 = 出手 + 作用（跳過收招）
-    expect(spent).toBeLessThan(CS.windup + CS.active + 0.02);
-    expect(spent).toBeGreaterThan(CS.windup);
+  it('邊走邊射：移動與行動取最大值、不加總，世界速率 ≤ 1', () => {
+    const h = makeWorld(OPEN_ROOM, [], 'huntress');
+    slot(h, 2);
+    h.frame(dt, input(h, { fire: true, firePressed: true, moveX: 1 }));
+    for (let k = 0; k < 200 && h.player.action; k++) {
+      const wdt = h.frame(dt, input(h, { moveX: 1 }));
+      expect(wdt).toBeLessThanOrEqual(dt + 1e-9);
+    }
   });
 });
 
@@ -275,13 +285,13 @@ describe('戰士：反擊斬', () => {
     expect(w.player.hp).toBe(PLAYER.maxHp - ENEMIES.guard.damage);
   });
 
-  it('獵手在同一時機揮劍：不會打斷（沒有這個特權），被盾衛打中', () => {
+  it('獵手在同一時機揮獵刀：不會打斷（沒有這個特權），被盾衛打中', () => {
     const w = alertGuardAhead('huntress');
     const g = w.enemies[0]!;
     idleUntil(w, () => g.phase === 'windup' && g.locked);
     expect(w.cue.counter).toBeNull();
     const spent = act(w);
-    expect(spent).toBeCloseTo(SWORD_TOTAL, 2);
+    expect(spent).toBeCloseTo(KNIFE_TOTAL, 2);
     expect(w.stats.counters).toBe(0);
     expect(w.player.hp).toBe(PLAYER.maxHp - ENEMIES.guard.damage);
   });
@@ -314,7 +324,7 @@ describe('戰士：反擊斬', () => {
     expect(c.alive).toBe(false);
   });
 
-  it('獵手站在同一條衝鋒線上揮劍：擋不住衝鋒', () => {
+  it('獵手站在同一條衝鋒線上揮獵刀：擋不住衝鋒', () => {
     const w = makeWorld(OPEN_ROOM, [{ kind: 'charger', x: 9.5, z: 7.5, yaw: Math.PI, state: 'idle' }], 'huntress');
     const c = w.enemies[0]!;
     c.state = 'alert';
@@ -334,7 +344,7 @@ describe('戰士：擊開弩矢', () => {
     }
   });
 
-  it('時機正確：弩矢被打回去、改由玩家擁有，擊倒射手，自己不受傷，也不耗弩箭', () => {
+  it('時機正確：弩矢被打回去、改由玩家擁有，擊倒射手，自己不受傷，也不耗投擲石', () => {
     const w = alertArcherAhead('warrior');
     const a = w.enemies[0]!;
     face(w, a.x, a.z, 1.4);
@@ -347,7 +357,7 @@ describe('戰士：擊開弩矢', () => {
     idleUntil(w, () => !a.alive || w.projectiles.length === 0, 4000);
     expect(a.alive).toBe(false);
     expect(w.player.hp).toBe(PLAYER.maxHp);
-    expect(w.player.arrows).toBe(PLAYER.startArrows);
+    expect(w.player.stones).toBe(CLASSES.warrior.start.stones);
   });
 
   it('時機錯誤（弩矢還很遠就揮完）：沒有擊開，照樣中箭', () => {
@@ -364,7 +374,7 @@ describe('戰士：擊開弩矢', () => {
     expect(w.player.hp).toBe(PLAYER.maxHp - 2);
   });
 
-  it('獵手在正確時機揮劍：劍穿過弩矢，照樣中箭', () => {
+  it('獵手在正確時機揮獵刀：刀穿過弩矢，照樣中箭', () => {
     const w = alertArcherAhead('huntress');
     const a = w.enemies[0]!;
     face(w, a.x, a.z, 1.4);
@@ -409,162 +419,360 @@ describe('戰士：擊開弩矢', () => {
   });
 });
 
-describe('獵手：疾射截擊與空爆', () => {
-  it('選擇在較晚的位置引爆、或垂直差 2°：獵手的疾射修正到交會點而空爆，戰士（無修正）打空', () => {
-    // 實測：剛丟出時正對瓶子中心，沒有修正也打得中（箭沿著瓶子的路線追上去），
-    // 真正困難的是「等瓶子飛到想要的位置再引爆」與垂直方向的角度精度。
-    const trial = (cls: PlayerClass, waitFrames: number, dPitchDeg: number): number => {
-      const w = makeWorld(OPEN_ROOM, [], cls);
-      useTool(w, 'crossbow');
-      throwBottle(w);
-      for (let k = 0; k < waitFrames; k++) w.frame(dt, input(w));
-      const b = w.projectiles.find((q) => q.kind === 'bottle')!;
-      expect(b).toBeTruthy();
-      face(w, b.pos.x, b.pos.z, b.pos.y);
-      w.player.pitch += (dPitchDeg * Math.PI) / 180;
-      act(w);
-      idleUntil(w, () => w.projectiles.length === 0, 6000);
-      expect(w.smokes.length).toBe(1);
-      return w.stats.airbursts;
-    };
-    // 等 5 秒真實時間（0.5 秒世界時間，瓶子已在下降段）再對準中心
-    expect(trial('huntress', 300, 0)).toBe(1);
-    expect(trial('warrior', 300, 0)).toBe(0);
-    // 剛丟出、垂直差 2°
-    expect(trial('huntress', 0, 2)).toBe(1);
-    expect(trial('warrior', 0, 2)).toBe(0);
-  });
 
-  it('修正有限度：超出射程、準星偏太多、被牆擋住都不會修正（一般射擊，打不中）', () => {
-    // 超出射程：注入一個 23 m 外、往上飛的瓶子
-    const far = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(far, 'crossbow');
-    far.player.x = 1.5;
-    far.player.z = 18.5;
-    const bottle: Projectile = {
-      id: far.nextId++,
-      kind: 'bottle',
-      owner: 'player',
-      pos: { x: 17.5, y: 2.5, z: 2.5 },
-      vel: { x: 0.5, y: 1, z: 0.5 },
-      radius: 0.16,
-      gravity: 6,
-      age: 0,
-      alive: true,
-      pierceLeft: 0,
-      hitSet: new Set(),
-      next: { x: 17.5, y: 2.5, z: 2.5 },
-      avgVel: { x: 0.5, y: 1, z: 0.5 },
-      interceptId: -1,
-      deflected: false,
-    };
-    far.projectiles.push(bottle);
-    face(far, bottle.pos.x, bottle.pos.z, bottle.pos.y);
-    far.updateCue();
-    expect(Math.hypot(bottle.pos.x - far.player.x, bottle.pos.z - far.player.z)).toBeGreaterThan(CLASSES.huntress.assistRange);
-    expect(far.cue.quickTarget).toBe(-1);
-    expect(act(far)).toBeCloseTo(BOW_TOTAL, 2);
-
-    // 準星偏 10°
-    const off = makeWorld(OPEN_ROOM, [], 'huntress');
-    useTool(off, 'crossbow');
-    const b2 = throwBottle(off);
-    face(off, b2.pos.x, b2.pos.z, b2.pos.y);
-    off.player.pitch += (10 * Math.PI) / 180;
-    act(off);
-    idleUntil(off, () => off.projectiles.length === 0, 6000);
-    expect(off.stats.quickshots).toBe(0);
-    expect(off.stats.airbursts).toBe(0);
-
-    // 牆後的瓶子（注入：牆的另一側）
-    const rows = OPEN_ROOM.map((r, j) => (j === 10 ? '#' + '#'.repeat(18) + '#' : r));
-    const wall = makeWorld(rows, [], 'huntress');
-    useTool(wall, 'crossbow');
-    const hidden = { ...bottle, id: wall.nextId++, pos: { x: 9.5, y: 1.8, z: 8.5 }, next: { x: 9.5, y: 1.8, z: 8.5 }, vel: { x: 0, y: 0.5, z: 0 }, avgVel: { x: 0, y: 0.5, z: 0 }, hitSet: new Set<number>() };
-    wall.projectiles.push(hidden);
-    face(wall, hidden.pos.x, hidden.pos.z, hidden.pos.y);
-    wall.updateCue();
-    expect(wall.cue.quickTarget).toBe(-1);
-  });
-
-  it('疾射的箭仍會被牆擋下：目標在牆後交會時不會空爆', () => {
-    // 注入：一支已指定截擊目標的箭，交會點被牆隔開
-    const rows = OPEN_ROOM.map((r, j) => (j === 10 ? '#' + '#'.repeat(18) + '#' : r));
-    const w = makeWorld(rows, [], 'huntress');
-    const bottle: Projectile = {
-      id: w.nextId++,
-      kind: 'bottle',
-      owner: 'player',
-      pos: { x: 9.5, y: 2, z: 8.5 },
-      vel: { x: 0, y: 0, z: 0 },
-      radius: 0.16,
-      gravity: 0,
-      age: 0,
-      alive: true,
-      pierceLeft: 0,
-      hitSet: new Set(),
-      next: { x: 9.5, y: 2, z: 8.5 },
-      avgVel: { x: 0, y: 0, z: 0 },
-      interceptId: -1,
-      deflected: false,
-    };
-    w.projectiles.push(bottle);
-    const arrow: Projectile = {
-      ...bottle,
-      id: w.nextId++,
-      kind: 'arrow',
-      pos: { x: 9.5, y: 2, z: 13 },
-      vel: { x: 0, y: 0, z: -40 },
-      next: { x: 9.5, y: 2, z: 13 },
-      avgVel: { x: 0, y: 0, z: -40 },
-      radius: 0.05,
-      interceptId: bottle.id,
-      hitSet: new Set(),
-    };
-    w.projectiles.push(arrow);
-    for (let k = 0; k < 60; k++) w.advance(1 / 120);
-    expect(arrow.alive).toBe(false);
-    expect(w.stats.airbursts).toBe(0);
-    expect(w.events.some((e) => e.type === 'hitWall' && e.kind === 'arrow')).toBe(true);
-  });
-
-  it('截擊弩矢：獵手對準飛來的弩矢射擊，弩矢被擊落、自己不受傷；戰士同樣瞄準則照樣中箭', () => {
-    for (const cls of ['huntress', 'warrior'] as const) {
-      const w = alertArcherAhead(cls);
-      const a = w.enemies[0]!;
-      useTool(w, 'crossbow');
-      face(w, a.x, a.z, 1.4);
-      idleUntil(w, () => {
-        const b = w.projectiles.find((q) => q.kind === 'bolt');
-        return !!b && Math.hypot(b.pos.x - w.player.x, b.pos.z - w.player.z) < 8;
-      }, 40000);
-      const bolt = w.projectiles.find((q) => q.kind === 'bolt')!;
-      face(w, bolt.pos.x, bolt.pos.z, bolt.pos.y);
-      act(w);
-      idleUntil(w, () => !w.projectiles.some((q) => q.kind === 'bolt'), 4000);
-      if (cls === 'huntress') {
-        expect(w.stats.intercepts).toBe(1);
-        expect(w.player.hp).toBe(PLAYER.maxHp);
-      } else {
-        expect(w.stats.intercepts).toBe(0);
-        expect(w.player.hp).toBe(PLAYER.maxHp - 2);
-      }
+describe('戰士：臂盾・盾推', () => {
+  it('盾衛舉劍中被推：推退 2 m、攻擊被打斷，戰士不受傷；空地上不會失衡', () => {
+    const w = alertGuardAhead('warrior');
+    const g = w.enemies[0]!;
+    idleUntil(w, () => g.phase === 'windup');
+    expect(w.cue.push).toBe(g.id);
+    const z0 = g.z;
+    // 記錄滑行中最遠的位置（滑完之後它會再走回來）
+    let minZ = g.z;
+    w.frame(dt, input(w, { shield: true }));
+    for (let k = 0; k < 600 && (w.player.action || g.push); k++) {
+      w.frame(dt, input(w));
+      minZ = Math.min(minZ, g.z);
     }
+    expect(w.lastAction?.spent).toBeCloseTo(total(ACTIONS.shield), 2);
+    expect(z0 - minZ).toBeCloseTo(SHIELD.pushDist, 1);
+    expect(g.phase).not.toBe('windup');
+    expect(g.phase).not.toBe('stagger');
+    expect(w.stats.pushes).toBe(1);
+    expect(w.player.hp).toBe(PLAYER.maxHp);
+  });
+
+  it('背後是牆：撞牆失衡 1 秒、盾牌放下（投擲石正面打身體也打得到）', () => {
+    const rows = OPEN_ROOM.map((r, j) => (j === 10 ? '#' + '#'.repeat(18) + '#' : r));
+    const w = makeWorld(rows, [{ kind: 'guard', x: 9.5, z: 12.2, yaw: Math.PI, state: 'idle' }], 'warrior');
+    const g = w.enemies[0]!;
+    g.state = 'alert';
+    g.awareness = 1;
+    w.player.z = 13.9;
+    w.player.yaw = 0;
+    push(w);
+    expect(g.phase).toBe('stagger');
+    expect(g.staggerDur).toBe(SHIELD.wallStagger);
+    expect(w.stats.wallSlams).toBe(1);
+    expect(w.events.some((e) => e.type === 'bump' && e.kind === 'wall') || w.stats.wallSlams === 1).toBe(true);
+    slot(w, 2);
+    face(w, g.x, g.z, 1.1);
+    act(w);
+    settle(w);
+    expect(g.hp).toBe(ENEMIES.guard.hp - PROJECTILES.stone.body);
+  });
+
+  it('推到同伴身上：兩個都踉蹌 0.5 秒', () => {
+    const w = makeWorld(
+      OPEN_ROOM,
+      [
+        { kind: 'guard', x: 9.5, z: 12.7, yaw: Math.PI, state: 'idle' },
+        { kind: 'guard', x: 9.5, z: 10.4, yaw: Math.PI, state: 'idle' },
+      ],
+      'warrior',
+    );
+    const [a, b] = w.enemies;
+    w.player.yaw = 0;
+    push(w);
+    expect(a!.phase).toBe('stagger');
+    expect(b!.phase).toBe('stagger');
+    expect(a!.staggerDur).toBe(SHIELD.bumpStumble);
+    expect(b!.state).toBe('alert');
+  });
+
+  it('推上陷阱：陷阱觸發；背後有牆時撞牆失衡、留在踏板上被尖刺打中（注入：在推退路線上放一塊尖刺踏板）', () => {
+    const rows = OPEN_ROOM.map((r, j) => (j === 9 ? '#' + '#'.repeat(18) + '#' : r));
+    const w = makeWorld(rows, [{ kind: 'guard', x: 9.5, z: 12.4, yaw: Math.PI, state: 'idle' }], 'warrior');
+    const g = w.enemies[0]!;
+    g.state = 'alert';
+    g.awareness = 1;
+    w.traps.push({ id: 0, i: 9, j: 10, state: 'idle', t: 0, hitSet: new Set() });
+    w.player.yaw = 0;
+    push(w);
+    expect(g.phase).toBe('stagger');
+    expect(w.traps[0]!.state).not.toBe('idle');
+    idleUntil(w, () => g.hp < ENEMIES.guard.hp, 3000);
+    expect(g.hp).toBe(ENEMIES.guard.hp - 3);
+  });
+
+  it('突進者的衝撞也會撞傷擋在衝鋒線上的同伴', () => {
+    const w = makeWorld(
+      OPEN_ROOM,
+      [
+        { kind: 'charger', x: 9.5, z: 6.5, yaw: Math.PI, state: 'idle' },
+        { kind: 'guard', x: 9.5, z: 11.0, yaw: 0, state: 'idle' },
+      ],
+      'warrior',
+    );
+    const [c, g] = w.enemies;
+    c!.state = 'alert';
+    c!.awareness = 1;
+    idleUntil(w, () => g!.hp < ENEMIES.guard.hp || w.player.hp < PLAYER.maxHp, 20000);
+    expect(g!.hp).toBe(ENEMIES.guard.hp - ENEMIES.charger.allyDamage);
+    expect(w.player.hp).toBe(PLAYER.maxHp);
+  });
+
+  it('衝鋒中的突進者推不動：臂盾擋下衝撞（0 傷害），戰士被推退 1 m，突進者收招但不暈眩', () => {
+    const w = alertChargerAhead('warrior', 7);
+    const c = w.enemies[0]!;
+    idleUntil(w, () => c.phase === 'charge' && Math.hypot(c.x - w.player.x, c.z - w.player.z) < 1.9);
+    expect(w.cue.push).toBe(-1);
+    const z0 = w.player.z;
+    push(w);
+    expect(w.player.hp).toBe(PLAYER.maxHp);
+    expect(w.stats.blocks).toBe(1);
+    expect(c.phase).not.toBe('stun');
+    expect(w.player.z - z0).toBeGreaterThan(SHIELD.chargeRecoil * 0.8);
+  });
+
+  it('擋弩矢：正面來的被擋下；背後來的照樣中箭（注入弩矢）', () => {
+    const w = makeWorld(OPEN_ROOM, [], 'warrior');
+    w.player.yaw = 0;
+    injectBolt(w, { x: 9.5, y: 1.3, z: 12.0 });
+    idleUntil(w, () => Math.hypot(w.projectiles[0]!.pos.z - w.player.z) < 1.6, 2000);
+    push(w);
+    settle(w);
+    expect(w.player.hp).toBe(PLAYER.maxHp);
+    expect(w.stats.blocks).toBe(1);
+    const b = makeWorld(OPEN_ROOM, [], 'warrior');
+    b.player.yaw = Math.PI;
+    injectBolt(b, { x: 9.5, y: 1.3, z: 12.0 });
+    idleUntil(b, () => Math.hypot(b.projectiles[0]!.pos.z - b.player.z) < 1.6, 2000);
+    push(b);
+    settle(b);
+    expect(b.player.hp).toBe(PLAYER.maxHp - PROJECTILES.bolt.damage);
+  });
+});
+
+describe('獵手：藥劑箭（改變敵人的時間軸）', () => {
+  it('麻痺箭射中舉劍中盾衛的頭：定格 1.5 秒（已鎖定的揮擊停住），之後照原本的時間軸揮下', () => {
+    const w = alertGuardAhead('huntress');
+    const g = w.enemies[0]!;
+    slot(w, 2);
+    slot(w, 3);
+    expect(w.player.tipKind).toBe('paralysis');
+    idleUntil(w, () => g.phase === 'windup' && g.locked);
+    face(w, g.x, g.z, g.y + ENEMIES.guard.headY);
+    w.frame(dt, input(w, { fire: true, firePressed: true }));
+    idleUntil(w, () => g.paralyzeT > 0, 400);
+    expect(g.paralyzeT).toBeGreaterThan(TIPS.paralysis.duration - 0.1);
+    expect(g.hp).toBe(ENEMIES.guard.hp - PROJECTILES.arrow.head);
+    expect(w.player.tipped.paralysis).toBe(1);
+    const frozenT = g.phaseT;
+    const t0 = w.time;
+    idleUntil(w, () => w.time - t0 >= TIPS.paralysis.duration - 0.1, 20000);
+    expect(g.phase).toBe('windup');
+    expect(g.phaseT).toBeCloseTo(frozenT, 5);
+    expect(w.player.hp).toBe(PLAYER.maxHp);
+    idleUntil(w, () => w.player.hp < PLAYER.maxHp, 20000);
+    expect(w.time - t0).toBeGreaterThan(TIPS.paralysis.duration);
+  });
+
+  it('正面射盾衛的身體：被盾擋下，藥劑用掉、不會麻痺；箭身落地可撿回', () => {
+    const w = alertGuardAhead('huntress', 6);
+    const g = w.enemies[0]!;
+    slot(w, 2);
+    slot(w, 3);
+    face(w, g.x, g.z, 1.0);
+    act(w);
+    settle(w);
+    expect(g.paralyzeT).toBe(0);
+    expect(w.player.tipped.paralysis).toBe(1);
+    expect(w.events.some((e) => e.type === 'shield') || w.pickups.some((k) => k.kind === 'arrows')).toBe(true);
+    expect(w.pickups.some((k) => k.kind === 'arrows' && !k.taken)).toBe(true);
+  });
+
+  it('麻痺箭射中衝鋒中的突進者：衝鋒停住 1.5 秒，之後繼續衝', () => {
+    const w = alertChargerAhead('huntress', 9);
+    const c = w.enemies[0]!;
+    slot(w, 2);
+    slot(w, 3);
+    idleUntil(w, () => c.phase === 'charge');
+    face(w, c.x, c.z, 1.0);
+    w.frame(dt, input(w, { fire: true, firePressed: true }));
+    idleUntil(w, () => c.paralyzeT > 0 || w.player.hp < PLAYER.maxHp, 600);
+    expect(c.paralyzeT).toBeGreaterThan(0);
+    const z0 = c.z;
+    const t0 = w.time;
+    idleUntil(w, () => w.time - t0 >= 1.0, 20000);
+    expect(c.z).toBeCloseTo(z0, 5);
+    expect(c.phase).toBe('charge');
+  });
+
+  it('冰寒箭：突進者的蓄勢花兩倍世界時間、衝鋒只有一半快', () => {
+    const w = alertChargerAhead('huntress', 11);
+    const c = w.enemies[0]!;
+    slot(w, 2);
+    slot(w, 3);
+    slot(w, 3);
+    expect(w.player.tipKind).toBe('chill');
+    face(w, c.x, c.z, 1.0);
+    act(w);
+    idleUntil(w, () => c.slowT > 0, 600);
+    expect(c.slowT).toBeGreaterThan(TIPS.chill.duration - 1);
+    idleUntil(w, () => c.phase === 'windup');
+    const t0 = w.time;
+    idleUntil(w, () => c.phase === 'charge');
+    expect(c.slowT).toBeGreaterThan(0);
+    expect(w.time - t0).toBeCloseTo(ENEMIES.charger.windup / TIPS.chill.timeScale, 1);
+    const z0 = c.z;
+    const t1 = w.time;
+    idleUntil(w, () => w.time - t1 >= 0.2);
+    const speed = (c.z - z0) / (w.time - t1);
+    expect(speed).toBeCloseTo(ENEMIES.charger.chargeSpeed * TIPS.chill.timeScale, 0);
+  });
+
+  it('藥劑箭射空打到牆：藥劑灑掉，箭身變成一般箭可以撿回', () => {
+    const rows = OPEN_ROOM.map((r, j) => (j === 11 ? '#' + '#'.repeat(18) + '#' : r));
+    const w = makeWorld(rows, [], 'huntress');
+    slot(w, 2);
+    slot(w, 3);
+    w.player.yaw = 0;
+    w.player.pitch = 0;
+    act(w);
+    settle(w);
+    expect(w.player.tipped.paralysis).toBe(1);
+    const shaft = w.pickups.find((k) => k.kind === 'arrows' && !k.taken);
+    expect(shaft).toBeTruthy();
+    const arrows = w.player.arrows;
+    for (let k = 0; k < 300 && w.player.arrows === arrows; k++) w.frame(dt, input(w, { moveZ: 1 }));
+    expect(w.player.arrows).toBe(arrows + 1);
+  });
+});
+
+describe('敵人的窗口：遠程傷害要看時機（慢動作下瞄準本身沒有難度）', () => {
+  it('盾衛看到獵手拿著弓（12 m 內）就舉盾：正面頭部也射不進；拿獵刀時不舉', () => {
+    const w = alertGuardAhead('huntress', 8);
+    const g = w.enemies[0]!;
+    idleUntil(w, () => g.seesPlayer, 200);
+    w.frame(dt, input(w));
+    expect(g.shieldUp).toBe(false);
+    slot(w, 2);
+    idleUntil(w, () => g.shieldUp, 200);
+    expect(g.shieldUp).toBe(true);
+    face(w, g.x, g.z, g.y + ENEMIES.guard.headY);
+    act(w);
+    settle(w);
+    expect(g.hp).toBe(ENEMIES.guard.hp);
+    expect(w.events.some((e) => e.type === 'shield') || w.stats.shotHits === 0).toBe(true);
+  });
+
+  it('盾衛舉劍時放下盾：這時射頭打得到', () => {
+    const w = alertGuardAhead('huntress', 3);
+    const g = w.enemies[0]!;
+    slot(w, 2);
+    idleUntil(w, () => g.phase === 'windup');
+    expect(g.shieldUp).toBe(false);
+    face(w, g.x, g.z, g.y + ENEMIES.guard.headY);
+    w.frame(dt, input(w, { fire: true, firePressed: true }));
+    idleUntil(w, () => g.hp < ENEMIES.guard.hp || w.projectiles.length === 0 && !w.player.action, 600);
+    expect(g.hp).toBe(ENEMIES.guard.hp - PROJECTILES.arrow.head);
+  });
+
+  it('戰士拿長劍：盾衛不舉盾；戰士拿投擲石：一樣會舉盾', () => {
+    const w = alertGuardAhead('warrior', 8);
+    const g = w.enemies[0]!;
+    idleUntil(w, () => g.seesPlayer, 200);
+    w.frame(dt, input(w));
+    expect(g.shieldUp).toBe(false);
+    slot(w, 2);
+    idleUntil(w, () => g.shieldUp, 200);
+    expect(g.shieldUp).toBe(true);
+  });
+
+  it('突進者的角盔：察覺後正面頭部射不進；暈眩時露出、受雙倍傷害（注入：暈眩狀態）', () => {
+    const w = alertChargerAhead('huntress', 12);
+    const c = w.enemies[0]!;
+    slot(w, 2);
+    face(w, c.x, c.z, c.y + ENEMIES.charger.headY);
+    act(w);
+    settle(w);
+    expect(c.hp).toBe(ENEMIES.charger.hp);
+    expect(w.events.some((e) => e.type === 'helmet') || w.stats.shotHits === 0).toBe(true);
+    const s = alertChargerAhead('huntress', 6);
+    const sc = s.enemies[0]!;
+    sc.phase = 'stun';
+    sc.phaseT = 0;
+    slot(s, 2);
+    face(s, sc.x, sc.z, sc.y + ENEMIES.charger.headY);
+    s.frame(dt, input(s, { fire: true, firePressed: true }));
+    idleUntil(s, () => !sc.alive || (s.projectiles.length === 0 && !s.player.action), 600);
+    expect(sc.alive).toBe(false);
+  });
+});
+
+describe('獵手：獵人之眼（只給資訊，不改彈道；只看空中的煙霧瓶）', () => {
+  function descending(): { w: World; b: Projectile } {
+    const w = makeWorld(OPEN_ROOM, [], 'huntress');
+    w.player.yaw = 0;
+    slot(w, 2);
+    const b = throwBottle(w, 0.25);
+    idleUntil(w, () => b.vel.y < -1.5, 2000);
+    return { w, b };
+  }
+
+  it('照提前量標記射擊：瓶子在空中炸開；同一時刻直接瞄準瓶子：打空（對照組）', () => {
+    const { w } = descending();
+    const eye = w.cue.eye[0]!;
+    expect(eye.aim).not.toBeNull();
+    w.player.yaw = eye.aim!.yaw;
+    w.player.pitch = eye.aim!.pitch;
+    w.frame(dt, input(w, { fire: true, firePressed: true }));
+    settle(w);
+    expect(w.smokes.length).toBe(1);
+    expect(w.smokes[0]!.air).toBe(true);
+
+    const c = descending();
+    face(c.w, c.b.pos.x, c.b.pos.z, c.b.pos.y);
+    c.w.frame(dt, input(c.w, { fire: true, firePressed: true }));
+    settle(c.w);
+    expect(c.w.smokes.length).toBe(1);
+    expect(c.w.smokes[0]!.air).toBe(false);
+  });
+
+  it('落點圈：預測的落點就是瓶子實際落地的位置', () => {
+    const w = makeWorld(OPEN_ROOM, [], 'huntress');
+    w.player.yaw = 0;
+    slot(w, 2);
+    throwBottle(w, 0.25);
+    const land = w.cue.eye[0]!.landing!;
+    expect(land).toBeTruthy();
+    settle(w);
+    const s = w.smokes[0]!;
+    expect(Math.hypot(s.x - land.x, s.z - land.z)).toBeLessThan(0.3);
+  });
+
+  it('只有獵手拿著弓時才有；敵人（包括衝鋒中的突進者）不會有標記', () => {
+    const w = makeWorld(OPEN_ROOM, [], 'warrior');
+    throwBottle(w);
+    expect(w.cue.eye).toEqual([]);
+    const k = makeWorld(OPEN_ROOM, [], 'huntress');
+    throwBottle(k);
+    expect(k.cue.eye).toEqual([]);
+    const c = alertChargerAhead('huntress', 9);
+    slot(c, 2);
+    idleUntil(c, () => c.enemies[0]!.phase === 'charge');
+    expect(c.cue.eye).toEqual([]);
   });
 });
 
 describe('職業說明', () => {
   it('說明文字由數值生成，與效果一致', () => {
-    const w = classInfo('warrior');
-    const h = classInfo('huntress');
-    expect(w.name).toBe('戰士');
-    expect(h.name).toBe('獵手');
-    const wt = w.abilities.map((x) => x.text).join(' ');
-    const ht = h.abilities.map((x) => x.text).join(' ');
-    expect(wt).toContain(String(CS.windup));
-    expect(wt).toContain(String(ENEMIES.guard.stagger));
-    expect(ht).toContain(String(Math.round(QS_TOTAL * 100) / 100));
-    expect(ht).toContain(`${CLASSES.huntress.assistConeDeg}°`);
-    expect(ht).toContain(`${CLASSES.huntress.assistRange} m`);
+    const wi = classInfo('warrior');
+    expect(wi.loadout.map((l) => l.name)).toEqual(['長劍', '臂盾', '投擲石']);
+    expect(wi.loadout[0]!.text).toContain(`${MELEE.sword.damage} 傷害`);
+    expect(wi.loadout[1]!.text).toContain(`推退 ${SHIELD.pushDist} m`);
+    expect(wi.loadout[2]!.text).toContain(`${CLASSES.warrior.start.stones} 顆`);
+    expect(wi.abilities.map((a) => a.name)).toContain('反擊斬');
+    const hi = classInfo('huntress');
+    expect(hi.loadout.map((l) => l.name)).toEqual(['獵刀', '獵弓', '藥劑箭']);
+    expect(hi.loadout[1]!.text).toContain(`一般箭 ${CLASSES.huntress.start.arrows} 支`);
+    expect(hi.abilities[0]!.text).toContain(`${TIPS.paralysis.duration} 秒`);
+    expect(hi.weaknesses).toContain(`${ENEMIES.guard.raiseRange} m`);
+    for (const i of [wi, hi]) {
+      expect(i.moments.length).toBeGreaterThan(0);
+      expect(i.summary.length).toBeGreaterThan(0);
+    }
+    expect(CS.windup).toBeLessThan(ACTIONS.sword.windup);
   });
 });

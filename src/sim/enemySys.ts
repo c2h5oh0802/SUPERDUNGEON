@@ -1,6 +1,7 @@
-import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUNES } from '../config';
+import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUNES, SHIELD, TIPS } from '../config';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2 } from '../core/math';
 import type { EnemySpawn } from '../gen/generator';
+import { recoilPlayer, shieldBlocks } from './classSys';
 import { setDoor } from './propSys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
@@ -56,7 +57,78 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     stuckT: 0,
     lastX: s.x,
     lastZ: s.z,
+    staggerDur: 0,
+    push: null,
+    paralyzeT: 0,
+    slowT: 0,
+    shieldUp: false,
   };
+}
+
+/** 打斷敵人目前的出手（盾推、踉蹌）。 */
+export function interruptEnemy(e: Enemy): void {
+  e.locked = false;
+  e.aimPoint = null;
+  e.hitDone = true;
+  e.moving = false;
+  e.phaseT = 0;
+}
+
+/** 失衡或踉蹌：一段時間不能行動（盾衛的盾牌放下）。 */
+export function staggerEnemy(e: Enemy, dur: number): void {
+  interruptEnemy(e);
+  e.push = null;
+  e.phase = 'stagger';
+  e.staggerDur = dur;
+}
+
+/** 盾衛：看到玩家拿著遠程武器、在範圍內時，舉盾前進（正面的頭也擋）。舉劍與收招時放下。 */
+function guardWantsShield(w: World, e: Enemy): boolean {
+  if (e.kind !== 'guard' || e.state !== 'alert' || e.phase !== 'none' || !e.seesPlayer) return false;
+  const p = w.player;
+  if (p.dead || (p.tool !== 'bow' && p.tool !== 'tipped' && p.tool !== 'stone')) return false;
+  return Math.hypot(p.x - e.x, p.z - e.z) <= ENEMIES.guard.raiseRange;
+}
+
+/** 突進者的角盔：察覺玩家後低頭（接近、蓄勢、衝鋒），正面的頭被擋；暈眩、收招、失衡時露出。 */
+export function chargerHelmet(e: Enemy): boolean {
+  if (e.kind !== 'charger' || !ENEMIES.charger.helmet) return false;
+  return e.state === 'alert' && (e.phase === 'none' || e.phase === 'windup' || e.phase === 'charge');
+}
+
+/** 被盾推：滑行；撞牆失衡、撞到同伴兩個都踉蹌。 */
+function updatePush(w: World, e: Enemy, dt: number): void {
+  const pu = e.push!;
+  const step = Math.min(pu.left, SHIELD.pushSpeed * dt);
+  const nx = e.x + pu.dx * step;
+  const nz = e.z + pu.dz * step;
+  if (w.grid.circleBlocked(nx, nz, e.radius)) {
+    staggerEnemy(e, SHIELD.wallStagger);
+    w.stats.wallSlams++;
+    w.emit({ type: 'bump', id: e.id, kind: 'wall', x: e.x + pu.dx * e.radius, y: 1.0, z: e.z + pu.dz * e.radius });
+    w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
+    return;
+  }
+  for (const o of w.enemies) {
+    if (o === e || !o.alive || o.perched) continue;
+    if (Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius) {
+      staggerEnemy(e, SHIELD.bumpStumble);
+      staggerEnemy(o, SHIELD.bumpStumble);
+      if (o.state !== 'alert') becomeAlert(w, o);
+      w.emit({ type: 'bump', id: e.id, kind: 'ally', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
+      w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
+      return;
+    }
+  }
+  e.x = nx;
+  e.z = nz;
+  e.moving = false;
+  pu.left -= step;
+  if (pu.left <= 1e-6) {
+    e.push = null;
+    e.phase = 'none';
+    e.phaseT = 0;
+  }
 }
 
 export function enemyForward(e: Enemy): V2 {
@@ -72,7 +144,7 @@ export interface DamageInfo {
   z: number;
 }
 
-const PLAYER_WEAPONS = new Set(['sword', 'arrow', 'stone', 'deflect']);
+const PLAYER_WEAPONS = new Set(['sword', 'knife', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive) return;
@@ -98,11 +170,7 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     e.target = { x: e.x, z: e.z };
     e.searchT = 0;
   }
-  if (e.kind === 'archer' && e.phase === 'aim') {
-    e.phase = 'stagger';
-    e.phaseT = 0;
-    e.aimPoint = null;
-  }
+  if (e.kind === 'archer' && e.phase === 'aim') staggerEnemy(e, ENEMIES.archer.stagger);
 }
 
 export function becomeAlert(w: World, e: Enemy): void {
@@ -390,7 +458,10 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
           const clear = w.grid.segmentHit({ x: e.x, y: 1.2, z: e.z }, { x: p.x, y: 1.2, z: p.z });
           if (!clear) {
             e.hitDone = true;
-            w.damagePlayer(s.damage, '盾衛的劍', e.x, e.z);
+            if (shieldBlocks(w, e.x, e.z)) {
+              w.stats.blocks++;
+              w.emit({ type: 'block', id: e.id, kind: 'guard', x: (e.x + p.x) / 2, y: 1.2, z: (e.z + p.z) / 2 });
+            } else w.damagePlayer(s.damage, '盾衛的劍', e.x, e.z);
           }
         }
       }
@@ -403,15 +474,6 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
     case 'recovery':
       e.phaseT += dt;
       if (e.phaseT >= s.recovery) e.phase = 'none';
-      return;
-    case 'stagger':
-      // 被戰士反擊：失衡、盾牌放下，不能攻擊
-      e.phaseT += dt;
-      e.moving = false;
-      if (e.phaseT >= s.stagger) {
-        e.phase = 'none';
-        e.phaseT = 0;
-      }
       return;
     default:
       e.phaseT += dt;
@@ -479,14 +541,6 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       if (e.phaseT >= s.aim) fireBolt(w, e);
       return;
     }
-    case 'stagger':
-      e.phaseT += dt;
-      e.moving = false;
-      if (e.phaseT >= s.stagger) {
-        e.phase = 'none';
-        e.phaseT = 0;
-      }
-      return;
     default:
       e.phase = 'none';
   }
@@ -527,8 +581,8 @@ function fireBolt(w: World, e: Enemy): void {
     hitSet: new Set(),
     next: { ...origin },
     avgVel: { x: 0, y: 0, z: 0 },
-    interceptId: -1,
     deflected: false,
+    tip: null,
   };
   w.projectiles.push(proj);
   e.phase = 'reload';
@@ -587,6 +641,10 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       for (const o of w.enemies) {
         if (o === e || !o.alive || o.perched) continue;
         if (Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius) {
+          // 衝撞也會撞傷擋在路上的同伴
+          w.emit({ type: 'bump', id: o.id, kind: 'charge', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
+          damageEnemy(w, o, s.allyDamage, { source: 'charge', sneak: false, head: false, x: o.x, y: 1.0, z: o.z });
+          if (o.alive) staggerEnemy(o, s.allyStumble);
           e.phase = 'recovery';
           e.phaseT = 0;
           e.moving = false;
@@ -596,7 +654,12 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       if (!p.dead && Math.hypot(p.x - nx, p.z - nz) < e.radius + PLAYER.radius) {
         if (!e.hitDone) {
           e.hitDone = true;
-          w.damagePlayer(s.damage, '突進者的衝撞', e.x, e.z);
+          if (shieldBlocks(w, e.x, e.z)) {
+            // 臂盾擋下衝撞：戰士被推退，突進者收招但不暈眩
+            w.stats.blocks++;
+            w.emit({ type: 'block', id: e.id, kind: 'charger', x: (e.x + p.x) / 2, y: 1.1, z: (e.z + p.z) / 2 });
+            recoilPlayer(w, f.x, f.z, SHIELD.chargeRecoil);
+          } else w.damagePlayer(s.damage, '突進者的衝撞', e.x, e.z);
         }
         e.phase = 'recovery';
         e.phaseT = 0;
@@ -690,22 +753,49 @@ export function updateEnemies(w: World, dt: number): void {
       continue;
     }
     if (e.hurtT > 0) e.hurtT = Math.max(0, e.hurtT - dt);
-    e.percT -= dt;
+    // 被盾推是外力：麻痺中也照樣滑出去
+    if (e.push) {
+      updatePush(w, e, dt);
+      continue;
+    }
+    // 藥劑箭：麻痺＝時間軸暫停（感知、行為、計時全部定格）；冰寒＝時間軸變慢
+    if (e.paralyzeT > 0) {
+      e.paralyzeT = Math.max(0, e.paralyzeT - dt);
+      e.moving = false;
+      continue;
+    }
+    let edt = dt;
+    if (e.slowT > 0) {
+      e.slowT = Math.max(0, e.slowT - dt);
+      edt = dt * TIPS.chill.timeScale;
+    }
+    e.percT -= edt;
     if (e.percT <= 0) {
       e.percT += PERCEPTION.interval;
       perceive(w, e, PERCEPTION.interval);
       updateAwareness(w, e, PERCEPTION.interval);
     }
+    if (e.phase === 'stagger') {
+      e.phaseT += edt;
+      e.moving = false;
+      e.shieldUp = false;
+      if (e.phaseT >= e.staggerDur) {
+        e.phase = 'none';
+        e.phaseT = 0;
+      }
+      continue;
+    }
     if (e.state === 'alert') {
       const attacking = e.phase !== 'none' && e.phase !== 'reload';
       if (!e.seesPlayer && !attacking) {
-        e.loseT += dt;
+        e.loseT += edt;
         if (e.loseT >= PERCEPTION.loseTime) {
           e.state = 'search';
           e.target = e.lastKnown ? { ...e.lastKnown } : { x: e.x, z: e.z };
           e.searchT = 0;
           e.awareness = 0.5;
           e.path = null;
+          e.shieldUp = false;
           continue;
         }
       }
@@ -713,17 +803,18 @@ export function updateEnemies(w: World, dt: number): void {
         e.moving = false;
         continue;
       }
-      if (e.kind === 'guard') guardAlert(w, e, dt);
-      else if (e.kind === 'archer') archerAlert(w, e, dt);
-      else chargerAlert(w, e, dt);
+      if (e.kind === 'guard') guardAlert(w, e, edt);
+      else if (e.kind === 'archer') archerAlert(w, e, edt);
+      else chargerAlert(w, e, edt);
     } else {
       if (e.phase !== 'none' && e.phase !== 'stun') e.phase = 'none';
       if (e.phase === 'stun') {
-        e.phaseT += dt;
+        e.phaseT += edt;
         if (e.phaseT >= ENEMIES.charger.stun) e.phase = 'none';
         continue;
       }
-      unawareBehavior(w, e, dt);
+      unawareBehavior(w, e, edt);
     }
+    if (e.kind === 'guard') e.shieldUp = guardWantsShield(w, e);
   }
 }

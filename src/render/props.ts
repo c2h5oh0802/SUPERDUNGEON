@@ -259,6 +259,13 @@ export class PropsVisual {
           pieces.push({ geo, color, glow });
         }
       }
+    } else if (kind === 'ammo') {
+      // 彈藥袋：皮袋＋束口（戰士撿到是投擲石，獵手撿到是箭）
+      pieces.push({ geo: T(new THREE.SphereGeometry(0.17, 9, 7).scale(1, 0.8, 1), 0, 0.14, 0), color: 0x8a5e3a });
+      pieces.push({ geo: T(new THREE.CylinderGeometry(0.06, 0.09, 0.08, 8), 0, 0.29, 0), color: 0x6b4a30 });
+      pieces.push({ geo: T(new THREE.TorusGeometry(0.07, 0.015, 5, 10).rotateX(Math.PI / 2), 0, 0.27, 0), color: 0xf2c14e, glow: 1 });
+    } else if (kind === 'stone') {
+      pieces.push({ geo: T(new THREE.IcosahedronGeometry(0.08, 0), 0, 0.07, 0), color: 0xa8a092, glow: 0.4 });
     } else {
       const teal = kind === 'potion';
       pieces.push({ geo: T(new THREE.SphereGeometry(0.13, 10, 8), 0, 0.13, 0), color: teal ? 0x37c9a7 : 0xb7a6ea, glow: 1 });
@@ -273,7 +280,7 @@ export class PropsVisual {
 
   private buildPickup(p: Pickup): { obj: THREE.Object3D; mat: THREE.ShaderMaterial } {
     const rig = this.rigAt(p.x, 0.6, p.z);
-    const color = p.kind === 'arrows' ? 0xf2c14e : p.kind === 'potion' ? 0x3fe0c0 : 0xc8b8ff;
+    const color = p.kind === 'arrows' || p.kind === 'ammo' ? 0xf2c14e : p.kind === 'potion' ? 0x3fe0c0 : p.kind === 'stone' ? 0xd8d0c0 : 0xc8b8ff;
     const mat = this.mat(rig, color, 0);
     const g = this.pickupGeometry(p.kind, p.stuckDir ? 1 : Math.min(3, p.amount));
     const obj = new THREE.Mesh(g.body, mat);
@@ -341,7 +348,7 @@ export class PropsVisual {
         this.pickups.set(p.id, v);
       }
       v.mat.uniforms.uGlowAmt!.value = pulse;
-      if (!p.stuckDir && p.kind !== 'arrows') {
+      if (!p.stuckDir && p.kind !== 'arrows' && p.kind !== 'stone') {
         v.obj.rotation.y = realTime * 1.2 + p.id;
         v.obj.position.y = p.y + 0.04 + Math.sin(realTime * 2 + p.id) * 0.03;
       }

@@ -1,10 +1,10 @@
-import type { PlayerClass, RuneId } from '../config';
+import type { PlayerClass, RuneId, TipKind, Tool } from '../config';
 import type { V2, V3 } from '../core/math';
 import type { EnemyKind } from '../gen/rooms';
 import type { PickupKind } from '../gen/generator';
 
-export type Tool = 'sword' | 'crossbow' | 'stone';
-export type ActionKind = 'sword' | 'crossbow' | 'stone' | 'bottle' | 'potion' | 'door' | 'use';
+export type { Tool, TipKind };
+export type ActionKind = 'sword' | 'knife' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'door' | 'use';
 
 export interface ActionState {
   kind: ActionKind;
@@ -20,8 +20,8 @@ export interface ActionState {
   counter: boolean;
   /** 戰士：這一劍已成功反擊或擊開（跳過收招）。 */
   countered: boolean;
-  /** 獵手：這一發是疾射；截擊目標為 targetId。 */
-  quick: boolean;
+  /** 獵手：這一發是藥劑箭（null 表示一般箭）。 */
+  tip: TipKind | null;
 }
 
 export interface Player {
@@ -34,7 +34,15 @@ export interface Player {
   vz: number;
   hp: number;
   maxHp: number;
+  /** 數字鍵 1、2、3 對應的工具（依職業）。 */
+  slots: readonly Tool[];
+  /** 一般箭（獵手）。 */
   arrows: number;
+  /** 投擲石（戰士）。 */
+  stones: number;
+  /** 藥劑箭（獵手）。 */
+  tipped: Record<TipKind, number>;
+  tipKind: TipKind;
   bottles: number;
   potions: number;
   tool: Tool;
@@ -47,7 +55,7 @@ export interface Player {
 }
 
 export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'search' | 'alert';
-export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger';
+export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger' | 'pushed';
 
 export interface Enemy {
   id: number;
@@ -98,6 +106,16 @@ export interface Enemy {
   stuckT: number;
   lastX: number;
   lastZ: number;
+  /** 失衡、踉蹌的持續時間（phase = 'stagger'）。 */
+  staggerDur: number;
+  /** 被盾推：剩餘滑行距離與方向。 */
+  push: { dx: number; dz: number; left: number } | null;
+  /** 麻痺：時間軸暫停的剩餘世界秒。 */
+  paralyzeT: number;
+  /** 冰寒：時間軸變慢的剩餘世界秒。 */
+  slowT: number;
+  /** 盾衛舉盾前進中（正面的頭也擋）。麻痺時維持定格前的狀態。 */
+  shieldUp: boolean;
 }
 
 export type ProjectileKind = 'arrow' | 'stone' | 'bottle' | 'bolt';
@@ -117,10 +135,10 @@ export interface Projectile {
   /** 本子步的預定終點與平均速度（供同時空交會判定）。 */
   next: V3;
   avgVel: V3;
-  /** 獵手疾射：要截擊的飛行物 id（-1 表示沒有）。 */
-  interceptId: number;
   /** 被戰士擊開的弩矢（改由玩家擁有）。 */
   deflected: boolean;
+  /** 藥劑箭的藥劑（碰到東西就用掉）。 */
+  tip: TipKind | null;
 }
 
 export interface Smoke {
@@ -216,8 +234,11 @@ export type GameEventType =
   | 'fullInventory'
   | 'counter'
   | 'deflect'
-  | 'quickshot'
-  | 'intercept';
+  | 'push'
+  | 'block'
+  | 'bump'
+  | 'tipHit'
+  | 'helmet';
 
 export interface GameEvent {
   type: GameEventType;
@@ -251,8 +272,10 @@ export interface RunStats {
   chests: number;
   counters: number;
   deflects: number;
-  quickshots: number;
-  intercepts: number;
+  pushes: number;
+  blocks: number;
+  wallSlams: number;
+  tipHits: number;
 }
 
 export interface FrameInput {
@@ -263,7 +286,10 @@ export interface FrameInput {
   pitch: number;
   fire: boolean;
   firePressed: boolean;
-  selectTool: Tool | null;
+  /** 數字鍵（1 起算）；對應的工具依職業而定。 */
+  selectSlot: number | null;
+  /** 臂盾：盾推（戰士）。 */
+  shield: boolean;
   bottle: boolean;
   interact: boolean;
   potion: boolean;
@@ -277,7 +303,8 @@ export const emptyInput = (yaw = 0, pitch = 0): FrameInput => ({
   pitch,
   fire: false,
   firePressed: false,
-  selectTool: null,
+  selectSlot: null,
+  shield: false,
   bottle: false,
   interact: false,
   potion: false,

@@ -1,6 +1,7 @@
 import { DOOR, NOISE, PLAYER, SMOKE, TRAP } from '../config';
 import { smoothstep } from '../core/math';
 import { damageEnemy } from './enemySys';
+import { STOCK_NAMES, stockFor } from './inventory';
 import type { World } from './world';
 
 function doorOccupied(w: World, doorId: number): boolean {
@@ -122,14 +123,14 @@ export function updatePickups(w: World): void {
     if (k.taken) continue;
     if (k.y > 2.4) continue;
     if (Math.hypot(k.x - p.x, k.z - p.z) > PLAYER.pickupRadius) continue;
-    const key = k.kind === 'arrows' ? 'arrows' : k.kind === 'bottle' ? 'bottles' : 'potions';
-    const max = k.kind === 'arrows' ? PLAYER.maxArrows : k.kind === 'bottle' ? PLAYER.maxBottles : PLAYER.maxPotions;
-    const room = max - p[key];
+    const stock = stockFor(p, k.kind);
+    if (!stock) continue;
+    const room = stock.max - p[stock.key];
     if (room <= 0) continue;
     const take = Math.min(room, k.amount);
-    p[key] += take;
+    p[stock.key] += take;
     k.amount -= take;
-    w.emit({ type: 'pickup', kind: k.kind, amount: take, x: k.x, z: k.z });
+    w.emit({ type: 'pickup', kind: stock.key, amount: take, x: k.x, z: k.z, text: STOCK_NAMES[stock.key] });
     if (k.amount <= 0) k.taken = true;
   }
   if (w.pickups.length > 64) {

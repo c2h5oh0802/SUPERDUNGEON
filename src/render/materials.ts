@@ -148,6 +148,8 @@ const CHAR_FRAG = /* glsl */ `
   uniform float uFlash;
   uniform float uDim;
   uniform float uDesat;
+  uniform vec3 uTint;
+  uniform float uTintAmt;
   varying vec3 vColor;
   varying float vGlow;
   varying vec3 vWorldPos;
@@ -173,6 +175,8 @@ const CHAR_FRAG = /* glsl */ `
     float g = dot(col, vec3(0.299, 0.587, 0.114));
     col = mix(col, vec3(g) * vec3(0.9, 0.95, 1.12), uSlow * 0.2 * uDesat);
     col += uGlow * uGlowAmt * vGlow;
+    // 狀態色（麻痺、冰寒）：整個角色染色，保留明暗
+    col = mix(col, uTint * (0.35 + 1.4 * dot(col, vec3(0.299, 0.587, 0.114))), uTintAmt);
     col = mix(col, vec3(1.0, 0.95, 0.9), uFlash);
     ${FOG_GLSL}
     gl_FragColor = vec4(col, 1.0);
@@ -199,10 +203,14 @@ export interface LightRig {
   uAmbient: { value: THREE.Color };
   uFlash: { value: number };
   uDim: { value: number };
+  uTint: { value: THREE.Color };
+  uTintAmt: { value: number };
 }
 
 export function createLightRig(): LightRig {
   return {
+    uTint: { value: new THREE.Color(0xffffff) },
+    uTintAmt: { value: 0 },
     uKeyDir: { value: new THREE.Vector3(0.3, 1, 0.2).normalize() },
     uKeyColor: { value: new THREE.Color(0xffb070).multiplyScalar(0.6) },
     uAmbient: { value: new THREE.Color(0x3a3f6a).multiplyScalar(0.55) },

@@ -10,7 +10,7 @@ import { createCharMaterial, createLightRig, createOutlineMaterial, paint, type 
 // 為了效能，每個關節上的零件合併成一個網格（頂點色＋發光遮罩），同種敵人共用合併後的幾何。
 
 type JointName = 'hips' | 'torso' | 'head' | 'armL' | 'elbowL' | 'armR' | 'elbowR' | 'legL' | 'kneeL' | 'legR' | 'kneeR';
-type GroupKey = JointName | 'crossbow' | 'cloak';
+type GroupKey = JointName | 'crossbow' | 'cloak' | 'shield';
 
 interface Pose {
   hipsY: number;
@@ -126,6 +126,8 @@ export class EnemyVisual {
   eyes!: THREE.Mesh;
   eyeMat = new THREE.MeshBasicMaterial({ color: 0xffb040, fog: true });
   crossbow: THREE.Group | null = null;
+  /** 盾衛的圓盾：舉盾前進時抬到頭前。 */
+  shield: THREE.Group | null = null;
   bolt: THREE.Mesh | null = null;
   cloak: THREE.Group | null = null;
   private parts = new Map<GroupKey, PartSpec[]>();
@@ -227,11 +229,16 @@ export class EnemyVisual {
     this.part(box(0.36, 0.78, 0.05), tabard, 'torso', 0, 0.1, -0.2);
     this.part(sph(0.2, 1), steel, 'torso', -0.4, 0.55, 0, 0, 0, 0, { scale: [1.25, 0.8, 1.1] });
     this.part(sph(0.2, 1), steel, 'torso', 0.4, 0.55, 0, 0, 0, 0, { scale: [1.25, 0.8, 1.1] });
-    // 圓盾固定在軀幹左前方（正面擋箭的判定也以軀幹朝向為準）
-    const shield = this.at('torso', -0.26, 0.22, -0.36, Math.PI / 2, 0, 0.15);
-    this.part(cyl(0.44, 0.44, 0.08, 12), wood, shield, 0, 0, 0);
-    this.part(cyl(0.46, 0.46, 0.05, 12), steel, shield, 0, 0.01, 0, 0, 0, 0, { outline: false });
-    this.part(cyl(0.12, 0.12, 0.1, 8), steel, shield, 0, -0.06, 0);
+    // 圓盾在軀幹左前方（正面擋箭的判定也以軀幹朝向為準）；舉盾前進時整面抬到頭前
+    const sh = new THREE.Group();
+    torso.add(sh);
+    this.groups.set('shield', sh);
+    this.shield = sh;
+    sh.position.set(-0.26, 0.22, -0.36);
+    sh.rotation.set(Math.PI / 2, 0, 0.15);
+    this.part(cyl(0.44, 0.44, 0.08, 12), wood, 'shield', 0, 0, 0);
+    this.part(cyl(0.46, 0.46, 0.05, 12), steel, 'shield', 0, 0.01, 0, 0, 0, 0, { outline: false });
+    this.part(cyl(0.12, 0.12, 0.1, 8), steel, 'shield', 0, -0.06, 0);
     const head = J('head', torso, 0, 0.66, 0);
     this.part(cyl(0.19, 0.21, 0.36, 8), steel, 'head', 0, 0.14, 0);
     this.part(box(0.05, 0.14, 0.34), tabard, 'head', 0, 0.37, 0.02);
@@ -385,6 +392,26 @@ export class EnemyVisual {
       return { snap: false, glow: 0 };
     }
     const p = e.phaseT;
+    if (e.phase === 'pushed') {
+      // 被盾推：往後踉蹌
+      snap = true;
+      t.j.torso = [0.45, 0, 0];
+      t.j.head = [0.3, 0, 0];
+      t.j.armL = [0.6, 0, -0.7];
+      t.j.armR = [0.6, 0, 0.7];
+      t.j.legL = [-0.5, 0, 0];
+      return { snap, glow: 0 };
+    }
+    if (this.shield) {
+      // 舉盾：盾牌擋在頭前；失衡時甩開
+      const up = e.shieldUp;
+      this.shield.position.set(up ? -0.05 : -0.26, up ? 0.62 : 0.22, up ? -0.46 : -0.36);
+      this.shield.rotation.set(Math.PI / 2 + (up ? 0.1 : 0), 0, up ? 0 : 0.15);
+      if (up) {
+        t.j.armL = [1.4, 0, 0.5];
+        t.j.head = [0.25, 0, 0];
+      }
+    }
     if (e.kind === 'guard') {
       const g = ENEMIES.guard;
       if (e.phase === 'windup') {
@@ -477,6 +504,14 @@ export class EnemyVisual {
         snap = true;
         const k = smoothstep(0, c.recovery, p);
         t.j.torso = [lerp(-0.8, -0.25, k), 0, 0];
+      } else if (e.phase === 'stagger') {
+        snap = true;
+        t.j.torso = [0.3, Math.sin(p * 9) * 0.15, 0];
+        t.j.head = [-0.2, 0, 0];
+      } else if (e.state === 'alert') {
+        // 察覺玩家後低頭：角盔擋住正面的頭
+        t.j.head = [0.45, 0, 0];
+        t.j.torso = [-0.35, 0, 0];
       }
     }
     return { snap, glow };
@@ -494,6 +529,7 @@ export class EnemyVisual {
       this.body.position.z = 0.35 * k;
       this.eyes.visible = false;
       this.rig.uDim.value = lerp(1, 0.45, smoothstep(0.6, 3, e.deathT));
+      this.rig.uTintAmt.value = 0;
       u.uGlowAmt!.value = 0;
       this.rig.uFlash.value = Math.max(0, 0.6 - e.deathT * 3);
       this.applyPose(this.pose);
@@ -503,9 +539,11 @@ export class EnemyVisual {
     if (snap) copyPose(this.pose, this.target);
     else blendPose(this.pose, this.pose, this.target, 1 - Math.exp(-worldDt * 12));
     this.applyPose(this.pose);
-    // 預備動作發光（橘→紅），受擊閃白
-    u.uGlowAmt!.value = glow;
+    // 預備動作發光（橘→紅），受擊閃白；麻痺＝紫色定格、冰寒＝冰藍
+    u.uGlowAmt!.value = e.paralyzeT > 0 ? 0 : glow;
     (u.uGlow!.value as THREE.Color).setRGB(1.0, lerp(0.45, 0.12, clamp(glow - 0.2, 0, 1)), 0.05);
+    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : 0;
+    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : 0x6cc4ff);
     this.rig.uFlash.value = e.hurtT > 0 ? (e.hurtT / 0.3) * 0.75 : 0;
     this.rig.uDim.value = 1;
     this.eyes.visible = e.state !== 'sleep';

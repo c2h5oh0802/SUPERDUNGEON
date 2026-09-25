@@ -1,12 +1,13 @@
-import { CLASSES, ENEMIES, PLAYER, SWORD } from '../config';
-import { angleDiff, dirFromYawPitch, yawFromDir, type V3 } from '../core/math';
-import { AIM_EYE_Y, crosshairPoint } from './aim';
+import { ACTIONS, CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SHIELD, SWORD } from '../config';
+import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
+import { AIM_EYE_Y, aimPoint, crosshairPoint } from './aim';
+import { becomeAlert, interruptEnemy } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
-// 職業的規則特權。兩個職業使用相同的裝備與資源，差別只在這個檔案裡的規則：
-// - 戰士：敵人攻擊「鎖定」後揮劍＝反擊斬（出手更快、打斷攻擊）；揮劍作用期間可把弩矢擊開。
-// - 獵手：準星對準空中的飛行物時射擊＝疾射（幾乎不花世界時間），箭會修正到與目標交會。
+// 職業規則：
+// - 戰士：敵人攻擊「鎖定」後揮劍＝反擊斬（出手更快、打斷攻擊）；揮劍作用期間可把弩矢擊開；臂盾盾推。
+// - 獵手：藥劑箭改變敵人的時間軸（見 projectileSys、enemySys）；獵人之眼只提供資訊，不修改彈道。
 
 export interface CounterThreat {
   kind: 'guard' | 'charger' | 'archer' | 'bolt';
@@ -100,6 +101,7 @@ export function applyCounter(w: World, e: Enemy): boolean {
     w.emit({ type: 'stun', id: e.id, x: e.x, y: 1.0, z: e.z });
   } else {
     e.phase = 'stagger';
+    e.staggerDur = e.kind === 'guard' ? ENEMIES.guard.stagger : ENEMIES.archer.stagger;
     e.aimPoint = null;
     e.hitDone = true;
   }
@@ -152,37 +154,181 @@ export function deflectBolts(w: World): number {
   return n;
 }
 
-/** 可以被獵手截擊的飛行物：自己丟出的煙霧瓶、敵人的弩矢。 */
-export function interceptable(q: Projectile): boolean {
-  if (!q.alive) return false;
-  if (q.kind === 'bottle') return q.owner === 'player';
-  return q.kind === 'bolt' && q.owner !== 'player';
+// ---------- 戰士：臂盾 ----------
+
+const SHIELD_HALF_ARC = ((SHIELD.arcDeg / 2) * Math.PI) / 180;
+
+/** 盾推的作用期間（擋下正面的攻擊與飛行物）。 */
+export function shieldActive(w: World): boolean {
+  const p = w.player;
+  const a = p.action;
+  if (p.cls !== 'warrior' || p.dead || !a || a.kind !== 'shield') return false;
+  return a.t >= a.windup - 1e-9 && a.t <= a.windup + a.active + 1e-9;
 }
 
-/** 獵手準星附近（錐角內、射程內、沒有牆擋）的空中飛行物；不論目前拿的是什麼工具。 */
-export function quickshotTarget(w: World): Projectile | null {
+/** 從 (x, z) 來的攻擊現在會不會被臂盾擋下。 */
+export function shieldBlocks(w: World, x: number, z: number): boolean {
+  if (!shieldActive(w)) return false;
   const p = w.player;
-  if (p.cls !== 'huntress' || p.dead) return null;
-  const h = CLASSES.huntress;
-  const cone = Math.cos((h.assistConeDeg * Math.PI) / 180);
-  const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
-  const view = dirFromYawPitch(p.yaw, p.pitch);
-  let best: Projectile | null = null;
-  let bestCos = cone;
-  for (const q of w.projectiles) {
-    if (!interceptable(q)) continue;
-    const dx = q.pos.x - eye.x;
-    const dy = q.pos.y - eye.y;
-    const dz = q.pos.z - eye.z;
-    const d = Math.hypot(dx, dy, dz);
-    if (d > h.assistRange || d < 0.6) continue;
-    const cos = (dx * view.x + dy * view.y + dz * view.z) / d;
-    if (cos < bestCos) continue;
-    if (w.grid.segmentHit(eye, q.pos) !== null) continue;
-    best = q;
-    bestCos = cos;
+  const dx = x - p.x;
+  const dz = z - p.z;
+  if (Math.hypot(dx, dz) < 0.05) return true;
+  return Math.abs(angleDiff(yawFromDir(dx, dz), p.action!.lockedYaw)) <= SHIELD_HALF_ARC;
+}
+
+/** 現在盾推會推到的敵人：身前、推得到、沒有被牆隔開；衝鋒中的突進者推不動（只能擋）。 */
+export function pushTarget(w: World, yaw = w.player.yaw): Enemy | null {
+  const p = w.player;
+  if (p.cls !== 'warrior' || p.dead) return null;
+  let best: Enemy | null = null;
+  let bestGap = Infinity;
+  for (const e of w.enemies) {
+    if (!e.alive || e.perched || e.y > 0.5 || e.push) continue;
+    if (e.kind === 'charger' && e.phase === 'charge') continue;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const gap = Math.hypot(dx, dz) - PLAYER.radius - e.radius;
+    if (gap > SHIELD.pushReach || gap >= bestGap) continue;
+    if (Math.abs(angleDiff(yawFromDir(dx, dz), yaw)) > SHIELD_HALF_ARC) continue;
+    const hit = w.grid.segmentHit({ x: p.x, y: 1.0, z: p.z }, { x: e.x, y: 1.0, z: e.z });
+    if (hit && hit.t < 0.95) continue;
+    best = e;
+    bestGap = gap;
   }
   return best;
+}
+
+/** 盾推出手：鎖定盾的方向，把身前一名敵人推退（打斷它目前的出手）。 */
+export function shieldPush(w: World): void {
+  const p = w.player;
+  const a = p.action!;
+  a.lockedYaw = p.yaw;
+  const e = pushTarget(w, p.yaw);
+  const f = forwardFromYaw(p.yaw);
+  w.emit({ type: 'push', id: e?.id ?? -1, x: p.x + f.x * 0.8, y: 1.2, z: p.z + f.z * 0.8 });
+  if (!e) return;
+  w.stats.pushes++;
+  const dx = e.x - p.x;
+  const dz = e.z - p.z;
+  const d = Math.hypot(dx, dz) || 1;
+  interruptEnemy(e);
+  e.phase = 'pushed';
+  e.push = { dx: dx / d, dz: dz / d, left: SHIELD.pushDist };
+  if (e.state !== 'alert') becomeAlert(w, e);
+  w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'shield');
+}
+
+/** 衝鋒中的突進者撞上舉起的臂盾：戰士被推退，沒有傷害。 */
+export function recoilPlayer(w: World, dirX: number, dirZ: number, dist: number): void {
+  const p = w.player;
+  const n = Math.max(1, Math.ceil(dist / 0.08));
+  for (let k = 0; k < n; k++) {
+    const r = w.grid.resolveCircle(p.x + (dirX * dist) / n, p.z + (dirZ * dist) / n, PLAYER.radius);
+    p.x = r.x;
+    p.z = r.z;
+  }
+  p.vx = 0;
+  p.vz = 0;
+}
+
+// ---------- 獵手：獵人之眼 ----------
+
+export interface HunterEye {
+  /** 空中的煙霧瓶 id。 */
+  id: number;
+  /** 照現在的軌跡落地（或撞牆）的位置。 */
+  landing: V3 | null;
+  /** 現在瞄準這個方向射一般箭，就會和瓶子在同一刻交會（考慮出手前的準備時間）。 */
+  aim: { yaw: number; pitch: number } | null;
+  /** 交會點。 */
+  meet: V3 | null;
+}
+
+function ballistic(q: { pos: V3; vel: V3; gravity: number }, t: number): { pos: V3; vel: V3 } {
+  return {
+    pos: { x: q.pos.x + q.vel.x * t, y: q.pos.y + q.vel.y * t - 0.5 * q.gravity * t * t, z: q.pos.z + q.vel.z * t },
+    vel: { x: q.vel.x, y: q.vel.y - q.gravity * t, z: q.vel.z },
+  };
+}
+
+/** 飛行物照現在的軌跡最先碰到地形的時間與位置。 */
+function landingOf(w: World, q: Projectile, maxT: number): { t: number; at: V3 } | null {
+  const step = 1 / 60;
+  let prev = q.pos;
+  for (let t = step; t <= maxT + 1e-9; t += step) {
+    const next = ballistic(q, t).pos;
+    const hit = w.grid.segmentHit(prev, next, false, q.radius);
+    if (hit) return { t: t - step + hit.t * step, at: { x: hit.x, y: hit.y, z: hit.z } };
+    prev = next;
+  }
+  return null;
+}
+
+/** 箭的出手點（與 fireProjectile 相同）。 */
+function bowOrigin(w: World, yaw: number): V3 {
+  const p = w.player;
+  const f = forwardFromYaw(yaw);
+  const rx = Math.cos(yaw);
+  const rz = -Math.sin(yaw);
+  return { x: p.x + f.x * 0.45 + rx * 0.16, y: AIM_EYE_Y - 0.12, z: p.z + f.z * 0.45 + rz * 0.16 };
+}
+
+/** 下一支箭離弦前還要多少世界時間。 */
+function timeToRelease(w: World): number {
+  const a = w.player.action;
+  const bw = ACTIONS.bow.windup;
+  if (!a) return bw;
+  if (a.kind === 'bow' && !a.fired) return Math.max(0, a.windup - a.t);
+  return Math.max(0, a.windup + a.active + a.recovery - a.t) + bw;
+}
+
+/** 獵人之眼：拿著弓時，每個空中的煙霧瓶的落點與提前量。敵人不給提前量。 */
+export function hunterEye(w: World): HunterEye[] {
+  const p = w.player;
+  if (p.cls !== 'huntress' || p.dead || (p.desiredTool !== 'bow' && p.desiredTool !== 'tipped')) return [];
+  const out: HunterEye[] = [];
+  const maxT = CLASSES.huntress.eyeMaxT;
+  const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
+  for (const q of w.projectiles) {
+    if (!q.alive || q.kind !== 'bottle' || q.owner !== 'player') continue;
+    const land = landingOf(w, q, maxT);
+    const info: HunterEye = { id: q.id, landing: land ? land.at : null, aim: null, meet: null };
+    const delay = timeToRelease(w);
+    if (!land || land.t > delay + 0.02) {
+      const s = ballistic(q, delay);
+      const future = { ...q, pos: s.pos, vel: s.vel } as Projectile;
+      const spec = PROJECTILES.arrow;
+      let yaw = yawFromDir(s.pos.x - p.x, s.pos.z - p.z);
+      let view: V3 | null = null;
+      let meet: V3 | null = null;
+      for (let k = 0; k < 4; k++) {
+        const origin = bowOrigin(w, yaw);
+        const v = interceptVelocity(origin, spec.speed, spec.gravity, future);
+        if (!v) {
+          view = null;
+          break;
+        }
+        const sp = Math.hypot(v.x, v.y, v.z) || 1;
+        const dir = { x: v.x / sp, y: v.y / sp, z: v.z / sp };
+        // fireProjectile 從出手點射向「視線打到的地形」：找出讓這條線與所需方向一致的視線
+        const far = aimPoint(w, origin, dir);
+        const vx = far.x - eye.x;
+        const vy = far.y - eye.y;
+        const vz = far.z - eye.z;
+        const vl = Math.hypot(vx, vy, vz) || 1;
+        view = { x: vx / vl, y: vy / vl, z: vz / vl };
+        yaw = yawFromDir(view.x, view.z);
+        const tMeet = Math.hypot(future.pos.x - origin.x, future.pos.y - origin.y, future.pos.z - origin.z) / spec.speed;
+        meet = ballistic(future, tMeet).pos;
+      }
+      if (view && (!land || land.t > delay)) {
+        info.aim = { yaw, pitch: Math.asin(Math.max(-1, Math.min(1, view.y))) };
+        info.meet = meet;
+      }
+    }
+    out.push(info);
+  }
+  return out;
 }
 
 /**

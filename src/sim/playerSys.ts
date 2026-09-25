@@ -1,17 +1,19 @@
-import { ACTIONS, CLASSES, NOISE, PLAYER, PROJECTILES, RUNES, SWORD } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, MELEE, NOISE, PLAYER, PROJECTILES, RUNES, TIP_NAMES } from '../config';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
-import { AIM_EYE_Y, aimPoint } from './aim';
-import { applyCounter, counterThreat, deflectBolts, interceptVelocity, quickshotTarget } from './classSys';
+import { AIM_EYE_Y, crosshairPoint } from './aim';
+import { applyCounter, counterThreat, deflectBolts, shieldPush } from './classSys';
 import { damageEnemy } from './enemySys';
+import { STOCK_NAMES, stockFor } from './inventory';
 import { setDoor } from './propSys';
 import type { World } from './world';
-import type { ActionKind, FrameInput, InteractTarget, Interactable, Projectile, Tool } from './types';
+import type { ActionKind, FrameInput, InteractTarget, Interactable, Projectile } from './types';
+import type { PickupKind } from '../gen/generator';
 
-const TOOL_ACTION: Record<Tool, ActionKind> = { sword: 'sword', crossbow: 'crossbow', stone: 'stone' };
+const isMelee = (kind: ActionKind): kind is 'sword' | 'knife' => kind === 'sword' || kind === 'knife';
 
 export function actionTotal(kind: ActionKind, swift: boolean): number {
   const d = ACTIONS[kind];
-  const mul = kind === 'sword' && swift ? RUNES.swiftBlade.timeMul : 1;
+  const mul = isMelee(kind) && swift ? RUNES.swiftBlade.timeMul : 1;
   return (d.windup + d.active + d.recovery) * mul;
 }
 
@@ -20,7 +22,7 @@ type Timing = { windup: number; active: number; recovery: number };
 function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = ACTIONS[kind]): void {
   const p = w.player;
   const d = timing;
-  const mul = kind === 'sword' && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
+  const mul = isMelee(kind) && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
   p.action = {
     kind,
     windup: d.windup * mul,
@@ -33,19 +35,34 @@ function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing =
     targetId,
     counter: false,
     countered: false,
-    quick: false,
+    tip: null,
   };
+}
+
+/** 數字鍵選工具；已經拿著藥劑箭時再按一次＝切換麻痺／冰寒。 */
+function selectSlot(w: World, slot: number): void {
+  const p = w.player;
+  const tool = p.slots[slot - 1];
+  if (!tool) return;
+  const other = ALL_TIPS.find((k) => k !== p.tipKind)!;
+  if (tool === 'tipped' && p.desiredTool === 'tipped') {
+    p.tipKind = other;
+    w.emit({ type: 'toolSwitch', kind: 'tipped', text: TIP_NAMES[other] });
+    return;
+  }
+  if (tool === p.desiredTool) return;
+  // 目前這種藥劑箭用完了：自動換成還有的那一種
+  if (tool === 'tipped' && p.tipped[p.tipKind] <= 0 && p.tipped[other] > 0) p.tipKind = other;
+  p.desiredTool = tool;
+  if (!p.action) p.tool = tool;
+  w.emit({ type: 'toolSwitch', kind: tool });
 }
 
 /** 依輸入開始新行動（一次只能一個；切換工具不取消行動）。 */
 export function startActions(w: World, input: FrameInput): void {
   const p = w.player;
   if (p.dead) return;
-  if (input.selectTool && input.selectTool !== p.desiredTool) {
-    p.desiredTool = input.selectTool;
-    if (!p.action) p.tool = input.selectTool;
-    w.emit({ type: 'toolSwitch', kind: input.selectTool });
-  }
+  if (input.selectSlot) selectSlot(w, input.selectSlot);
   if (p.action) return;
   if (input.potion) {
     if (p.potions > 0 && p.hp < p.maxHp) {
@@ -67,29 +84,38 @@ export function startActions(w: World, input: FrameInput): void {
     if (t) interact(w, t);
     return;
   }
-  if (input.fire) {
-    // 疾射只有 0.1 秒，比一次普通點擊還短：按住不放不能連發，下一發要重新按下
-    if (p.tool === 'crossbow' && !input.firePressed && w.lastAction?.quick) return;
-    if (p.tool === 'crossbow' && p.arrows <= 0) {
-      if (input.firePressed) w.emit({ type: 'dryFire', text: '沒有弩箭' });
+  if (input.shield) {
+    if (p.cls === 'warrior') startAction(w, 'shield');
+    return;
+  }
+  if (!input.fire) return;
+  const dry = (text: string) => {
+    if (input.firePressed) w.emit({ type: 'dryFire', text });
+  };
+  switch (p.tool) {
+    case 'sword':
+      // 戰士：威脅已鎖定、就在眼前 → 反擊斬
+      if (counterThreat(w)) {
+        startAction(w, 'sword', -1, CLASSES.warrior.counterSwing);
+        p.action!.counter = true;
+      } else startAction(w, 'sword');
       return;
-    }
-    // 戰士：威脅已鎖定、就在眼前 → 反擊斬
-    if (p.tool === 'sword' && counterThreat(w)) {
-      startAction(w, 'sword', -1, CLASSES.warrior.counterSwing);
-      p.action!.counter = true;
+    case 'knife':
+      startAction(w, 'knife');
       return;
-    }
-    // 獵手：準星對準空中的飛行物 → 疾射
-    if (p.tool === 'crossbow') {
-      const target = quickshotTarget(w);
-      if (target) {
-        startAction(w, 'crossbow', target.id, CLASSES.huntress.quickshot);
-        p.action!.quick = true;
-        return;
-      }
-    }
-    startAction(w, TOOL_ACTION[p.tool]);
+    case 'bow':
+      if (p.arrows <= 0) return dry('沒有箭');
+      startAction(w, 'bow');
+      return;
+    case 'tipped':
+      if (p.tipped[p.tipKind] <= 0) return dry(`沒有${TIP_NAMES[p.tipKind]}`);
+      startAction(w, 'bow');
+      p.action!.tip = p.tipKind;
+      return;
+    case 'stone':
+      if (p.stones <= 0) return dry('沒有投擲石');
+      startAction(w, 'stone');
+      return;
   }
 }
 
@@ -182,19 +208,26 @@ export function updatePlayerAction(w: World, dt: number): void {
   const done = a.t >= total - 1e-9;
   switch (a.kind) {
     case 'sword':
+    case 'knife':
       if (prevT < a.windup && a.t >= a.windup) {
         a.lockedYaw = p.yaw;
-        w.emit({ type: 'swing' });
-        swordWallCheck(w);
+        w.emit({ type: 'swing', kind: a.kind });
+        meleeWallCheck(w);
       }
       if (a.t >= a.windup && prevT < a.windup + a.active) {
-        swordHits(w);
-        if (deflectBolts(w) > 0) a.countered = true;
+        meleeHits(w);
+        if (a.kind === 'sword' && deflectBolts(w) > 0) a.countered = true;
         // 反擊或擊開成功：這一劍不用收招
         if (a.countered) a.recovery = 0;
       }
       break;
-    case 'crossbow':
+    case 'shield':
+      if (!a.fired && a.t >= a.windup) {
+        a.fired = true;
+        shieldPush(w);
+      }
+      break;
+    case 'bow':
     case 'stone':
     case 'bottle':
       if (!a.fired && a.t >= a.windup) {
@@ -219,27 +252,30 @@ export function updatePlayerAction(w: World, dt: number): void {
       break;
   }
   if (done || a.t >= a.windup + a.active + a.recovery - 1e-9) {
-    w.lastAction = { kind: a.kind, spent: a.t, counter: a.counter, countered: a.countered, quick: a.quick };
+    w.lastAction = { kind: a.kind, spent: a.t, counter: a.counter, countered: a.countered, tip: a.tip };
     p.action = null;
     if (p.desiredTool !== p.tool) p.tool = p.desiredTool;
   }
 }
 
-function swordWallCheck(w: World): void {
-  const p = w.player;
-  const f = forwardFromYaw(p.action!.lockedYaw);
-  const a = { x: p.x, y: 1.3, z: p.z };
-  const b = { x: p.x + f.x * SWORD.reach * 0.8, y: 1.3, z: p.z + f.z * SWORD.reach * 0.8 };
-  const hit = w.grid.segmentHit(a, b);
-  if (hit) w.emit({ type: 'hitWall', x: hit.x, y: hit.y, z: hit.z, kind: 'sword' });
-}
-
-function swordHits(w: World): void {
+function meleeWallCheck(w: World): void {
   const p = w.player;
   const a = p.action!;
-  const half = ((SWORD.arcDeg / 2) * Math.PI) / 180;
+  const spec = MELEE[a.kind as 'sword' | 'knife'];
+  const f = forwardFromYaw(a.lockedYaw);
+  const from = { x: p.x, y: 1.3, z: p.z };
+  const to = { x: p.x + f.x * spec.reach * 0.8, y: 1.3, z: p.z + f.z * spec.reach * 0.8 };
+  const hit = w.grid.segmentHit(from, to);
+  if (hit) w.emit({ type: 'hitWall', x: hit.x, y: hit.y, z: hit.z, kind: a.kind });
+}
+
+function meleeHits(w: World): void {
+  const p = w.player;
+  const a = p.action!;
+  const spec = MELEE[a.kind as 'sword' | 'knife'];
+  const half = ((spec.arcDeg / 2) * Math.PI) / 180;
   // 戰士的反擊斬往前踏半步
-  const reach = SWORD.reach + (a.counter ? CLASSES.warrior.counterLunge : 0);
+  const reach = spec.reach + (a.counter ? CLASSES.warrior.counterLunge : 0);
   for (const e of w.enemies) {
     if (!e.alive || a.hitSet.has(e.id)) continue;
     const dx = e.x - p.x;
@@ -255,18 +291,18 @@ function swordHits(w: World): void {
     if (block && block.t < 0.95) continue;
     a.hitSet.add(e.id);
     const sneak = e.state !== 'alert';
-    let dmg = SWORD.damage;
-    if (sneak) dmg *= SWORD.sneakMultiplier;
+    let dmg: number = spec.damage;
+    if (sneak) dmg *= spec.sneakMultiplier;
     if (e.kind === 'charger' && e.phase === 'stun') dmg *= 2;
     if (sneak) w.stats.backstabs++;
-    // 戰士：命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
-    if (applyCounter(w, e)) a.countered = true;
-    damageEnemy(w, e, dmg, { source: 'sword', sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
+    // 戰士：長劍命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
+    if (a.kind === 'sword' && applyCounter(w, e)) a.countered = true;
+    damageEnemy(w, e, dmg, { source: a.kind, sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'combat');
   }
 }
 
-export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'): Projectile {
+export function fireProjectile(w: World, kind: 'bow' | 'stone' | 'bottle'): Projectile {
   const p = w.player;
   const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
   const f = forwardFromYaw(p.yaw);
@@ -278,7 +314,8 @@ export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'):
   if (block) origin = { x: eye.x + (origin.x - eye.x) * block.t * 0.8, y: eye.y + (origin.y - eye.y) * block.t * 0.8, z: eye.z + (origin.z - eye.z) * block.t * 0.8 };
   let vel: V3;
   let spec: { speed: number; gravity: number; radius: number };
-  const pk = kind === 'crossbow' ? 'arrow' : kind;
+  const pk = kind === 'bow' ? 'arrow' : kind;
+  const tip = kind === 'bow' ? (p.action?.tip ?? null) : null;
   if (kind === 'bottle') {
     spec = PROJECTILES.bottle;
     const lift = (PROJECTILES.bottle.liftDeg * Math.PI) / 180;
@@ -288,9 +325,10 @@ export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'):
     w.stats.bottlesThrown++;
     w.emit({ type: 'throw', kind: 'bottle' });
   } else {
-    spec = kind === 'crossbow' ? PROJECTILES.arrow : PROJECTILES.stone;
+    spec = kind === 'bow' ? PROJECTILES.arrow : PROJECTILES.stone;
+    // 射向準星實際對到的點（準星下的敵人，否則是地形）：出手點比眼睛低，近距離射頭時才不會先撞進身體
     const view = dirFromYawPitch(p.yaw, p.pitch);
-    const target = aimPoint(w, eye, view);
+    const target = crosshairPoint(w, eye, view);
     let dx = target.x - origin.x;
     let dy = target.y - origin.y;
     let dz = target.z - origin.z;
@@ -300,21 +338,10 @@ export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'):
     dz /= len;
     vel = { x: dx * spec.speed, y: dy * spec.speed, z: dz * spec.speed };
     w.stats.shots++;
-    if (kind === 'crossbow') p.arrows--;
-    w.emit({ type: kind === 'crossbow' ? 'fire' : 'throw', kind: pk });
-  }
-  // 獵手疾射：修正到與目標在同一時刻交會（目標已消失就照準星射出）
-  let interceptId = -1;
-  const a = p.action;
-  if (kind === 'crossbow' && a?.quick) {
-    w.stats.quickshots++;
-    const target = w.projectiles.find((q) => q.id === a.targetId && q.alive);
-    const v = target ? interceptVelocity(origin, spec.speed, spec.gravity, target) : null;
-    if (v) {
-      vel = v;
-      interceptId = target!.id;
-    }
-    w.emit({ type: 'quickshot', id: interceptId, kind: target?.kind ?? '' });
+    if (kind === 'stone') p.stones--;
+    else if (tip) p.tipped[tip]--;
+    else p.arrows--;
+    w.emit({ type: kind === 'bow' ? 'fire' : 'throw', kind: pk, source: tip ?? undefined });
   }
   const proj: Projectile = {
     id: w.nextId++,
@@ -326,12 +353,12 @@ export function fireProjectile(w: World, kind: 'crossbow' | 'stone' | 'bottle'):
     gravity: spec.gravity,
     age: 0,
     alive: true,
-    pierceLeft: kind === 'crossbow' && w.hasRune('pierce') ? RUNES.pierce.extra : 0,
+    pierceLeft: kind !== 'bottle' && w.hasRune('pierce') ? RUNES.pierce.extra : 0,
     hitSet: new Set(),
     next: { ...origin },
     avgVel: { ...vel },
-    interceptId,
     deflected: false,
+    tip,
   };
   w.projectiles.push(proj);
   return proj;
@@ -377,7 +404,7 @@ function performUse(w: World, it: Interactable): void {
       it.used = true;
       w.stats.chests++;
       const c = w.level.chests[it.ref]!.contents;
-      giveOrDrop(w, 'arrows', c.arrows, it);
+      giveOrDrop(w, 'ammo', c.ammo, it);
       giveOrDrop(w, 'bottle', c.bottles, it);
       giveOrDrop(w, 'potion', c.potions, it);
       w.emit({ type: 'chest', id: it.id, x: it.x, z: it.z });
@@ -399,7 +426,10 @@ function performUse(w: World, it: Interactable): void {
       w.emit({ type: 'win' });
       return;
     case 'resupply':
-      p.arrows = PLAYER.maxArrows;
+      if (p.cls === 'huntress') {
+        p.arrows = PLAYER.maxArrows;
+        for (const k of ALL_TIPS) p.tipped[k] = PLAYER.maxTipped;
+      } else p.stones = PLAYER.maxStones;
       p.bottles = PLAYER.maxBottles;
       p.potions = PLAYER.maxPotions;
       p.hp = p.maxHp;
@@ -410,15 +440,15 @@ function performUse(w: World, it: Interactable): void {
   }
 }
 
-function giveOrDrop(w: World, kind: 'arrows' | 'bottle' | 'potion', amount: number, it: Interactable): void {
+function giveOrDrop(w: World, kind: PickupKind, amount: number, it: Interactable): void {
   if (amount <= 0) return;
   const p = w.player;
-  const key = kind === 'arrows' ? 'arrows' : kind === 'bottle' ? 'bottles' : 'potions';
-  const max = kind === 'arrows' ? PLAYER.maxArrows : kind === 'bottle' ? PLAYER.maxBottles : PLAYER.maxPotions;
-  const room = Math.max(0, max - p[key]);
+  const stock = stockFor(p, kind);
+  if (!stock) return;
+  const room = Math.max(0, stock.max - p[stock.key]);
   const take = Math.min(room, amount);
-  p[key] += take;
-  if (take > 0) w.emit({ type: 'pickup', kind, amount: take });
+  p[stock.key] += take;
+  if (take > 0) w.emit({ type: 'pickup', kind: stock.key, amount: take, text: STOCK_NAMES[stock.key] });
   const rest = amount - take;
   if (rest > 0) {
     // 放不下的放在寶箱前方

@@ -306,14 +306,34 @@ export class Sfx {
           this.tone('sine', 3600, 3400, 0.18, 0.08, pos);
           this.noise(0.05, 0.3, 'highpass', 5000, 3000, 1, pos);
           break;
-        case 'quickshot':
-          // 疾射：短促的弦音
-          this.noise(0.05, 0.4, 'bandpass', 2600, 1400, 3);
-          this.tone('triangle', 520, 780, 0.1, 0.15);
+        case 'push':
+          // 盾推：木盾悶響
+          this.noise(0.12, 0.5, 'lowpass', 700, 300, 1, pos);
+          this.tone('sine', 140, 80, 0.3, 0.14, pos);
           break;
-        case 'intercept':
-          this.noise(0.08, 0.4, 'highpass', 4200, 2600, 1, pos);
-          this.tone('sine', 1600, 900, 0.2, 0.14, pos);
+        case 'block':
+          // 格擋：金屬撞擊
+          this.tone('triangle', 900, 700, 0.35, 0.2, pos);
+          this.noise(0.08, 0.45, 'bandpass', 2200, 900, 2, pos);
+          break;
+        case 'bump':
+          // 撞牆、撞同伴
+          this.tone('sine', 90, 45, 0.45, 0.35, pos);
+          this.noise(0.18, 0.5, 'lowpass', 500, 200, 1, pos);
+          break;
+        case 'tipHit':
+          if (e.kind === 'paralysis') {
+            // 麻痺：時間停住的長音
+            this.tone('sine', 660, 640, 0.3, 0.6, pos);
+            this.tone('triangle', 990, 960, 0.15, 0.6, pos);
+          } else {
+            // 冰寒：下滑的冷音
+            this.tone('sine', 1400, 500, 0.25, 0.5, pos);
+            this.noise(0.25, 0.25, 'highpass', 6000, 4000, 1, pos);
+          }
+          break;
+        case 'helmet':
+          this.tone('square', 700, 520, 0.18, 0.12, pos);
           break;
         default:
       }

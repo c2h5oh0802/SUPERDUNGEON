@@ -1,5 +1,3 @@
-import type { Tool } from '../sim/types';
-
 // 鍵鼠輸入：一律使用 event.code（中文輸入法開啟時仍可用）。
 // 滑鼠鎖定失敗時（例如受限 iframe）改用「右鍵拖曳」與方向鍵轉視角，左鍵仍是攻擊。
 
@@ -11,6 +9,7 @@ const GAME_CODES = new Set([
   'KeyQ',
   'KeyE',
   'KeyH',
+  'KeyF',
   'KeyM',
   'Space',
   'Tab',
@@ -32,7 +31,10 @@ export interface RawFrame {
   keyPitch: number;
   fire: boolean;
   firePressed: boolean;
-  selectTool: Tool | null;
+  /** 數字鍵（1 起算），工具依職業對應。 */
+  selectSlot: number | null;
+  /** 臂盾：F，或滑鼠鎖定時的右鍵。 */
+  shield: boolean;
   bottle: boolean;
   interact: boolean;
   potion: boolean;
@@ -57,6 +59,7 @@ export class Input {
   private dy = 0;
   private fireHeld = false;
   private firePressed = false;
+  private shieldPressed = false;
   private dragging = false;
   locked = false;
   /** 本工作階段中是否曾成功鎖定（用來區分冷卻期與環境不支援）。 */
@@ -113,7 +116,9 @@ export class Input {
         this.fireHeld = true;
         this.firePressed = true;
       } else if (e.button === 2) {
-        this.dragging = true;
+        // 滑鼠鎖定時右鍵是臂盾；備用操作模式下右鍵拖曳轉視角
+        if (this.locked) this.shieldPressed = true;
+        else this.dragging = true;
       }
       e.preventDefault();
     });
@@ -194,6 +199,7 @@ export class Input {
     this.pressed.clear();
     this.fireHeld = false;
     this.firePressed = false;
+    this.shieldPressed = false;
     this.dragging = false;
     this.dx = 0;
     this.dy = 0;
@@ -222,7 +228,8 @@ export class Input {
       // 比一幀還短的點擊（低幀率時常見）也要算：這一幀按下過就視為開火
       fire: this.fireHeld || this.firePressed,
       firePressed: this.firePressed,
-      selectTool: digit === 1 ? 'sword' : digit === 2 ? 'crossbow' : digit === 3 ? 'stone' : null,
+      selectSlot: digit,
+      shield: this.shieldPressed || p.has('KeyF'),
       bottle: p.has('KeyQ'),
       interact: p.has('KeyE'),
       potion: p.has('KeyH'),
@@ -234,6 +241,7 @@ export class Input {
     this.dx = 0;
     this.dy = 0;
     this.firePressed = false;
+    this.shieldPressed = false;
     p.clear();
     return f;
   }

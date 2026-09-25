@@ -107,27 +107,27 @@ describe('時間規則', () => {
   });
 
   it('換工具與連點都不能取消或重啟行動', () => {
-    const w = makeWorld();
-    w.player.tool = 'crossbow';
-    w.player.desiredTool = 'crossbow';
+    const w = makeWorld(undefined, [], 'huntress');
+    w.player.tool = 'bow';
+    w.player.desiredTool = 'bow';
     const arrows = w.player.arrows;
     w.frame(dt, { ...emptyInput(), fire: true, firePressed: true });
     const a = w.player.action!;
-    expect(a.kind).toBe('crossbow');
+    expect(a.kind).toBe('bow');
     let lastT = a.t;
     let k = 0;
     while (w.player.action === a && k++ < 200) {
-      w.frame(dt, { ...emptyInput(), fire: true, firePressed: true, selectTool: k % 2 ? 'sword' : 'stone' });
+      w.frame(dt, { ...emptyInput(), fire: true, firePressed: true, selectSlot: k % 2 ? 1 : 3 });
       if (w.player.action === a) {
         expect(a.t).toBeGreaterThanOrEqual(lastT);
         lastT = a.t;
-        expect(w.player.tool).toBe('crossbow');
+        expect(w.player.tool).toBe('bow');
       }
     }
     // 這個行動只射出一支箭，並完整跑完行動時間；結束後才換成最後選的工具
     expect(arrows - w.player.arrows).toBe(1);
     expect(a.t).toBeGreaterThanOrEqual(a.windup + a.recovery - 1e-9);
-    expect(w.player.tool).not.toBe('crossbow');
+    expect(w.player.tool).not.toBe('bow');
   });
 
   it('長幀被夾限，不會一次補算；子步有上限', () => {

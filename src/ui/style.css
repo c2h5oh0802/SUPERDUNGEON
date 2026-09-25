@@ -928,7 +928,13 @@ button.ghost {
   opacity: 0.85;
 }
 
-/* 獵手：可截擊的飛行物標記 */
+#cue.push {
+  color: var(--gold);
+  background: rgba(10, 8, 20, 0.6);
+  border: 1px solid var(--gold);
+}
+
+/* 獵手：獵人之眼的提前量標記 */
 #targets {
   position: absolute;
   inset: 0;
@@ -946,11 +952,72 @@ button.ghost {
   border: 1.5px dashed rgba(63, 224, 192, 0.55);
 }
 
-.tmark.bolt {
-  border-color: rgba(255, 140, 90, 0.7);
+.tmark.lead {
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 2px;
+  border: 2px solid #c6b6ff;
+  rotate: 45deg;
+  box-shadow: 0 0 8px rgba(198, 182, 255, 0.7);
 }
 
-.tmark.hot {
-  border: 2.5px solid var(--teal);
-  box-shadow: 0 0 10px rgba(63, 224, 192, 0.8);
+/* 職業說明（主選單、暫停、玩法說明共用） */
+.class-detail {
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.55;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--panel-edge);
+  border-radius: 9px;
+  padding: 10px 14px;
+  margin: 0 0 14px;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+
+.class-detail h4 {
+  margin: 8px 0 3px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.class-detail h4:first-child {
+  margin-top: 0;
+}
+
+.class-detail .cd-summary {
+  margin: 0 0 4px;
+}
+
+.class-detail ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.class-detail kbd {
+  font-size: 11px;
+  padding: 0 4px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 3px;
+  margin-right: 4px;
+  color: #d8cfbf;
+}
+
+.class-detail.warrior b.nm {
+  color: var(--gold);
+}
+
+.class-detail.huntress b.nm {
+  color: var(--teal);
+}
+
+.class-detail .muted {
+  color: var(--muted);
+}
+
+.tool.shield kbd {
+  font-size: 10px;
 }

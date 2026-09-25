@@ -1,14 +1,15 @@
-import { CLASSES, ENEMIES, PLAYER, PROJECTILES, SMOKE } from '../config';
+import { CLASSES, ENEMIES, PLAYER, PROJECTILES, SMOKE, TIPS } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
-import { damageEnemy, enemyForward } from './enemySys';
+import { shieldBlocks } from './classSys';
+import { chargerHelmet, damageEnemy, enemyForward } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
 interface Hit {
   t: number;
-  type: 'wall' | 'bottle' | 'bolt' | 'enemy' | 'player';
+  type: 'wall' | 'bottle' | 'enemy' | 'player';
   wallKind?: string;
-  /** 被空中擊中的飛行物（瓶子或被截擊的弩矢）。 */
+  /** 在空中被擊中的煙霧瓶。 */
   bottle?: Projectile;
   bottleTau?: number;
   enemy?: Enemy;
@@ -57,20 +58,15 @@ function findHit(w: World, p: Projectile, a: V3, b: V3, dt: number, tStart: numb
   const wall = w.grid.segmentHit(a, b, false, p.radius);
   if (wall) best = { t: wall.t, type: 'wall', wallKind: wall.kind };
   if (p.owner === 'player' && p.kind !== 'bottle') {
-    // 同時空交會：瓶子（或獵手截擊的弩矢）與箭／石在同一子步內都在移動
+    // 同時空交會：瓶子與箭／石在同一子步內都在移動
     const remain = dt * (1 - tStart);
     for (const bt of w.projectiles) {
-      if (bt === p || !bt.alive || p.hitSet.has(bt.id)) continue;
-      const designated = p.interceptId === bt.id;
-      let r: number;
-      if (bt.kind === 'bottle') r = designated ? Math.max(CLASSES.huntress.interceptRadius, p.radius + bt.radius) : p.radius + bt.radius;
-      else if (bt.kind === 'bolt' && designated && bt.owner !== 'player') r = CLASSES.huntress.interceptRadius;
-      else continue;
+      if (bt === p || !bt.alive || bt.kind !== 'bottle' || p.hitSet.has(bt.id)) continue;
       const bPos = lerp3(bt.pos, bt.next, tStart);
-      const tau = movingSpheresTOI(a, p.avgVel, bPos, bt.avgVel, r, remain);
+      const tau = movingSpheresTOI(a, p.avgVel, bPos, bt.avgVel, p.radius + bt.radius, remain);
       if (tau < 0) continue;
       const t = remain > 0 ? tau / remain : 0;
-      if (!best || t < best.t) best = { t, type: bt.kind === 'bottle' ? 'bottle' : 'bolt', bottle: bt, bottleTau: dt * tStart + tau };
+      if (!best || t < best.t) best = { t, type: 'bottle', bottle: bt, bottleTau: dt * tStart + tau };
     }
   }
   const ch = charHit(w, p, a, b);
@@ -87,6 +83,12 @@ export function breakBottle(w: World, b: Projectile, pos: V3, air: boolean): voi
   w.emit({ type: 'bottleBreak', x: pos.x, y, z: pos.z, air });
   w.emit({ type: 'smoke', x: pos.x, y, z: pos.z, air });
   w.emitNoise(pos.x, y, pos.z, SMOKE.noise, 'bottle');
+}
+
+/** 投擲石落在地上，可以撿回。 */
+function dropStone(w: World, x: number, z: number): void {
+  const c = w.grid.resolveCircle(x, z, 0.1);
+  w.addPickup('stone', 1, c.x, 0.05, c.z, null);
 }
 
 function stickArrow(w: World, p: Projectile, at: V3, kind: string | undefined): void {
@@ -141,6 +143,7 @@ export function updateProjectiles(w: World, dt: number): void {
         if (p.kind === 'stone') {
           p.alive = false;
           w.emit({ type: 'hitWall', x: bAt.x, y: bAt.y, z: bAt.z, kind: 'stone' });
+          dropStone(w, bAt.x, bAt.z);
           break;
         }
         // 箭穿過瓶子繼續飛
@@ -148,20 +151,14 @@ export function updateProjectiles(w: World, dt: number): void {
         a = at;
         continue;
       }
-      if (hit.type === 'bolt') {
-        // 獵手截擊：弩矢被擊落，箭繼續飛
-        const b = hit.bottle!;
-        const bAt = { x: b.pos.x + b.avgVel.x * hit.bottleTau!, y: b.pos.y + b.avgVel.y * hit.bottleTau!, z: b.pos.z + b.avgVel.z * hit.bottleTau! };
-        b.alive = false;
-        p.hitSet.add(b.id);
-        w.stats.intercepts++;
-        w.emit({ type: 'intercept', id: b.id, x: bAt.x, y: bAt.y, z: bAt.z });
-        tStart = tAbs;
-        a = at;
-        continue;
-      }
       if (hit.type === 'player') {
         p.alive = false;
+        // 戰士的臂盾：作用期間擋下正面來的弩矢
+        if (shieldBlocks(w, at.x - p.vel.x * 0.2, at.z - p.vel.z * 0.2)) {
+          w.stats.blocks++;
+          w.emit({ type: 'block', kind: 'bolt', x: at.x, y: at.y, z: at.z });
+          break;
+        }
         const src = typeof p.owner === 'number' ? w.enemies.find((e) => e.id === p.owner) : undefined;
         w.damagePlayer(PROJECTILES.bolt.damage, '弩手的弩矢', src ? src.x : at.x - p.vel.x, src ? src.z : at.z - p.vel.z);
         break;
@@ -193,6 +190,8 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
   p.alive = false;
   switch (p.kind) {
     case 'arrow':
+      // 藥劑箭射空：藥劑灑掉，箭身可以撿回當一般箭
+      p.tip = null;
       stickArrow(w, p, at, kind);
       w.emit({ type: 'hitWall', x: at.x, y: at.y, z: at.z, kind: 'arrow' });
       w.emitNoise(at.x, at.y, at.z, 4, 'impact');
@@ -200,10 +199,14 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
     case 'bolt':
       w.emit({ type: 'hitWall', x: at.x, y: at.y, z: at.z, kind: 'bolt' });
       break;
-    case 'stone':
+    case 'stone': {
       w.emit({ type: 'hitWall', x: at.x, y: at.y, z: at.z, kind: 'stone' });
       w.emitNoise(at.x, at.y, at.z, PROJECTILES.stone.noise, 'stone');
+      // 石頭彈回自己這一側落地
+      const h = Math.hypot(p.vel.x, p.vel.z) || 1;
+      dropStone(w, at.x - (p.vel.x / h) * 0.3, at.z - (p.vel.z / h) * 0.3);
       break;
+    }
     case 'bottle':
       p.alive = true;
       breakBottle(w, p, at, false);
@@ -218,11 +221,18 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
   const hz = p.vel.z / sp;
   const f = enemyForward(e);
   const fromFront = hx * f.x + hz * f.z < -0.35;
-  // 盾衛：正面盾牌擋住射向身體的箭與石（被反擊而失衡時盾牌放下）
-  if (e.kind === 'guard' && !head && fromFront && e.phase !== 'stun' && e.phase !== 'stagger' && e.state !== 'sleep') {
+  // 盾衛：正面盾牌擋住射向身體的箭與石；舉盾前進時連頭也擋（失衡、被推時盾牌放下）
+  // 突進者：察覺玩家後低頭，角盔擋住正面的頭
+  const guardBlocks =
+    e.kind === 'guard' && fromFront && e.state !== 'sleep' && e.phase !== 'stun' && e.phase !== 'stagger' && e.phase !== 'pushed' && (!head || e.shieldUp);
+  const helmetBlocks = head && fromFront && chargerHelmet(e);
+  if (guardBlocks || helmetBlocks) {
     p.alive = false;
-    w.emit({ type: 'shield', x: at.x, y: at.y, z: at.z, id: e.id });
-    if (p.kind === 'arrow') w.addPickup('arrows', 1, e.x + f.x * (e.radius + 0.4), 0.05, e.z + f.z * (e.radius + 0.4), null);
+    w.emit({ type: guardBlocks ? 'shield' : 'helmet', x: at.x, y: at.y, z: at.z, id: e.id });
+    const dx = e.x + f.x * (e.radius + 0.4);
+    const dz = e.z + f.z * (e.radius + 0.4);
+    if (p.kind === 'arrow') w.addPickup('arrows', 1, dx, 0.05, dz, null);
+    if (p.kind === 'stone') dropStone(w, dx, dz);
     w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 6, 'shield');
     return false;
   }
@@ -239,7 +249,17 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
   p.hitSet.add(e.id);
   damageEnemy(w, e, dmg, { source: p.deflected ? 'deflect' : p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z });
   w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 8, 'combat');
-  if (p.kind === 'arrow' && p.pierceLeft > 0) {
+  // 藥劑箭：改變敵人的時間軸（藥劑碰到東西就用掉）
+  if (p.tip) {
+    if (e.alive) {
+      if (p.tip === 'paralysis') e.paralyzeT = Math.max(e.paralyzeT, TIPS.paralysis.duration);
+      else e.slowT = Math.max(e.slowT, TIPS.chill.duration);
+      w.stats.tipHits++;
+      w.emit({ type: 'tipHit', id: e.id, kind: p.tip, x: at.x, y: at.y, z: at.z });
+    }
+    p.tip = null;
+  }
+  if (p.kind !== 'bolt' && p.pierceLeft > 0) {
     p.pierceLeft--;
     return true;
   }
@@ -248,5 +268,6 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
     if (e.alive) e.lodged++;
     else w.addPickup('arrows', 1, e.x, 0.05, e.z, null);
   }
+  if (p.kind === 'stone') dropStone(w, e.x - hx * (e.radius + 0.3), e.z - hz * (e.radius + 0.3));
   return false;
 }

@@ -17,7 +17,11 @@ export interface EnemySpawn {
   roomKey: string;
 }
 
-export type PickupKind = 'arrows' | 'bottle' | 'potion';
+/**
+ * 地上的物資。生成只放中性的「彈藥袋」（ammo），撿到時依職業變成一般箭或投擲石，
+ * 所以同一個種子兩個職業的關卡完全相同。arrows／stone 是射出去之後可以撿回的箭與石頭。
+ */
+export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'potion';
 
 export interface PickupSpawn {
   kind: PickupKind;
@@ -34,7 +38,7 @@ export interface PropSpawn {
 }
 
 export interface ChestSpawn extends PropSpawn {
-  contents: { arrows: number; bottles: number; potions: number };
+  contents: { ammo: number; bottles: number; potions: number };
 }
 
 export interface AltarSpawn extends PropSpawn {
@@ -196,7 +200,7 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout):
             z: cz,
             yaw: faceInward(li, lj, W, H),
             roomKey: tr.key,
-            contents: { arrows: 3, bottles: 1, potions: 1 },
+            contents: { ammo: 3, bottles: 1, potions: 1 },
           });
           break;
         case 'A':
@@ -454,13 +458,13 @@ function placePickups(d: Draft, rng: Rng): PickupSpawn[] {
   const spots = rng.shuffle(d.pickupSpots.slice());
   const plan: Array<{ kind: PickupKind; amount: number }> = [
     { kind: 'potion', amount: 1 },
-    { kind: 'arrows', amount: 3 },
+    { kind: 'ammo', amount: 3 },
     { kind: 'bottle', amount: 1 },
-    { kind: 'arrows', amount: 3 },
+    { kind: 'ammo', amount: 3 },
     { kind: 'potion', amount: 1 },
-    { kind: 'arrows', amount: 2 },
+    { kind: 'ammo', amount: 2 },
     { kind: 'bottle', amount: 1 },
-    { kind: 'arrows', amount: 2 },
+    { kind: 'ammo', amount: 2 },
   ];
   const out: PickupSpawn[] = [];
   for (let k = 0; k < spots.length && k < plan.length; k++) {

@@ -18,9 +18,15 @@ const lp = (a: Pose3, b: Pose3, t: number): Pose3 => ({
 const SWORD_IDLE: Pose3 = { p: [0.3, -0.34, -0.5], r: [-0.55, 0.2, -0.25] };
 const SWORD_UP: Pose3 = { p: [0.42, -0.14, -0.4], r: [0.1, -0.35, -1.25] };
 const SWORD_END: Pose3 = { p: [-0.36, -0.3, -0.52], r: [-0.45, 0.45, 1.45] };
-const XBOW_IDLE: Pose3 = { p: [0.24, -0.3, -0.58], r: [0.02, 0.04, 0] };
-const XBOW_AIM: Pose3 = { p: [0.12, -0.22, -0.52], r: [0, 0, 0] };
-const XBOW_RELOAD: Pose3 = { p: [0.22, -0.42, -0.5], r: [-0.55, 0.15, 0.25] };
+const BOW_IDLE: Pose3 = { p: [0.2, -0.3, -0.6], r: [0.02, 0.04, 0.35] };
+const BOW_AIM: Pose3 = { p: [0.1, -0.2, -0.58], r: [0, 0, 0.12] };
+const BOW_NOCK: Pose3 = { p: [0.22, -0.4, -0.52], r: [-0.4, 0.15, 0.5] };
+const KNIFE_IDLE: Pose3 = { p: [0.3, -0.34, -0.46], r: [-0.3, 0.2, -0.2] };
+const KNIFE_UP: Pose3 = { p: [0.36, -0.2, -0.36], r: [0.2, -0.3, -1.0] };
+const KNIFE_END: Pose3 = { p: [-0.2, -0.3, -0.56], r: [-0.3, 0.4, 1.2] };
+const SHIELD_REST: Pose3 = { p: [-0.34, -0.42, -0.46], r: [0.1, 0.5, 0.1] };
+const SHIELD_UP: Pose3 = { p: [-0.12, -0.2, -0.5], r: [0, 0.1, 0] };
+const SHIELD_PUSH: Pose3 = { p: [-0.08, -0.18, -0.8], r: [0, 0, 0] };
 const STONE_IDLE: Pose3 = { p: [0.36, -0.36, -0.5], r: [0.2, 0, 0] };
 const STONE_BACK: Pose3 = { p: [0.46, -0.16, -0.22], r: [-0.6, 0, 0] };
 const STONE_THROW: Pose3 = { p: [0.2, -0.18, -0.78], r: [0.6, 0, 0] };
@@ -37,12 +43,15 @@ export class Viewmodel {
   private right = new THREE.Group();
   private left = new THREE.Group();
   private sword = new THREE.Group();
-  private crossbow = new THREE.Group();
+  private bow = new THREE.Group();
+  private knife = new THREE.Group();
+  private shield = new THREE.Group();
   private stone = new THREE.Group();
   private flask = new THREE.Group();
   private flaskBody!: THREE.ShaderMaterial;
-  private xbowBolt!: THREE.Mesh;
-  private xbowString!: THREE.Mesh;
+  private bowArrow!: THREE.Mesh;
+  private bowArrowMat!: THREE.ShaderMaterial;
+  private bowString!: THREE.Mesh;
   private heartGem: THREE.Mesh;
   private mats: THREE.Material[] = [];
   private geos: THREE.BufferGeometry[] = [];
@@ -75,15 +84,27 @@ export class Viewmodel {
     this.part(new THREE.SphereGeometry(0.03, 6, 5), gold, this.sword, 0, -0.07, 0);
     this.sword.rotation.set(-0.4, 0, 0);
     this.right.add(this.sword);
-    // 弩
-    this.part(new THREE.BoxGeometry(0.06, 0.07, 0.62), wood, this.crossbow, 0, 0, -0.18);
-    this.part(new THREE.BoxGeometry(0.62, 0.035, 0.05), wood, this.crossbow, 0, 0.03, -0.45);
-    this.part(new THREE.BoxGeometry(0.06, 0.04, 0.06), gauntlet, this.crossbow, 0.31, 0.03, -0.43);
-    this.part(new THREE.BoxGeometry(0.06, 0.04, 0.06), gauntlet, this.crossbow, -0.31, 0.03, -0.43);
-    this.xbowString = this.part(new THREE.BoxGeometry(0.6, 0.006, 0.006), this.m(0xe8e0c8), this.crossbow, 0, 0.05, -0.2, false);
-    this.xbowBolt = this.part(new THREE.BoxGeometry(0.018, 0.018, 0.42), gold, this.crossbow, 0, 0.065, -0.4, false);
-    this.crossbow.position.set(0, 0.02, -0.02);
-    this.right.add(this.crossbow);
+    // 獵弓：直立的弓臂、弦與搭在弦上的箭
+    this.part(new THREE.BoxGeometry(0.04, 0.12, 0.05), leather, this.bow, 0, 0, -0.3);
+    this.part(new THREE.BoxGeometry(0.03, 0.42, 0.035).translate(0, 0.21, 0).rotateX(0.35), wood, this.bow, 0, 0.05, -0.3);
+    this.part(new THREE.BoxGeometry(0.03, 0.42, 0.035).translate(0, -0.21, 0).rotateX(-0.35), wood, this.bow, 0, -0.05, -0.3);
+    this.bowString = this.part(new THREE.BoxGeometry(0.006, 0.78, 0.006), this.m(0xe8e0c8), this.bow, 0, 0, -0.14, false);
+    this.bowArrowMat = this.m(0xd4a64a);
+    this.bowArrow = this.part(new THREE.BoxGeometry(0.016, 0.016, 0.62), this.bowArrowMat, this.bow, 0.02, 0, -0.38, false);
+    this.right.add(this.bow);
+    // 獵刀
+    this.part(new THREE.BoxGeometry(0.03, 0.12, 0.03), leather, this.knife, 0, 0.02, 0);
+    this.part(new THREE.BoxGeometry(0.1, 0.025, 0.035), gauntlet, this.knife, 0, 0.09, 0);
+    this.part(new THREE.BoxGeometry(0.04, 0.3, 0.01), steel, this.knife, 0, 0.25, 0);
+    this.part(new THREE.ConeGeometry(0.02, 0.06, 4).rotateY(Math.PI / 4), steel, this.knife, 0, 0.43, 0);
+    this.knife.rotation.set(-0.4, 0, 0);
+    this.right.add(this.knife);
+    // 臂盾（戰士，左臂）
+    this.part(new THREE.BoxGeometry(0.34, 0.42, 0.04), wood, this.shield, 0, 0.05, -0.12);
+    this.part(new THREE.BoxGeometry(0.38, 0.05, 0.05), gauntlet, this.shield, 0, 0.27, -0.12);
+    this.part(new THREE.BoxGeometry(0.38, 0.05, 0.05), gauntlet, this.shield, 0, -0.17, -0.12);
+    this.part(new THREE.SphereGeometry(0.05, 8, 6), gold, this.shield, 0, 0.05, -0.15);
+    this.left.add(this.shield);
     // 石頭
     this.part(new THREE.IcosahedronGeometry(0.055, 0), this.m(0x9d958a), this.stone, 0, 0.05, -0.05);
     this.right.add(this.stone);
@@ -135,20 +156,27 @@ export class Viewmodel {
     this.camera.updateProjectionMatrix();
     const a = p.action;
     const tool = p.tool;
+    const bowTool = tool === 'bow' || tool === 'tipped';
     this.sword.visible = tool === 'sword';
-    this.crossbow.visible = tool === 'crossbow';
+    this.knife.visible = tool === 'knife';
+    this.bow.visible = bowTool;
     this.stone.visible = tool === 'stone';
+    this.shield.visible = p.cls === 'warrior';
     this.bob += realDt * moveSpeed * 2.2;
     const bobAmt = clamp(moveSpeed / 4.5, 0, 1);
     const bx = Math.sin(this.bob) * 0.012 * bobAmt;
     const by = Math.abs(Math.cos(this.bob)) * 0.014 * bobAmt;
     this.recoil = Math.max(0, this.recoil - realDt * 3);
 
-    let rp: Pose3 = tool === 'sword' ? SWORD_IDLE : tool === 'crossbow' ? XBOW_IDLE : STONE_IDLE;
-    let lpose: Pose3 = LEFT_HIDDEN;
+    let rp: Pose3 = tool === 'sword' ? SWORD_IDLE : tool === 'knife' ? KNIFE_IDLE : bowTool ? BOW_IDLE : STONE_IDLE;
+    let lpose: Pose3 = p.cls === 'warrior' ? SHIELD_REST : LEFT_HIDDEN;
     this.flask.visible = false;
-    this.xbowBolt.visible = p.arrows > 0;
-    this.xbowString.position.z = -0.2;
+    const tipColor = (tip: string | null) => (tip === 'paralysis' ? 0xc08cff : tip === 'chill' ? 0x7cc8ff : 0xd4a64a);
+    const nocked = tool === 'tipped' ? p.tipped[p.tipKind] > 0 : p.arrows > 0;
+    this.bowArrow.visible = nocked;
+    this.bowArrowMat.uniforms.uColor!.value.setHex(tipColor(tool === 'tipped' ? p.tipKind : null));
+    this.bowString.position.z = -0.14;
+    this.bowArrow.position.z = -0.38;
     if (a) {
       const t = a.t;
       const w = a.windup;
@@ -160,16 +188,32 @@ export class Viewmodel {
           else if (t < w + act) rp = lp(SWORD_UP, SWORD_END, clamp((t - w) / act, 0, 1));
           else rp = lp(SWORD_END, SWORD_IDLE, smoothstep(0, rec, t - w - act));
           break;
-        case 'crossbow':
-          if (t < w) rp = lp(XBOW_IDLE, XBOW_AIM, smoothstep(0, w, t));
-          else {
+        case 'knife':
+          if (t < w) rp = lp(KNIFE_IDLE, KNIFE_UP, smoothstep(0, w, t));
+          else if (t < w + act) rp = lp(KNIFE_UP, KNIFE_END, clamp((t - w) / act, 0, 1));
+          else rp = lp(KNIFE_END, KNIFE_IDLE, smoothstep(0, rec, t - w - act));
+          break;
+        case 'shield':
+          if (t < w) lpose = lp(SHIELD_REST, SHIELD_UP, smoothstep(0, w, t));
+          else if (t < w + act) lpose = lp(SHIELD_UP, SHIELD_PUSH, smoothstep(0, act * 0.5, t - w));
+          else lpose = lp(SHIELD_PUSH, SHIELD_REST, smoothstep(0, rec, t - w - act));
+          break;
+        case 'bow':
+          this.bowArrowMat.uniforms.uColor!.value.setHex(tipColor(a.tip));
+          if (t < w) {
+            rp = lp(BOW_IDLE, BOW_AIM, smoothstep(0, w, t));
+            // 拉弓
+            const k = smoothstep(0, w, t);
+            this.bowString.position.z = -0.14 + 0.12 * k;
+            this.bowArrow.position.z = -0.38 + 0.12 * k;
+            this.bowArrow.visible = true;
+          } else {
             const k = (t - w) / rec;
             if (k < 0.12) {
-              rp = XBOW_AIM;
-              this.recoil = Math.max(this.recoil, 0.25 * (1 - k / 0.12));
-            } else rp = lp(XBOW_AIM, XBOW_RELOAD, Math.sin(clamp((k - 0.12) / 0.88, 0, 1) * Math.PI));
-            this.xbowBolt.visible = k > 0.8 && p.arrows > 0;
-            this.xbowString.position.z = k < 0.8 ? -0.3 + 0.1 * smoothstep(0.2, 0.8, k) : -0.2;
+              rp = BOW_AIM;
+              this.recoil = Math.max(this.recoil, 0.18 * (1 - k / 0.12));
+            } else rp = lp(BOW_AIM, BOW_NOCK, Math.sin(clamp((k - 0.12) / 0.88, 0, 1) * Math.PI));
+            this.bowArrow.visible = k > 0.75 && nocked;
           }
           break;
         case 'stone':
