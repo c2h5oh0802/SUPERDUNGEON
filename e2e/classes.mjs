@@ -282,10 +282,12 @@ await startPractice('warrior');
         await page.waitForTimeout(40);
         continue;
       }
-      // 站位：盾衛與牆的反方向
+      // 站位：盾衛與牆的反方向（盾衛大致在我和牆之間就推）
       const want = { x: gg.x - dir.dx * 1.5, z: gg.z - dir.dz * 1.5 };
       const off = Math.hypot(want.x - p.x, want.z - p.z);
-      if (s.cue.push === g.id && off < 0.45) {
+      const gd = Math.hypot(gg.x - p.x, gg.z - p.z) || 1;
+      const aligned = ((gg.x - p.x) * dir.dx + (gg.z - p.z) * dir.dz) / gd > 0.85;
+      if (s.cue.push === g.id && aligned) {
         await lookAtPoint(gg.x, 1.2, gg.z, 0.05);
         const s2 = await st();
         if (s2.cue.push !== g.id) continue;
@@ -446,7 +448,11 @@ await resetPractice('獵手空爆');
   // 冰寒箭：射擊場的突進者（衝鋒以外的時候射它）
   await enterRange('獵手');
   await bot.tap('Digit3');
+  // 兩次按鍵要落在不同幀（軟體渲染約 8 fps；同一幀內的兩次按下只算一次）
+  await page.waitForFunction(() => window.__sd.state().player.tool === 'tipped', null, { timeout: 3000 });
+  await page.waitForTimeout(250);
   await bot.tap('Digit3');
+  await page.waitForTimeout(250);
   const pre = await st();
   check('獵手：再按一次 3 切換成冰寒箭', pre.player.tipKind === 'chill', pre.player.tipKind);
   let chilled = null;
