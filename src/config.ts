@@ -203,6 +203,17 @@ export const ENEMIES = {
   deathFade: 4,
 } as const;
 
+/** 一局的結構：逐層往下，最底層是沉眠之心。 */
+export const RUN = {
+  floors: 4,
+  /** 每層房間難度加成（索引＝樓層 − 1）：越深，房間裡出現的敵人越多。 */
+  tierBonus: [-1, 0, 1, 2],
+  /** 睡著的敵人改成醒著的機率。 */
+  wakeChance: [0, 0, 0.35, 0.6],
+  /** 最底層（暫代首領房）：沉眠之心旁的守衛。 */
+  guardians: ['guard', 'charger'] as const,
+} as const;
+
 export const TRAP = {
   warn: 0.5,
   spikes: 0.4,

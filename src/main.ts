@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, classInfo, runeInfo, type ClassInfo, type PlayerClass, type RuneId } from './config';
+import { ALL_CLASSES, RUN, classInfo, runeInfo, type ClassInfo, type PlayerClass, type RuneId } from './config';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -10,6 +10,7 @@ import { Input } from './input/input';
 import { GameRenderer } from './render/renderer';
 import type { FrameInput } from './sim/types';
 import { World } from './sim/world';
+import { createFloorWorld, newRun, nextFloor, parseRun, serializeRun, type RunState } from './sim/run';
 import { Hud } from './ui/hud';
 import { drawMap } from './ui/mapView';
 import { SettingsStore } from './ui/settings';
@@ -34,6 +35,8 @@ export class App {
   practice = false;
   /** 目前這一局的職業。 */
   cls: PlayerClass = 'warrior';
+  /** 目前這一局（練習場為 null）。 */
+  run: RunState | null = null;
   private yaw = 0;
   private pitch = 0;
   private intentionalUnlock = false;
@@ -55,6 +58,7 @@ export class App {
     this.cls = this.settings.value.cls;
     this.fillClassTexts();
     this.bindUi();
+    this.refreshContinue();
     window.addEventListener('resize', () => this.resize());
     // 遊戲中滑鼠未鎖定（也不是備用模式）時，點畫面就重新要求鎖定（點擊本身是使用者手勢）
     this.canvas.addEventListener('mousedown', () => {
@@ -142,6 +146,12 @@ export class App {
       const raw = normalizeSeed(($('seed-input') as HTMLInputElement).value);
       this.startRun(raw || randomSeed(), false);
     });
+    click('btn-continue', () => {
+      const saved = App.loadRun();
+      if (!saved) return this.refreshContinue();
+      this.selectClass(saved.cls);
+      this.startFloor(saved, true);
+    });
     click('btn-seed-random', () => (($('seed-input') as HTMLInputElement).value = randomSeed()));
     click('btn-practice', () => this.startRun('PRACTICE', true));
     click('btn-settings', () => this.openSettings('menu'));
@@ -225,25 +235,72 @@ export class App {
 
   // ---------- 流程 ----------
 
+  // ---------- 存檔：每層開頭自動存一次 ----------
+
+  private static readonly SAVE_KEY = 'superdungeon.run.v1';
+
+  static loadRun(): RunState | null {
+    try {
+      return parseRun(window.localStorage.getItem(App.SAVE_KEY));
+    } catch {
+      return null;
+    }
+  }
+
+  private saveRun(run: RunState | null): void {
+    try {
+      if (run) window.localStorage.setItem(App.SAVE_KEY, serializeRun(run));
+      else window.localStorage.removeItem(App.SAVE_KEY);
+    } catch {
+      // 儲存被封鎖：這一局照玩，只是不能續玩
+    }
+    this.refreshContinue();
+  }
+
+  private refreshContinue(): void {
+    const saved = App.loadRun();
+    const btn = $<HTMLButtonElement>('btn-continue');
+    btn.classList.toggle('hidden', !saved);
+    if (saved) btn.textContent = `繼續：第 ${saved.floor} / ${RUN.floors} 層 · ${classInfo(saved.cls).name} · 種子 ${saved.seed}`;
+  }
+
   /** 必須在使用者手勢中呼叫（取得滑鼠鎖定與啟用音訊）。 */
   startRun(seed: string, practice: boolean, fromGesture = true): void {
+    if (practice) {
+      this.run = null;
+      this.startWorld(seed, true, fromGesture, () => new World(generateLevel(seed, { practice: true }), { cls: this.cls }));
+      return;
+    }
+    this.startFloor(newRun(seed, this.cls), fromGesture);
+  }
+
+  /** 開始（或繼續）一局的某一層；進入時自動存檔。 */
+  private startFloor(run: RunState, fromGesture: boolean): void {
+    this.run = run;
+    this.cls = run.cls;
+    this.saveRun(run);
+    this.startWorld(run.seed, false, fromGesture, () => createFloorWorld(run));
+  }
+
+  private startWorld(seed: string, practice: boolean, fromGesture: boolean, make: () => World): void {
     this.sfx.unlock();
     this.intentionalUnlock = false;
-    // 沒有使用者手勢時（練習場自動重置）不要求鎖定，也不改變目前的操作模式
+    // 沒有使用者手勢時（練習場自動重置、走下階梯）不要求鎖定，也不改變目前的操作模式
     const lockP = fromGesture ? this.input.requestLock() : Promise.resolve(this.input.locked || !this.input.fallback);
     this.seed = seed;
     this.practice = practice;
     this.mode = 'loading';
     this.hud.show(false);
     const info = classInfo(this.cls);
-    $('loading-seed').textContent = `${info.name} · ${practice ? '練習場' : `種子 ${seed}`}`;
+    const floor = this.run?.floor ?? 1;
+    $('loading-seed').textContent = `${info.name} · ${practice ? '練習場' : `種子 ${seed} · 第 ${floor} / ${RUN.floors} 層`}`;
     this.show('screen-loading');
     window.setTimeout(() => {
       this.renderer.clearWorld();
       this.world = null;
-      const level = generateLevel(seed, { practice });
-      const w = new World(level, { cls: this.cls });
+      const w = make();
       this.world = w;
+      const level = w.level;
       this.yaw = level.spawn.yaw;
       this.pitch = 0;
       w.player.yaw = this.yaw;
@@ -257,13 +314,23 @@ export class App {
         this.hud.setLockBanner(!ok);
         if (!ok) this.flashLockFail();
         this.enterPlaying();
+        if (!practice && floor > 1) {
+          this.hud.hint(
+            `floor${this.runCount}`,
+            floor === RUN.floors
+              ? `第 ${floor} 層（最底層）：沉眠之心就在這一層，守衛也在旁邊。取得它就通關。`
+              : `第 ${floor} 層：敵人更多、醒著的更多。物資、生命與刻印都帶下來了；已自動存檔。`,
+            7,
+          );
+          return;
+        }
         const clsHint =
           this.cls === 'warrior'
             ? '戰士（1 長劍、2 投擲石、右鍵/F 臂盾）：敵人的攻擊鎖定、就在眼前時準星下出現「反擊」；敵人貼身時出現「盾推」。'
             : '獵手（1 獵刀、2 獵弓、3 藥劑箭）：麻痺箭讓敵人的時間軸暫停，冰寒箭讓它變慢；再按一次 3 切換。暫停選單有完整職業說明。';
         const hint = practice
           ? '練習場：左邊有睡著與巡邏的盾衛，右邊房間有高台弩手與突進者，補給台（E）可補滿物資。'
-          : '靜止時世界以慢動作流動；移動、攻擊、使用道具時，世界以正常速度前進。';
+          : `地城共 ${RUN.floors} 層：每層找到往下的階梯，最底層取得沉眠之心。靜止時世界以慢動作流動。`;
         this.hud.hint(`start${this.runCount}`, hint, 6);
         // 職業提示排在後面，一次只顯示一則
         this.hud.hint(`cls${this.runCount}`, clsHint, 9);
@@ -291,7 +358,7 @@ export class App {
     if (this.mode !== 'playing' && this.mode !== 'map') return;
     this.mode = 'paused';
     this.input.clear();
-    $('pause-info').textContent = `${classInfo(this.cls).name} · ${this.practice ? '練習場' : `種子 ${this.seed}`} ${reason}`;
+    $('pause-info').textContent = `${classInfo(this.cls).name} · ${this.practice ? '練習場' : `種子 ${this.seed} · 第 ${this.run?.floor ?? 1} / ${RUN.floors} 層`} ${reason}`;
     $('resume-msg').classList.add('hidden');
     $('btn-restart').textContent = this.practice ? '重置練習' : '重新開始（同種子）';
     this.show('screen-pause');
@@ -387,7 +454,9 @@ export class App {
     this.mode = 'results';
     this.hud.show(false);
     const win = w.outcome === 'win';
-    $('res-title').textContent = win ? '成功撤離！' : '你倒下了';
+    // 一局結束：清除存檔
+    if (!this.practice) this.saveRun(null);
+    $('res-title').textContent = win ? '取得沉眠之心！' : '你倒下了';
     const tpl = `${w.level.templateName}${w.level.mirrored ? '（鏡像）' : ''}`;
     const info = classInfo(w.player.cls);
     $('res-sub').textContent = `${info.name} · ${this.practice ? '練習場' : `種子 ${this.seed} · 地城「${tpl}」`}`;
@@ -397,8 +466,8 @@ export class App {
       .map(([k, v]) => `${k} ${v}`)
       .join('、');
     const rows: Array<[string, string]> = [
-      ['結果', win ? '帶著沉眠之心離開' : `死亡${w.deathCause ? `（${w.deathCause}）` : ''}`],
-      ['沉眠之心', w.heartTaken ? '已取得' : '未取得'],
+      ['結果', win ? '在最底層取得沉眠之心' : `死亡${w.deathCause ? `（${w.deathCause}）` : ''}`],
+      ['到達樓層', this.practice ? '練習場' : `第 ${w.level.floor} / ${RUN.floors} 層`],
       ['真實時間', mmss(s.realTime)],
       ['世界時間', mmss(s.worldTime)],
       ['擊倒敵人', `${s.kills}（背刺 ${s.backstabs} 次）`],
@@ -471,9 +540,10 @@ export class App {
         if (w.pendingAltar !== null) this.openRune();
         if (w.outcome !== 'none') {
           this.outcomeT += realDt;
-          const delay = w.outcome === 'win' ? 0.8 : 1.6;
+          const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
           if (this.outcomeT >= delay) {
             if (this.practice && w.outcome === 'dead') this.startRun(this.seed, true, false);
+            else if (w.outcome === 'descend' && this.run) this.startFloor(nextFloor(this.run, w), false);
             else this.showResults();
           }
         }

@@ -220,6 +220,7 @@ export type GameEventType =
   | 'needHeart'
   | 'wake'
   | 'win'
+  | 'descend'
   | 'death'
   | 'alert'
   | 'suspicious'

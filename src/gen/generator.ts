@@ -1,4 +1,4 @@
-import { ALL_RUNES, WORLD, type RuneId } from '../config';
+import { ALL_RUNES, RUN, WORLD, type RuneId } from '../config';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Grid, T, type DoorState, type TileId } from '../sim/grid';
@@ -79,6 +79,10 @@ export interface RoomInst {
 
 export interface LevelData {
   seed: string;
+  /** 第幾層（1 起算）。 */
+  floor: number;
+  /** 這一層的目標：往下的階梯，或最底層的沉眠之心（位置都在 heart）。 */
+  goal: 'descend' | 'heart';
   templateId: Template['id'];
   templateName: string;
   mirrored: boolean;
@@ -142,7 +146,7 @@ function roomOrigin(_t: Template, r: TemplateRoom, layout: RoomLayout): { x0: nu
   return { x0: 1 + r.col * S + (S - W) / 2, z0: 1 + r.row * S + (S - H) / 2 };
 }
 
-function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout): void {
+function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, tierBonus = 0): void {
   const { x0, z0 } = roomOrigin(t, tr, layout);
   const W = layout.rows[0]!.length;
   const H = layout.rows.length;
@@ -239,8 +243,10 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout):
     d.stairs = { i0, j0, i1, j1, rise, front };
     stairsCells = [];
   }
+  // 越深的樓層，房間裡出現的敵人越多（入口房不加）
+  const tier = tr.role === 'entrance' ? tr.tier : tr.tier + tierBonus;
   for (const e of layout.enemies) {
-    if (e.tier > tr.tier) continue;
+    if (e.tier > tier) continue;
     const p = markers.get(e.m);
     if (!p) throw new Error(`layout ${layout.id} missing marker ${e.m}`);
     const perched = !!e.perched;
@@ -454,6 +460,47 @@ function fillWalls(d: Draft): void {
   d.tiles = out;
 }
 
+/** 最底層（暫代首領房）：沉眠之心旁放守衛，背對心、面向房間。 */
+function placeGuardians(d: Draft, rng: Rng): void {
+  const h = d.heart;
+  if (!h) return;
+  const room = d.rooms.find((r) => r.key === h.roomKey)!;
+  const traps = new Set(d.traps.map((t) => `${t.i},${t.j}`));
+  const cells: V2[] = [];
+  for (let j = room.z0 + 1; j < room.z0 + room.h - 1; j++) {
+    for (let i = room.x0 + 1; i < room.x0 + room.w - 1; i++) {
+      if (d.tiles[j * d.w + i] !== T.Floor || traps.has(`${i},${j}`)) continue;
+      const x = i + 0.5;
+      const z = j + 0.5;
+      const dh = Math.hypot(x - h.x, z - h.z);
+      if (dh < 2.5 || dh > 5) continue;
+      // 周圍一格都要是地板（不卡牆、不卡柱子）
+      let ok = true;
+      for (let dj = -1; dj <= 1 && ok; dj++)
+        for (let di = -1; di <= 1 && ok; di++) if (d.tiles[(j + dj) * d.w + i + di] !== T.Floor) ok = false;
+      if (ok && d.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 0.9)) ok = false;
+      if (ok && d.enemies.some((e) => Math.hypot(e.x - x, e.z - z) < 1.5)) ok = false;
+      if (ok) cells.push({ x, z });
+    }
+  }
+  for (const kind of RUN.guardians) {
+    if (!cells.length) return;
+    const c = cells.splice(rng.int(0, cells.length - 1), 1)[0]!;
+    for (let k = cells.length - 1; k >= 0; k--) if (Math.hypot(cells[k]!.x - c.x, cells[k]!.z - c.z) < 2) cells.splice(k, 1);
+    d.enemies.push({
+      kind,
+      x: c.x,
+      z: c.z,
+      y: 0,
+      yaw: Math.atan2(-(c.x - h.x), -(c.z - h.z)),
+      state: 'idle',
+      patrol: [],
+      perched: false,
+      roomKey: h.roomKey,
+    });
+  }
+}
+
 function placePickups(d: Draft, rng: Rng): PickupSpawn[] {
   const spots = rng.shuffle(d.pickupSpots.slice());
   const plan: Array<{ kind: PickupKind; amount: number }> = [
@@ -476,13 +523,18 @@ function placePickups(d: Draft, rng: Rng): PickupSpawn[] {
 
 export interface GenerateOptions {
   practice?: boolean;
+  /** 第幾層（1 起算，預設 1）。 */
+  floor?: number;
   /** 強制模板（測試用） */
   template?: 'A' | 'B';
 }
 
 /** 單次嘗試（未驗證）。 */
 export function buildLevel(seed: string, attempt: number, opts: GenerateOptions = {}): LevelData {
-  const rng = new Rng(`${seed}#${attempt}`);
+  const floor = opts.practice ? 1 : Math.max(1, Math.min(RUN.floors, opts.floor ?? 1));
+  // 第 1 層沿用原本的種子字串，其他樓層各自獨立（同一個種子的每一層都固定）
+  const rng = new Rng(floor === 1 ? `${seed}#${attempt}` : `${seed}#F${floor}#${attempt}`);
+  const fi = floor - 1;
   let t: Template;
   if (opts.practice) t = TEMPLATE_PRACTICE;
   else if (opts.template) t = RUN_TEMPLATES.find((x) => x.id === opts.template)!;
@@ -510,7 +562,13 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     spawn: null,
   };
   const layouts = assignLayouts(t, rng);
-  for (const r of t.rooms) stampRoom(d, t, r, layouts.get(r.key)!);
+  for (const r of t.rooms) stampRoom(d, t, r, layouts.get(r.key)!, opts.practice ? 0 : RUN.tierBonus[fi]!);
+  if (!opts.practice) {
+    // 越深越多醒著的敵人
+    const wake = RUN.wakeChance[fi]!;
+    for (const e of d.enemies) if (e.state === 'sleep' && rng.chance(wake)) e.state = 'idle';
+    if (floor === RUN.floors) placeGuardians(d, rng);
+  }
   for (const e of t.edges) {
     const a = t.rooms.find((r) => r.key === e.a)!;
     const b = t.rooms.find((r) => r.key === e.b)!;
@@ -557,6 +615,8 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   if (!d.spawn) throw new Error('no spawn');
   return {
     seed,
+    floor,
+    goal: floor < RUN.floors && !opts.practice ? 'descend' : 'heart',
     templateId: t.id,
     templateName: t.name,
     mirrored,
@@ -581,6 +641,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
 export function levelSignature(l: LevelData): string {
   const r = (n: number) => Math.round(n * 1000) / 1000;
   return JSON.stringify({
+    f: l.floor,
     t: l.templateId,
     m: l.mirrored,
     tiles: Array.from(l.grid.tiles).join(''),

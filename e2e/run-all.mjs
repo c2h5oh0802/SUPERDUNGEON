@@ -1,7 +1,7 @@
 // 依序執行瀏覽器端腳本（需要先啟動 npm run dev 或 npm run preview，並設定 BASE_URL）。
 import { spawnSync } from 'node:child_process';
 
-const scripts = ['browser.mjs', 'airburst.mjs', 'retry.mjs', 'classes.mjs'];
+const scripts = ['browser.mjs', 'airburst.mjs', 'retry.mjs', 'classes.mjs', 'floors.mjs'];
 let failed = 0;
 for (const s of scripts) {
   console.log(`\n=== ${s} ===`);

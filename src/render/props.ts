@@ -89,6 +89,7 @@ export class PropsVisual {
     for (const it of world.interactables) {
       if (it.kind === 'chest') this.buildChest(it.id, it.x, it.z, it.yaw);
       else if (it.kind === 'altar') this.buildAltar(it.id, it.x, it.z, it.yaw);
+      else if (it.kind === 'heart' && world.level.goal === 'descend') this.buildDescent(it.x, it.z);
       else if (it.kind === 'heart') this.buildHeart(it.x, it.z);
       else if (it.kind === 'resupply') this.buildResupply(it.x, it.z);
     }
@@ -216,6 +217,39 @@ export class PropsVisual {
     this.heart = { group: g, gem, glow };
   }
 
+  /** 往下一層的階梯口：石拱門＋往下指的青色光錐（互動與碰撞沿用沉眠之心的位置）。 */
+  private buildDescent(x: number, z: number): void {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    const m = this.mat(this.rigAt(x, 1, z));
+    this.add(
+      merge([
+        { geo: T(new THREE.BoxGeometry(1.3, 0.12, 1.3), 0, 0.06, 0), color: 0x4a4540 },
+        { geo: T(new THREE.BoxGeometry(0.22, 1.9, 0.3), -0.62, 0.95, 0), color: 0x7f7466 },
+        { geo: T(new THREE.BoxGeometry(0.22, 1.9, 0.3), 0.62, 0.95, 0), color: 0x7f7466 },
+        { geo: T(new THREE.BoxGeometry(1.5, 0.24, 0.36), 0, 1.98, 0), color: 0x7f7466 },
+        { geo: T(new THREE.BoxGeometry(1.0, 0.03, 1.0), 0, 0.13, 0), color: 0x0c0a14 },
+      ]),
+      m,
+      g,
+      true,
+    );
+    const gemMat = new THREE.MeshBasicMaterial({ color: 0x5fe0c8 });
+    this.mats.push(gemMat);
+    const gemG = new THREE.ConeGeometry(0.2, 0.4, 4);
+    gemG.rotateX(Math.PI);
+    const gem = this.add(gemG, gemMat, g);
+    gem.position.y = 1.2;
+    const gm = new THREE.SpriteMaterial({ map: sharedFlameTexture(), color: 0x3fe0c0, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 });
+    this.mats.push(gm);
+    const glow = new THREE.Sprite(gm);
+    glow.scale.set(1.4, 1.4, 1);
+    glow.position.y = 0.6;
+    g.add(glow);
+    this.group.add(g);
+    this.heart = { group: g, gem, glow };
+  }
+
   private buildResupply(x: number, z: number): void {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
@@ -334,7 +368,7 @@ export class PropsVisual {
       this.heart.gem.visible = !taken;
       this.heart.glow.visible = !taken;
       this.heart.gem.rotation.y = realTime * 0.8;
-      this.heart.gem.position.y = 1.62 + Math.sin(realTime * 1.6) * 0.05;
+      this.heart.gem.position.y = (w.level.goal === 'descend' ? 1.2 : 1.62) + Math.sin(realTime * 1.6) * 0.05;
     }
     // 掉落物：輕微發光脈動，表示可以拾取
     const pulse = 0.18 + 0.14 * Math.sin(realTime * 3);

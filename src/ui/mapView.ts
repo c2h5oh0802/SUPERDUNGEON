@@ -103,6 +103,7 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
     if (!w.isExplored(Math.floor(it.x), Math.floor(it.z))) continue;
     if (it.kind === 'chest') mark(it.x, it.z, it.used ? '#6b6275' : '#f2c14e', 'sq', 0.4);
     else if (it.kind === 'altar') mark(it.x, it.z, it.used ? '#4b6a66' : '#3fe0c0', 'ring', 0.55);
+    else if (it.kind === 'heart' && w.level.goal === 'descend') mark(it.x, it.z, '#3fe0c0', 'tri', 0.6);
     else if (it.kind === 'heart' && !w.heartTaken) mark(it.x, it.z, '#5aa8ff', 'dia', 0.6);
     else if (it.kind === 'stairs') mark(it.x, it.z, '#8ccaff', 'tri', 0.6);
     else if (it.kind === 'resupply') mark(it.x, it.z, '#3fe0c0', 'sq', 0.4);

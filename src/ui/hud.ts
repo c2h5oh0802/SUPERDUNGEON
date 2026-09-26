@@ -1,4 +1,4 @@
-import { PLAYER, TIP_NAMES, TOOL_NAMES, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { PLAYER, RUN, TIP_NAMES, TOOL_NAMES, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
 import type { GameEvent, Player } from '../sim/types';
@@ -140,6 +140,9 @@ export class Hud {
         case 'heart':
           this.toast('取得沉眠之心', 'big', 2.5);
           break;
+        case 'descend':
+          this.toast(`往下走……第 ${e.amount} 層`, 'big', 2);
+          break;
         case 'wake':
           window.setTimeout(() => this.toast('地城甦醒了！帶著心回到入口石階', 'big', 3.5), 600);
           break;
@@ -228,12 +231,13 @@ export class Hud {
       }
     });
     // 目標
-    this.set('obj', p.hasHeart ? 1 : w.level.practice ? 2 : 0, () => {
+    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}`, () => {
+      const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
-        : p.hasHeart
-          ? '目標：帶著沉眠之心回到入口石階'
-          : '目標：深入地城，取得沉眠之心';
+        : w.level.goal === 'descend'
+          ? `${f}：找到往下的階梯`
+          : `${f}（最底層）：取得沉眠之心`;
       this.objective.classList.toggle('escape', p.hasHeart);
       this.heartStatus.classList.toggle('hidden', !p.hasHeart);
     });

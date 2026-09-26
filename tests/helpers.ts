@@ -49,6 +49,8 @@ export function testLevel(rows: string[], enemies: Array<Partial<EnemySpawn> & {
   }
   return {
     seed: 'TEST',
+    floor: 1,
+    goal: 'heart',
     templateId: 'A',
     templateName: 'test',
     mirrored: false,

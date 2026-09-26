@@ -63,6 +63,7 @@
         </div>
         <div id="class-detail" class="class-detail" aria-live="polite"></div>
         <div class="menu-actions">
+          <button id="btn-continue" class="primary hidden">繼續</button>
           <button id="btn-start" class="primary">開始冒險</button>
           <div class="seed-row">
             <label for="seed-input">種子</label>
@@ -89,8 +90,8 @@
         <div class="help-grid">
           <div>
             <h3>目標</h3>
-            <p>深入地城，在最深處取走<b>沉眠之心</b>，再帶著它回到<b>入口石階</b>。不必殺光敵人。</p>
-            <p>取心的瞬間，整座地城會<b>甦醒</b>：沉睡的敵人醒來、警覺提高。進去時留下的敵人，都會在出來時變成你的問題。</p>
+            <p>地城共 <b>4 層</b>。每一層找到<b>往下的階梯</b>，在最底層取得<b>沉眠之心</b>就通關。不必殺光敵人。</p>
+            <p>越往下，敵人越多、醒著的越多；最底層的沉眠之心旁有守衛。生命、物資與刻印會帶到下一層，每層開頭自動存檔，可以從主選單「繼續」。</p>
             <h3>時間</h3>
             <ul>
               <li>靜止、觀察、瞄準時，世界以 <b>0.1 倍</b>慢動作流動。</li>
@@ -174,7 +175,7 @@
       <div class="panel wide map-panel">
         <h2 id="map-title">地圖</h2>
         <canvas id="map-canvas" width="900" height="640"></canvas>
-        <p class="muted small">只顯示你看過的區域。<b class="c-player">▲</b> 你　<b class="c-exit">▲</b> 入口石階　<b class="c-heart">◆</b> 沉眠之心　<b class="c-chest">■</b> 寶箱　<b class="c-altar">◇</b> 祭壇　按 <kbd>Tab</kbd> 關閉（世界暫停中）</p>
+        <p class="muted small">只顯示你看過的區域。<b class="c-player">▲</b> 你　<b class="c-exit">▲</b> 來時的階梯　<b class="c-down">▲</b> 往下的階梯　<b class="c-heart">◆</b> 沉眠之心　<b class="c-chest">■</b> 寶箱　<b class="c-altar">◇</b> 祭壇　按 <kbd>Tab</kbd> 關閉（世界暫停中）</p>
       </div>
     </section>
 

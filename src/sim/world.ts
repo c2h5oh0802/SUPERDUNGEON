@@ -23,11 +23,28 @@ import type {
   Trap,
 } from './types';
 
-export type Outcome = 'none' | 'win' | 'dead';
+export type Outcome = 'none' | 'win' | 'dead' | 'descend';
 
 export interface WorldOptions {
   /** 職業（預設戰士）。 */
   cls?: PlayerClass;
+  /** 從上一層帶下來的物資、生命與刻印。 */
+  carry?: PlayerCarry;
+  /** 從上一層累積下來的統計（時間、擊倒數等）。 */
+  stats?: RunStats;
+}
+
+/** 跨層保留的玩家狀態。 */
+export interface PlayerCarry {
+  hp: number;
+  maxHp: number;
+  arrows: number;
+  stones: number;
+  tipped: { paralysis: number; chill: number };
+  tipKind: 'paralysis' | 'chill';
+  bottles: number;
+  potions: number;
+  runes: RuneId[];
 }
 
 /** 職業提示：每幀結束時計算，介面與開發工具讀取（不影響判定）。 */
@@ -91,6 +108,9 @@ export class World {
   lastAction: { kind: string; spent: number; counter: boolean; countered: boolean; tip: string | null } | null = null;
   nextId = 1;
   private revealT = 0;
+  /** 之前樓層累積的世界時間與真實時間。 */
+  private baseWorldTime = 0;
+  private baseRealTime = 0;
 
   constructor(level: LevelData, opts: WorldOptions = {}) {
     this.level = level;
@@ -125,6 +145,24 @@ export class World {
       dead: false,
       lastMoveDist: 0,
     };
+    if (opts.carry) {
+      const c = opts.carry;
+      const p = this.player;
+      p.hp = c.hp;
+      p.maxHp = c.maxHp;
+      p.arrows = c.arrows;
+      p.stones = c.stones;
+      p.tipped = { ...c.tipped };
+      p.tipKind = c.tipKind;
+      p.bottles = c.bottles;
+      p.potions = c.potions;
+      p.runes = c.runes.slice();
+    }
+    if (opts.stats) {
+      Object.assign(this.stats, opts.stats, { damageTaken: { ...opts.stats.damageTaken } });
+      this.baseWorldTime = opts.stats.worldTime;
+      this.baseRealTime = opts.stats.realTime;
+    }
     for (const e of level.enemies) this.enemies.push(createEnemy(this, e));
     for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null);
     level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set() }));
@@ -213,7 +251,7 @@ export class World {
       return 0;
     }
     this.realTime += realDt;
-    this.stats.realTime = this.realTime;
+    this.stats.realTime = this.baseRealTime + this.realTime;
     const p = this.player;
     p.yaw = input.yaw;
     p.pitch = input.pitch;
@@ -251,7 +289,7 @@ export class World {
     for (let s = 0; s < n; s++) {
       if (this.outcome !== 'none') break;
       this.time += dt;
-      this.stats.worldTime = this.time;
+      this.stats.worldTime = this.baseWorldTime + this.time;
       updatePlayerAction(this, dt);
       updateProjectiles(this, dt);
       updateEnemies(this, dt);
@@ -310,6 +348,26 @@ export class World {
     this.player.hasHeart = true;
     this.emit({ type: 'heart' });
     awakenDungeon(this);
+  }
+
+  /** 帶到下一層的玩家狀態。 */
+  carry(): PlayerCarry {
+    const p = this.player;
+    return {
+      hp: p.hp,
+      maxHp: p.maxHp,
+      arrows: p.arrows,
+      stones: p.stones,
+      tipped: { ...p.tipped },
+      tipKind: p.tipKind,
+      bottles: p.bottles,
+      potions: p.potions,
+      runes: p.runes.slice(),
+    };
+  }
+
+  statsCopy(): RunStats {
+    return { ...this.stats, damageTaken: { ...this.stats.damageTaken } };
   }
 
   chooseRune(rune: RuneId): void {

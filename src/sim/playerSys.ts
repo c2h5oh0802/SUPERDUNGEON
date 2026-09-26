@@ -375,7 +375,7 @@ function interact(w: World, t: InteractTarget): void {
   if (!it) return;
   if (!t.enabled) {
     if (it.kind === 'door') w.emit({ type: 'barred', text: '門從另一側閂住了' });
-    if (it.kind === 'stairs') w.emit({ type: 'needHeart', text: '還沒拿到沉眠之心' });
+    if (it.kind === 'stairs') w.emit({ type: 'needHeart', text: '來時的階梯：回不去了，只能往下' });
     return;
   }
   switch (it.kind) {
@@ -418,12 +418,18 @@ function performUse(w: World, it: Interactable): void {
     case 'heart':
       if (it.used) return;
       it.used = true;
-      w.takeHeart();
+      if (w.level.goal === 'descend') {
+        // 往下一層：這一層結束，由上層（App）生成下一層並帶著物資過去
+        w.outcome = 'descend';
+        w.emit({ type: 'descend', amount: w.level.floor + 1 });
+      } else {
+        // 最底層：取得沉眠之心就通關
+        w.takeHeart();
+        w.outcome = 'win';
+        w.emit({ type: 'win' });
+      }
       return;
     case 'stairs':
-      if (!p.hasHeart) return;
-      w.outcome = 'win';
-      w.emit({ type: 'win' });
       return;
     case 'resupply':
       if (p.cls === 'huntress') {
@@ -494,14 +500,11 @@ export function findInteractTarget(w: World): InteractTarget | null {
         label = 'E 觸碰刻印祭壇';
         break;
       case 'heart':
-        label = 'E 取走沉眠之心';
+        label = w.level.goal === 'descend' ? `E 走下階梯（第 ${w.level.floor + 1} 層）` : 'E 取走沉眠之心';
         break;
       case 'stairs':
-        if (p.hasHeart) label = 'E 帶著沉眠之心離開';
-        else {
-          label = '出口：需要沉眠之心';
-          enabled = false;
-        }
+        label = '來時的階梯：回不去了';
+        enabled = false;
         break;
       case 'resupply':
         label = 'E 補充全部物資';

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER } from '../src/config';
+import { PLAYER, RUN } from '../src/config';
+import { createFloorWorld, newRun, nextFloor } from '../src/sim/run';
 import { angleDiff, yawFromDir } from '../src/core/math';
 import { generateLevel } from '../src/gen/validate';
 import { Nav } from '../src/sim/nav';
@@ -48,36 +49,44 @@ function interactWith(w: World, x: number, z: number): void {
   for (let k = 0; k < 200 && w.player.action; k++) w.frame(dt, emptyInput(yaw, 0));
 }
 
-describe('完整流程（模擬層，移除敵人以單獨驗證路線、門、取心、撤離與勝利條件）', () => {
+describe('完整流程（模擬層，移除敵人以單獨驗證路線、門、樓層與勝利條件）', () => {
   for (const [seed, cls] of [
     ['FLOW1', 'warrior'],
     ['FLOW2', 'huntress'],
     ['FLOW3', 'warrior'],
     ['FLOW4', 'huntress'],
   ] as const) {
-    it(`種子 ${seed}（${cls}）：入口 → 沉眠之心 → 入口石階 → 通關`, () => {
-      const l = generateLevel(seed);
-      const w = new World(l, { cls });
-      expect(w.player.cls).toBe(cls);
-      w.enemies.length = 0;
-      const h = l.heart!;
-      const s = l.stairs!;
-      // 沒有心時出口不能用
-      expect(walkTo(w, s.front.x, s.front.z, 0.6)).toBe(true);
-      interactWith(w, s.front.x + s.rise.x * 1.5, s.front.z + s.rise.z * 1.5);
-      expect(w.outcome).toBe('none');
-      expect(w.drainEvents().some((e) => e.type === 'needHeart')).toBe(true);
-      // 取心
-      expect(walkTo(w, h.x, h.z + 1.3, 0.4)).toBe(true);
-      interactWith(w, h.x, h.z);
-      expect(w.heartTaken).toBe(true);
-      expect(w.player.hasHeart).toBe(true);
-      expect(w.awakened).toBe(true);
-      // 撤離
-      expect(walkTo(w, s.front.x, s.front.z, 0.6)).toBe(true);
-      interactWith(w, s.front.x + s.rise.x * 1.5, s.front.z + s.rise.z * 1.5);
-      expect(w.outcome).toBe('win');
-      expect(w.stats.worldTime).toBeGreaterThan(5);
+    it(`種子 ${seed}（${cls}）：第 1 層 → 往下的階梯 → … → 第 ${RUN.floors} 層取得沉眠之心 → 通關`, () => {
+      let run = newRun(seed, cls);
+      let prevTime = 0;
+      for (let f = 1; f <= RUN.floors; f++) {
+        const w = createFloorWorld(run);
+        expect(w.level.floor).toBe(f);
+        expect(w.player.cls).toBe(cls);
+        expect(w.level.goal).toBe(f < RUN.floors ? 'descend' : 'heart');
+        if (f === 2) expect(w.player.hp).toBe(PLAYER.maxHp - 2);
+        expect(w.stats.worldTime).toBeCloseTo(prevTime, 6);
+        w.enemies.length = 0;
+        // 來時的階梯不能用
+        const s = w.level.stairs!;
+        expect(walkTo(w, s.front.x, s.front.z, 0.6)).toBe(true);
+        interactWith(w, s.front.x + s.rise.x * 1.5, s.front.z + s.rise.z * 1.5);
+        expect(w.outcome).toBe('none');
+        if (f === 1) w.damagePlayer(2, '測試', w.player.x, w.player.z);
+        const h = w.level.heart!;
+        expect(walkTo(w, h.x, h.z + 1.3, 0.4)).toBe(true);
+        interactWith(w, h.x, h.z);
+        if (f < RUN.floors) {
+          expect(w.outcome).toBe('descend');
+          expect(w.heartTaken).toBe(false);
+          prevTime = w.stats.worldTime;
+          run = nextFloor(run, w);
+          expect(run.floor).toBe(f + 1);
+        } else {
+          expect(w.heartTaken).toBe(true);
+          expect(w.outcome).toBe('win');
+        }
+      }
     });
   }
 
