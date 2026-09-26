@@ -1,28 +1,42 @@
-import { ACTIONS, ALL_TIPS, CLASSES, MELEE, NOISE, PLAYER, PROJECTILES, RUNES, TIP_NAMES } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, RUNES, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { categoryOf, drinkPotion, equipFromBag, readScroll, takeForAction } from './items';
+import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
 import { applyCounter, counterThreat, deflectBolts, shieldPush } from './classSys';
-import { damageEnemy } from './enemySys';
+import { damageEnemy, staggerEnemy } from './enemySys';
 import { STOCK_NAMES, stockFor } from './inventory';
 import { setDoor } from './propSys';
 import type { World } from './world';
 import type { ActionKind, FrameInput, InteractTarget, Interactable, Projectile } from './types';
 import type { PickupKind } from '../gen/generator';
 
-const isMelee = (kind: ActionKind): kind is 'sword' | 'knife' => kind === 'sword' || kind === 'knife';
+type Timing = { windup: number; active: number; recovery: number };
 
-export function actionTotal(kind: ActionKind, swift: boolean): number {
-  const d = ACTIONS[kind];
-  const mul = isMelee(kind) && swift ? RUNES.swiftBlade.timeMul : 1;
+/** 行動的時間：近戰依目前的武器，其他依 ACTIONS。 */
+function timingOf(w: World, kind: ActionKind): Timing {
+  return kind === 'melee' ? WEAPONS[w.player.weapon.id] : ACTIONS[kind];
+}
+
+export function actionTotal(w: World, kind: ActionKind): number {
+  const d = timingOf(w, kind);
+  const mul = kind === 'melee' && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
   return (d.windup + d.active + d.recovery) * mul;
 }
 
-type Timing = { windup: number; active: number; recovery: number };
+/** 武器傷害（含強化）。 */
+export function weaponDamage(id: WeaponId, level: number): number {
+  return WEAPONS[id].damage + WEAPONS[id].perLevel * level;
+}
 
-function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = ACTIONS[kind]): void {
+function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = timingOf(w, kind)): void {
   const p = w.player;
   const d = timing;
-  const mul = isMelee(kind) && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
+  let mul = kind === 'melee' && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
+  // 迅捷藥水：行動只花一半世界時間
+  if (p.hasteT > 0) mul *= ITEM_FX.haste.timeMul;
+  // 攻擊會現形
+  if (kind === 'melee' || kind === 'bow' || kind === 'stone' || kind === 'shield') p.invisT = 0;
   p.action = {
     kind,
     windup: d.windup * mul,
@@ -36,7 +50,38 @@ function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing =
     counter: false,
     countered: false,
     tip: null,
+    weapon: p.weapon.id,
+    item: null,
   };
+}
+
+/** 背包排入的動作：喝、讀、丟、裝備。 */
+function startPendingUse(w: World): void {
+  const p = w.player;
+  const u = p.pendingUse!;
+  p.pendingUse = null;
+  const it = p.items[u.index];
+  if (!it) return;
+  const c = categoryOf(it.id);
+  const level = it.level;
+  const id = takeForAction(w, u.index);
+  if (!id) return;
+  if (u.mode === 'throw') {
+    startAction(w, 'bottle');
+    p.action!.item = id;
+    return;
+  }
+  if (c === 'potion') {
+    startAction(w, 'potion');
+    p.action!.item = id;
+  } else if (c === 'scroll') {
+    startAction(w, 'read');
+    p.action!.item = id;
+  } else {
+    startAction(w, 'equip');
+    p.action!.item = id;
+    p.action!.targetId = level;
+  }
 }
 
 /** 數字鍵選工具；已經拿著藥劑箭時再按一次＝切換麻痺／冰寒。 */
@@ -58,12 +103,22 @@ function selectSlot(w: World, slot: number): void {
   w.emit({ type: 'toolSwitch', kind: tool });
 }
 
+/** 拉弓：狙擊標記天賦在命中後短時間內拉得比較快。 */
+function startBow(w: World): void {
+  const p = w.player;
+  if (hasTalent(p, 'mark') && p.markT > 0) {
+    p.markT = 0;
+    startAction(w, 'bow', -1, TALENT_FX.markBow);
+  } else startAction(w, 'bow');
+}
+
 /** 依輸入開始新行動（一次只能一個；切換工具不取消行動）。 */
 export function startActions(w: World, input: FrameInput): void {
   const p = w.player;
   if (p.dead) return;
   if (input.selectSlot) selectSlot(w, input.selectSlot);
   if (p.action) return;
+  if (p.pendingUse) return startPendingUse(w);
   if (input.potion) {
     if (p.potions > 0 && p.hp < p.maxHp) {
       p.potions--;
@@ -93,23 +148,21 @@ export function startActions(w: World, input: FrameInput): void {
     if (input.firePressed) w.emit({ type: 'dryFire', text });
   };
   switch (p.tool) {
-    case 'sword':
-      // 戰士：威脅已鎖定、就在眼前 → 反擊斬
+    case 'melee':
+      // 戰士：威脅已鎖定、就在眼前 → 反擊斬（任何近戰武器都可以；出手固定很快、收招 ×0.7）
       if (counterThreat(w)) {
-        startAction(w, 'sword', -1, CLASSES.warrior.counterSwing);
+        const wp = WEAPONS[p.weapon.id];
+        startAction(w, 'melee', -1, { windup: CLASSES.warrior.counterSwing.windup, active: wp.active, recovery: wp.recovery * 0.7 });
         p.action!.counter = true;
-      } else startAction(w, 'sword');
-      return;
-    case 'knife':
-      startAction(w, 'knife');
+      } else startAction(w, 'melee');
       return;
     case 'bow':
       if (p.arrows <= 0) return dry('沒有箭');
-      startAction(w, 'bow');
+      startBow(w);
       return;
     case 'tipped':
       if (p.tipped[p.tipKind] <= 0) return dry(`沒有${TIP_NAMES[p.tipKind]}`);
-      startAction(w, 'bow');
+      startBow(w);
       p.action!.tip = p.tipKind;
       return;
     case 'stone':
@@ -133,8 +186,9 @@ export function movePlayer(w: World, input: FrameInput, realDt: number): number 
     ix /= len;
     iz /= len;
   }
-  const tx = (rx * ix + fwd.x * iz) * PLAYER.moveSpeed;
-  const tz = (rz * ix + fwd.z * iz) * PLAYER.moveSpeed;
+  const speed = PLAYER.moveSpeed * (p.sneaking ? w.sneakSpeedMul() : 1);
+  const tx = (rx * ix + fwd.x * iz) * speed;
+  const tz = (rz * ix + fwd.z * iz) * speed;
   const maxDv = PLAYER.accel * realDt;
   let dvx = tx - p.vx;
   let dvz = tz - p.vz;
@@ -147,9 +201,9 @@ export function movePlayer(w: World, input: FrameInput, realDt: number): number 
   p.vz += dvz;
   // 速度上限（斜向不加速）
   const sp = Math.hypot(p.vx, p.vz);
-  if (sp > PLAYER.moveSpeed) {
-    p.vx *= PLAYER.moveSpeed / sp;
-    p.vz *= PLAYER.moveSpeed / sp;
+  if (sp > speed && len > 0) {
+    p.vx *= speed / sp;
+    p.vz *= speed / sp;
   }
   if (sp < 1e-4 && len === 0) {
     p.vx = 0;
@@ -207,16 +261,15 @@ export function updatePlayerAction(w: World, dt: number): void {
   // 以同一個容許誤差判定「行動結束」與「結束時的效果」，避免浮點誤差讓效果被跳過
   const done = a.t >= total - 1e-9;
   switch (a.kind) {
-    case 'sword':
-    case 'knife':
+    case 'melee':
       if (prevT < a.windup && a.t >= a.windup) {
         a.lockedYaw = p.yaw;
-        w.emit({ type: 'swing', kind: a.kind });
+        w.emit({ type: 'swing', kind: a.weapon });
         meleeWallCheck(w);
       }
       if (a.t >= a.windup && prevT < a.windup + a.active) {
         meleeHits(w);
-        if (a.kind === 'sword' && deflectBolts(w) > 0) a.countered = true;
+        if (deflectBolts(w) > 0) a.countered = true;
         // 反擊或擊開成功：這一劍不用收招
         if (a.countered) a.recovery = 0;
       }
@@ -238,8 +291,23 @@ export function updatePlayerAction(w: World, dt: number): void {
     case 'potion':
       if (!a.fired && done) {
         a.fired = true;
-        p.hp = Math.min(p.maxHp, p.hp + PLAYER.potionHeal);
+        if (a.item) drinkPotion(w, a.item.split(':')[1] as PotionId);
+        else p.hp = Math.min(p.maxHp, p.hp + PLAYER.potionHeal);
       }
+      break;
+    case 'read':
+      if (!a.fired && done && a.item) {
+        a.fired = true;
+        readScroll(w, a.item.split(':')[1] as ScrollId | 'upgrade');
+      }
+      break;
+    case 'equip':
+      if (!a.fired && done && a.item) {
+        a.fired = true;
+        equipFromBag(w, a.item, a.targetId);
+      }
+      break;
+    case 'stunned':
       break;
     case 'use':
       if (!a.fired && done) {
@@ -253,6 +321,8 @@ export function updatePlayerAction(w: World, dt: number): void {
   }
   if (done || a.t >= a.windup + a.active + a.recovery - 1e-9) {
     w.lastAction = { kind: a.kind, spent: a.t, counter: a.counter, countered: a.countered, tip: a.tip };
+    // 連擊天賦：反擊或擊開成功後，下一次近戰傷害 ×2
+    if (a.kind === 'melee' && a.countered && hasTalent(p, 'combo')) p.comboT = TALENT_FX.comboWindow;
     p.action = null;
     if (p.desiredTool !== p.tool) p.tool = p.desiredTool;
   }
@@ -261,7 +331,7 @@ export function updatePlayerAction(w: World, dt: number): void {
 function meleeWallCheck(w: World): void {
   const p = w.player;
   const a = p.action!;
-  const spec = MELEE[a.kind as 'sword' | 'knife'];
+  const spec = WEAPONS[a.weapon];
   const f = forwardFromYaw(a.lockedYaw);
   const from = { x: p.x, y: 1.3, z: p.z };
   const to = { x: p.x + f.x * spec.reach * 0.8, y: 1.3, z: p.z + f.z * spec.reach * 0.8 };
@@ -272,8 +342,9 @@ function meleeWallCheck(w: World): void {
 function meleeHits(w: World): void {
   const p = w.player;
   const a = p.action!;
-  const spec = MELEE[a.kind as 'sword' | 'knife'];
+  const spec = WEAPONS[a.weapon];
   const half = ((spec.arcDeg / 2) * Math.PI) / 180;
+  const backHalf = ((STEALTH.backArcDeg / 2) * Math.PI) / 180;
   // 戰士的反擊斬往前踏半步
   const reach = spec.reach + (a.counter ? CLASSES.warrior.counterLunge : 0);
   for (const e of w.enemies) {
@@ -290,14 +361,22 @@ function meleeHits(w: World): void {
     const block = w.grid.segmentHit(from, to);
     if (block && block.t < 0.95) continue;
     a.hitSet.add(e.id);
-    const sneak = e.state !== 'alert';
-    let dmg: number = spec.damage;
-    if (sneak) dmg *= spec.sneakMultiplier;
+    // 背刺：睡著的敵人任何方向都算；閒置、巡邏中的敵人要從背後出手；搜索中、已發現你的敵人都不算
+    const fromBehind = Math.abs(angleDiff(yawFromDir(p.x - e.x, p.z - e.z), e.yaw)) >= Math.PI - backHalf;
+    const sneak = e.state === 'sleep' || ((e.state === 'idle' || e.state === 'patrol') && fromBehind);
+    let dmg = weaponDamage(a.weapon, p.weapon.level);
+    if (sneak) dmg *= e.veteran ? Math.min(spec.sneakMultiplier, RUN.veteranSneakMul) : spec.sneakMultiplier;
     if (e.kind === 'charger' && e.phase === 'stun') dmg *= 2;
+    if (p.comboT > 0 && !a.counter) {
+      dmg *= 2;
+      p.comboT = 0;
+    }
     if (sneak) w.stats.backstabs++;
-    // 戰士：長劍命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
-    if (a.kind === 'sword' && applyCounter(w, e)) a.countered = true;
-    damageEnemy(w, e, dmg, { source: a.kind, sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
+    // 戰士：命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
+    if (applyCounter(w, e)) a.countered = true;
+    damageEnemy(w, e, dmg, { source: 'melee', sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
+    // 重武器：命中沒倒下的敵人會失衡（打斷它的出手）
+    if (spec.stagger > 0 && e.alive && e.phase !== 'stun' && e.phase !== 'stagger') staggerEnemy(e, spec.stagger);
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'combat');
   }
 }
@@ -316,14 +395,17 @@ export function fireProjectile(w: World, kind: 'bow' | 'stone' | 'bottle'): Proj
   let spec: { speed: number; gravity: number; radius: number };
   const pk = kind === 'bow' ? 'arrow' : kind;
   const tip = kind === 'bow' ? (p.action?.tip ?? null) : null;
+  const potion = kind === 'bottle' && p.action?.item ? (p.action.item.split(':')[1] as PotionId) : null;
   if (kind === 'bottle') {
     spec = PROJECTILES.bottle;
     const lift = (PROJECTILES.bottle.liftDeg * Math.PI) / 180;
     const dir = dirFromYawPitch(p.yaw, Math.min(1.35, p.pitch + lift));
     vel = { x: dir.x * spec.speed, y: dir.y * spec.speed, z: dir.z * spec.speed };
-    p.bottles--;
+    // 丟出背包裡的藥水（已經從背包拿出來），否則是煙霧瓶
+    if (potion) w.stats.itemsUsed++;
+    else p.bottles--;
     w.stats.bottlesThrown++;
-    w.emit({ type: 'throw', kind: 'bottle' });
+    w.emit({ type: 'throw', kind: 'bottle', source: potion ?? 'smoke' });
   } else {
     spec = kind === 'bow' ? PROJECTILES.arrow : PROJECTILES.stone;
     // 射向準星實際對到的點（準星下的敵人，否則是地形）：出手點比眼睛低，近距離射頭時才不會先撞進身體
@@ -359,6 +441,7 @@ export function fireProjectile(w: World, kind: 'bow' | 'stone' | 'bottle'): Proj
     avgVel: { ...vel },
     deflected: false,
     tip,
+    payload: potion ?? 'smoke',
   };
   w.projectiles.push(proj);
   return proj;
@@ -407,6 +490,11 @@ function performUse(w: World, it: Interactable): void {
       giveOrDrop(w, 'ammo', c.ammo, it);
       giveOrDrop(w, 'bottle', c.bottles, it);
       giveOrDrop(w, 'potion', c.potions, it);
+      if (c.item) {
+        // 寶箱裡的物品放在寶箱前方（走過去撿）
+        const f = forwardFromYaw(it.yaw);
+        w.addPickup('item', 1, it.x + f.x * 1.0, 0.15, it.z + f.z * 1.0, null, c.item.id, c.item.level);
+      }
       w.emit({ type: 'chest', id: it.id, x: it.x, z: it.z });
       return;
     }
@@ -434,8 +522,8 @@ function performUse(w: World, it: Interactable): void {
     case 'resupply':
       if (p.cls === 'huntress') {
         p.arrows = PLAYER.maxArrows;
-        for (const k of ALL_TIPS) p.tipped[k] = PLAYER.maxTipped;
-      } else p.stones = PLAYER.maxStones;
+        for (const k of ALL_TIPS) p.tipped[k] = maxTipped(p);
+      } else p.stones = maxStones(p);
       p.bottles = PLAYER.maxBottles;
       p.potions = PLAYER.maxPotions;
       p.hp = p.maxHp;

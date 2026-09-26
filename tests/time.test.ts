@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, PLAYER, TIME } from '../src/config';
+import { PLAYER, TIME, WEAPONS } from '../src/config';
 import { clampRealDt, computeWorldDt, substeps } from '../src/core/time';
 import { emptyInput } from '../src/sim/types';
 import { finishAction, makeWorld, run } from './helpers';
@@ -85,7 +85,7 @@ describe('時間規則', () => {
     const t0 = w.time;
     w.frame(dt, { ...emptyInput(), fire: true, firePressed: true });
     finishAction(w);
-    const sword = ACTIONS.sword.windup + ACTIONS.sword.active + ACTIONS.sword.recovery;
+    const sword = WEAPONS.longsword.windup + WEAPONS.longsword.active + WEAPONS.longsword.recovery;
     expect(w.time - t0).toBeGreaterThanOrEqual(sword - 1e-9);
     expect(w.time - t0).toBeLessThan(sword + TIME.idleRate * dt + 1e-9);
   });
@@ -101,7 +101,7 @@ describe('時間規則', () => {
       real += dt;
       expect(wt).toBeLessThanOrEqual(dt + 1e-12);
     }
-    const sword = ACTIONS.sword.windup + ACTIONS.sword.active + ACTIONS.sword.recovery;
+    const sword = WEAPONS.longsword.windup + WEAPONS.longsword.active + WEAPONS.longsword.recovery;
     expect(w.time - t0).toBeLessThan(sword + 2 * dt);
     expect(w.time - t0).toBeLessThanOrEqual(real + 1e-9);
   });

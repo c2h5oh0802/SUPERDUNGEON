@@ -1,16 +1,22 @@
-import { CLASSES, ENEMIES, PLAYER, SMOKE, TIME, type PlayerClass, type RuneId } from '../config';
+import { ARMORS, CLASSES, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type RuneId, type TalentId, type WeaponId } from '../config';
+import { Rng } from '../core/rng';
+import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
+import { applyTalent, gainXp, killXp, onFloorStart } from './progress';
 import { segSphere, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
 import type { LevelData } from '../gen/generator';
 import { Grid } from './grid';
 import { counterThreat, hunterEye, pushTarget, type CounterThreat, type HunterEye } from './classSys';
 import { Nav } from './nav';
-import { updateEnemies, onNoise, createEnemy, awakenDungeon } from './enemySys';
+import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy } from './enemySys';
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
 import { updateProjectiles } from './projectileSys';
 import { updateDoors, updatePickups, updateSmokes, updateTraps } from './propSys';
 import type {
+  Area,
   Enemy,
+  InvItem,
+  PendingChoice,
   FrameInput,
   GameEvent,
   Interactable,
@@ -45,6 +51,15 @@ export interface PlayerCarry {
   bottles: number;
   potions: number;
   runes: RuneId[];
+  weapon: { id: WeaponId; level: number };
+  armor: { id: ArmorId; level: number };
+  bowLevel: number;
+  shieldLevel: number;
+  items: InvItem[];
+  known: ItemId[];
+  xp: number;
+  level: number;
+  talents: TalentId[];
 }
 
 /** 職業提示：每幀結束時計算，介面與開發工具讀取（不影響判定）。 */
@@ -79,8 +94,18 @@ export class World {
   deathCause: string | null = null;
   heartTaken = false;
   awakened = false;
+  /** 有敵人發現了屍體：整層戒備。 */
+  alarm = false;
   /** 開啟中的祭壇（介面顯示選擇時世界暫停）。 */
   pendingAltar: number | null = null;
+  /** 等待玩家選擇（天賦、強化）：顯示選擇時世界暫停。 */
+  pendingChoice: PendingChoice | null = null;
+  readonly choiceQueue: PendingChoice[] = [];
+  readonly areas: Area[] = [];
+  /** 讀過地圖卷軸：整層都顯示。 */
+  mapped = false;
+  /** 掉落與傳送用的亂數（同種子、同一層固定）。 */
+  readonly rng: Rng;
   readonly explored: Uint8Array;
   interactTarget: InteractTarget | null = null;
   readonly stats: RunStats = {
@@ -102,6 +127,7 @@ export class World {
     blocks: 0,
     wallSlams: 0,
     tipHits: 0,
+    itemsUsed: 0,
   };
   readonly cue: ClassCue = { counter: null, push: -1, eye: [] };
   /** 最近一個結束的行動（實際花掉的世界時間與類型），供介面與驗證讀取。 */
@@ -117,6 +143,7 @@ export class World {
     this.grid = level.grid;
     this.enav = new Nav(this.grid, Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius));
     this.explored = new Uint8Array(this.grid.w * this.grid.h);
+    this.rng = new Rng(`${level.seed}#drops#${level.floor}`);
     const cls = opts.cls ?? 'warrior';
     const start = CLASSES[cls].start;
     const slots = CLASSES[cls].slots;
@@ -131,6 +158,21 @@ export class World {
       hp: PLAYER.maxHp,
       maxHp: PLAYER.maxHp,
       slots,
+      weapon: { id: CLASSES[cls].weapon, level: 0 },
+      armor: { id: 'cloth', level: 0 },
+      bowLevel: 0,
+      shieldLevel: 0,
+      sneaking: false,
+      items: [],
+      known: [],
+      xp: 0,
+      level: 1,
+      talents: [],
+      invisT: 0,
+      hasteT: 0,
+      comboT: 0,
+      markT: 0,
+      pendingUse: null,
       arrows: start.arrows,
       stones: start.stones,
       tipped: { paralysis: start.paralysis, chill: start.chill },
@@ -157,14 +199,24 @@ export class World {
       p.bottles = c.bottles;
       p.potions = c.potions;
       p.runes = c.runes.slice();
+      p.weapon = { ...c.weapon };
+      p.armor = { ...c.armor };
+      p.bowLevel = c.bowLevel;
+      p.shieldLevel = c.shieldLevel;
+      p.items = c.items.map((it) => ({ ...it }));
+      p.known = c.known.slice();
+      p.xp = c.xp;
+      p.level = c.level;
+      p.talents = c.talents.slice();
     }
     if (opts.stats) {
       Object.assign(this.stats, opts.stats, { damageTaken: { ...opts.stats.damageTaken } });
       this.baseWorldTime = opts.stats.worldTime;
       this.baseRealTime = opts.stats.realTime;
     }
+    onFloorStart(this);
     for (const e of level.enemies) this.enemies.push(createEnemy(this, e));
-    for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null);
+    for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level);
     level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set() }));
     for (const d of this.grid.doors) {
       if (d.arch) continue;
@@ -226,8 +278,8 @@ export class World {
     return this.player.runes.includes(id);
   }
 
-  addPickup(kind: Pickup['kind'], amount: number, x: number, y: number, z: number, stuckDir: V3 | null): Pickup {
-    const p: Pickup = { id: this.nextId++, kind, amount, x, y, z, stuckDir, taken: false };
+  addPickup(kind: Pickup['kind'], amount: number, x: number, y: number, z: number, stuckDir: V3 | null, item?: ItemId, level?: number): Pickup {
+    const p: Pickup = { id: this.nextId++, kind, amount, x, y, z, stuckDir, taken: false, item, level };
     this.pickups.push(p);
     return p;
   }
@@ -246,7 +298,7 @@ export class World {
   frame(frameDelta: number, input: FrameInput): number {
     const realDt = clampRealDt(frameDelta);
     this.lastRealDt = realDt;
-    if (this.outcome !== 'none' || this.pendingAltar !== null) {
+    if (this.outcome !== 'none' || this.pendingAltar !== null || this.pendingChoice !== null) {
       this.lastWorldDt = 0;
       return 0;
     }
@@ -256,12 +308,15 @@ export class World {
     p.yaw = input.yaw;
     p.pitch = input.pitch;
     startActions(this, input);
+    p.sneaking = input.sneak && !p.dead;
     const dist = movePlayer(this, input, realDt);
     p.lastMoveDist = dist;
     updatePickups(this);
+    this.footsteps(dist);
     const worldDt = computeWorldDt({
       realDt,
-      moveDist: dist,
+      // 潛行步：每公尺花比較多世界時間（安靜要付時間）
+      moveDist: dist * (p.sneaking ? this.sneakTimeMul() : 1),
       actionRemaining: this.actionRemaining(),
       waitHeld: input.wait,
     });
@@ -275,6 +330,37 @@ export class World {
     this.interactTarget = findInteractTarget(this);
     this.updateCue();
     return worldDt;
+  }
+
+  private stepAcc = 0;
+
+  /** 潛行步的每公尺世界時間倍率。 */
+  sneakTimeMul(): number {
+    return lightstep(this).time || STEALTH.sneakTimeMul;
+  }
+
+  /** 潛行步的速度倍率（鎖甲更慢、輕步更快）。 */
+  sneakSpeedMul(): number {
+    return STEALTH.sneakSpeedMul * ARMORS[this.player.armor.id].sneakSpeedMul * lightstep(this).speed;
+  }
+
+  /** 正常走動：每走一段距離發出腳步聲；潛行步不出聲。 */
+  private footsteps(dist: number): void {
+    const p = this.player;
+    if (p.sneaking || dist <= 0 || p.dead) {
+      this.stepAcc = p.sneaking ? 0 : this.stepAcc;
+      return;
+    }
+    this.stepAcc += dist;
+    if (this.stepAcc < STEALTH.footstepEvery) return;
+    this.stepAcc -= STEALTH.footstepEvery;
+    this.emitNoise(p.x, 0.1, p.z, STEALTH.footstepRadius * ARMORS[p.armor.id].stepMul, 'step');
+  }
+
+  /** 護甲減傷（至少受 1）。 */
+  armorReduce(): number {
+    const a = this.player.armor;
+    return Math.min(UPGRADE.armorMaxReduce, ARMORS[a.id].reduce + (a.id === 'cloth' ? 0 : UPGRADE.armorPerLevel * a.level));
   }
 
   updateCue(): void {
@@ -296,7 +382,9 @@ export class World {
       updateDoors(this, dt);
       updateTraps(this, dt);
       updateSmokes(this, dt);
-      if (this.pendingAltar !== null) break;
+      updateAreas(this, dt, (e, dmg, src) => damageEnemy(this, e, dmg, { source: src, sneak: false, head: false, x: e.x, y: 0.5, z: e.z }));
+      updateBuffs(this, dt);
+      if (this.pendingAltar !== null || this.pendingChoice !== null) break;
     }
   }
 
@@ -331,6 +419,7 @@ export class World {
   damagePlayer(amount: number, source: string, fromX: number, fromZ: number): void {
     const p = this.player;
     if (p.dead || this.outcome !== 'none') return;
+    amount = Math.max(1, amount - this.armorReduce());
     p.hp -= amount;
     this.stats.damageTaken[source] = (this.stats.damageTaken[source] ?? 0) + amount;
     this.emit({ type: 'playerHurt', amount, x: fromX, z: fromZ, source });
@@ -363,7 +452,38 @@ export class World {
       bottles: p.bottles,
       potions: p.potions,
       runes: p.runes.slice(),
+      weapon: { ...p.weapon },
+      armor: { ...p.armor },
+      bowLevel: p.bowLevel,
+      shieldLevel: p.shieldLevel,
+      items: p.items.map((it) => ({ ...it })),
+      known: p.known.slice(),
+      xp: p.xp,
+      level: p.level,
+      talents: p.talents.slice(),
     };
+  }
+
+  /** 敵人倒下：經驗與掉落。 */
+  onKill(e: Enemy): void {
+    dropLoot(this, e);
+    gainXp(this, killXp(e));
+  }
+
+  /** 玩家在選擇畫面做了選擇。 */
+  resolveChoice(index: number): void {
+    const c = this.pendingChoice;
+    if (!c) return;
+    if (c.kind === 'talent') {
+      const t = c.options[index];
+      if (!t) return;
+      applyTalent(this, t);
+    } else {
+      const t = c.options[index];
+      if (!t) return;
+      applyUpgrade(this, t);
+    }
+    this.pendingChoice = this.choiceQueue.shift() ?? null;
   }
 
   statsCopy(): RunStats {

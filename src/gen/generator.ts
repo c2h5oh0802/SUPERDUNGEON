@@ -1,4 +1,5 @@
-import { ALL_RUNES, RUN, WORLD, type RuneId } from '../config';
+import { ALL_RUNES, RUN, WORLD, type ItemId, type RuneId } from '../config';
+import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Grid, T, type DoorState, type TileId } from '../sim/grid';
@@ -15,17 +16,21 @@ export interface EnemySpawn {
   patrol: V2[];
   perched: boolean;
   roomKey: string;
+  /** 老兵：戴頭盔，背刺只 ×2、生命 ×1.5、發現速度 ×1.3。 */
+  veteran?: boolean;
 }
 
 /**
  * 地上的物資。生成只放中性的「彈藥袋」（ammo），撿到時依職業變成一般箭或投擲石，
  * 所以同一個種子兩個職業的關卡完全相同。arrows／stone 是射出去之後可以撿回的箭與石頭。
  */
-export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'potion';
+export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'potion' | 'item';
 
 export interface PickupSpawn {
   kind: PickupKind;
   amount: number;
+  item?: ItemId;
+  level?: number;
   x: number;
   z: number;
 }
@@ -38,7 +43,7 @@ export interface PropSpawn {
 }
 
 export interface ChestSpawn extends PropSpawn {
-  contents: { ammo: number; bottles: number; potions: number };
+  contents: { ammo: number; bottles: number; potions: number; item: { id: ItemId; level: number } | null };
 }
 
 export interface AltarSpawn extends PropSpawn {
@@ -204,7 +209,7 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, 
             z: cz,
             yaw: faceInward(li, lj, W, H),
             roomKey: tr.key,
-            contents: { ammo: 3, bottles: 1, potions: 1 },
+            contents: { ammo: 3, bottles: 1, potions: 1, item: null },
           });
           break;
         case 'A':
@@ -460,6 +465,50 @@ function fillWalls(d: Draft): void {
   d.tiles = out;
 }
 
+/** 從 a 到 b 的直線都是地板、沒有柱子（巡邏路線不會卡住）。 */
+function clearLine(d: Draft, ax: number, az: number, bx: number, bz: number): boolean {
+  const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
+  for (let k = 0; k <= n; k++) {
+    const x = ax + ((bx - ax) * k) / n;
+    const z = az + ((bz - az) * k) / n;
+    for (const [ox, oz] of [
+      [0.5, 0],
+      [-0.5, 0],
+      [0, 0.5],
+      [0, -0.5],
+    ] as const) {
+      if (d.tiles[Math.floor(z + oz) * d.w + Math.floor(x + ox)] !== T.Floor) return false;
+    }
+    if (d.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 0.6)) return false;
+  }
+  return true;
+}
+
+/** 較深的樓層：部分閒置的地面敵人改成在房間裡來回巡邏。 */
+function addPatrols(d: Draft, rng: Rng, chance: number): void {
+  if (chance <= 0) return;
+  const traps = new Set(d.traps.map((t) => `${t.i},${t.j}`));
+  for (const e of d.enemies) {
+    if (e.state !== 'idle' || e.perched || e.patrol.length || !rng.chance(chance)) continue;
+    const room = d.rooms.find((r) => r.key === e.roomKey);
+    if (!room) continue;
+    const cands: V2[] = [];
+    for (let j = room.z0 + 1; j < room.z0 + room.h - 1; j++) {
+      for (let i = room.x0 + 1; i < room.x0 + room.w - 1; i++) {
+        const x = i + 0.5;
+        const z = j + 0.5;
+        const dd = Math.hypot(x - e.x, z - e.z);
+        if (dd < 3 || dd > 7 || traps.has(`${i},${j}`)) continue;
+        if (clearLine(d, e.x, e.z, x, z)) cands.push({ x, z });
+      }
+    }
+    if (!cands.length) continue;
+    const t = cands[rng.int(0, cands.length - 1)]!;
+    e.patrol = [{ x: e.x, z: e.z }, t];
+    e.state = 'patrol';
+  }
+}
+
 /** 最底層（暫代首領房）：沉眠之心旁放守衛，背對心、面向房間。 */
 function placeGuardians(d: Draft, rng: Rng): void {
   const h = d.heart;
@@ -501,16 +550,22 @@ function placeGuardians(d: Draft, rng: Rng): void {
   }
 }
 
-function placePickups(d: Draft, rng: Rng): PickupSpawn[] {
+function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
   const spots = rng.shuffle(d.pickupSpots.slice());
-  const plan: Array<{ kind: PickupKind; amount: number }> = [
-    { kind: 'potion', amount: 1 },
+  const item = (r: { id: ItemId; level: number }) => ({ kind: 'item' as const, amount: 1, item: r.id, level: r.level });
+  // 依重要程度排序（地上的位置不夠時，後面的先省略）：每層一張強化卷軸、未知的藥水與卷軸、一件裝備
+  const plan: Array<{ kind: PickupKind; amount: number; item?: ItemId; level?: number }> = [
+    item({ id: 'scroll:upgrade', level: 0 }),
     { kind: 'ammo', amount: 3 },
+    item(rollPotion(rng)),
+    { kind: 'potion', amount: 1 },
+    item(rollScroll(rng)),
+    { kind: 'ammo', amount: 3 },
+    item(rollEquipment(rng, floor)),
     { kind: 'bottle', amount: 1 },
-    { kind: 'ammo', amount: 3 },
-    { kind: 'potion', amount: 1 },
+    item(rollConsumable(rng)),
     { kind: 'ammo', amount: 2 },
-    { kind: 'bottle', amount: 1 },
+    item(rollPotion(rng)),
     { kind: 'ammo', amount: 2 },
   ];
   const out: PickupSpawn[] = [];
@@ -568,6 +623,10 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     const wake = RUN.wakeChance[fi]!;
     for (const e of d.enemies) if (e.state === 'sleep' && rng.chance(wake)) e.state = 'idle';
     if (floor === RUN.floors) placeGuardians(d, rng);
+    addPatrols(d, rng, RUN.patrolChance[fi]!);
+    // 老兵：從地面上的盾衛與突進者中挑
+    const pool = d.enemies.filter((e) => !e.perched && e.kind !== 'archer');
+    for (let k = 0; k < RUN.veterans[fi]! && pool.length; k++) pool.splice(rng.int(0, pool.length - 1), 1)[0]!.veteran = true;
   }
   for (const e of t.edges) {
     const a = t.rooms.find((r) => r.key === e.a)!;
@@ -585,7 +644,8 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     a.offer = [runes[(k * 2) % 4]!, runes[(k * 2 + 1) % 4]!];
   });
 
-  const pickups = opts.practice ? [] : placePickups(d, rng);
+  const pickups = opts.practice ? [] : placePickups(d, rng, floor);
+  for (const c of d.chests) c.contents.item = rollItem(rng, floor);
   if (mirrored) {
     mirrorDraft(d);
     for (const p of pickups) p.x = w - p.x;
@@ -647,7 +707,7 @@ export function levelSignature(l: LevelData): string {
     tiles: Array.from(l.grid.tiles).join(''),
     doors: l.grid.doors.map((d) => [d.cells, d.arch, d.barred]),
     pillars: l.grid.pillars.map((p) => [r(p.x), r(p.z)]),
-    enemies: l.enemies.map((e) => [e.kind, r(e.x), r(e.z), r(e.yaw), e.state]),
+    enemies: l.enemies.map((e) => [e.kind, r(e.x), r(e.z), r(e.yaw), e.state, !!e.veteran, e.patrol.length]),
     pickups: l.pickups.map((p) => [p.kind, p.amount, r(p.x), r(p.z)]),
     altars: l.altars.map((a) => a.offer),
     rooms: l.rooms.map((x) => x.layoutId),

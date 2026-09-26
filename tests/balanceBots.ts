@@ -1,4 +1,4 @@
-import { ENEMIES, MELEE, PLAYER, type PlayerClass } from '../src/config';
+import { ENEMIES, WEAPONS, PLAYER, type PlayerClass } from '../src/config';
 import { forwardFromYaw, yawFromDir } from '../src/core/math';
 import type { EnemyKind } from '../src/gen/rooms';
 import { AIM_EYE_Y } from '../src/sim/aim';
@@ -135,7 +135,7 @@ function warriorBot(w: World): Decision {
   const p = w.player;
   const es = alive(w);
   const out: Decision = {};
-  if (p.tool !== 'sword') out.selectSlot = 1;
+  if (p.tool !== 'melee') out.selectSlot = 1;
   const c = counterThreat(w);
   if (!p.action && c) {
     // 反擊：弩矢就朝弩手打回去
@@ -148,7 +148,7 @@ function warriorBot(w: World): Decision {
   const open = es.find((e) => e.phase === 'stagger' || e.phase === 'stun');
   if (open) {
     Object.assign(out, aim(w, open.x, 1.2, open.z));
-    if (dist(w, open) < MELEE.sword.reach + open.radius - 0.1) return p.action ? out : { ...out, fire: true, firePressed: true };
+    if (dist(w, open) < WEAPONS.longsword.reach + open.radius - 0.1) return p.action ? out : { ...out, fire: true, firePressed: true };
     return { ...out, ...move(out.yaw!, open.x - p.x, open.z - p.z) };
   }
   const near = es.slice().sort((a, b) => dist(w, a) - dist(w, b))[0];

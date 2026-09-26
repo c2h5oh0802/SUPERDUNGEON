@@ -10,7 +10,10 @@ const GAME_CODES = new Set([
   'KeyE',
   'KeyH',
   'KeyF',
+  'KeyI',
   'KeyM',
+  'ShiftLeft',
+  'ShiftRight',
   'Space',
   'Tab',
   'Digit1',
@@ -35,6 +38,10 @@ export interface RawFrame {
   selectSlot: number | null;
   /** 臂盾：F，或滑鼠鎖定時的右鍵。 */
   shield: boolean;
+  /** 按住 Shift：潛行步。 */
+  sneak: boolean;
+  /** I：背包。 */
+  inventory: boolean;
   bottle: boolean;
   interact: boolean;
   potion: boolean;
@@ -230,6 +237,8 @@ export class Input {
       firePressed: this.firePressed,
       selectSlot: digit,
       shield: this.shieldPressed || p.has('KeyF'),
+      sneak: k.has('ShiftLeft') || k.has('ShiftRight'),
+      inventory: p.has('KeyI'),
       bottle: p.has('KeyQ'),
       interact: p.has('KeyE'),
       potion: p.has('KeyH'),

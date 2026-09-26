@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, CLASSES, ENEMIES, MELEE, PLAYER, PROJECTILES, SHIELD, TIPS, classInfo, type PlayerClass } from '../src/config';
+import { ACTIONS, CLASSES, ENEMIES, WEAPONS, PLAYER, PROJECTILES, SHIELD, TIPS, classInfo, type PlayerClass } from '../src/config';
 import { yawFromDir } from '../src/core/math';
 import { generateLevel } from '../src/gen/validate';
 import { AIM_EYE_Y } from '../src/sim/aim';
@@ -14,8 +14,8 @@ import { OPEN_ROOM, makeWorld } from './helpers';
 
 const dt = 1 / 60;
 const total = (a: { windup: number; active: number; recovery: number }) => a.windup + a.active + a.recovery;
-const SWORD_TOTAL = total(ACTIONS.sword);
-const KNIFE_TOTAL = total(ACTIONS.knife);
+const SWORD_TOTAL = total(WEAPONS.longsword);
+const KNIFE_TOTAL = total(WEAPONS.knife);
 const BOW_TOTAL = total(ACTIONS.bow);
 const CS = CLASSES.warrior.counterSwing;
 
@@ -110,6 +110,7 @@ function injectBolt(w: World, from: { x: number; y: number; z: number }): Projec
     avgVel: { ...vel },
     deflected: false,
     tip: null,
+    payload: 'smoke',
   };
   w.projectiles.push(b);
   return b;
@@ -128,12 +129,14 @@ function throwBottle(w: World, pitch = 0.25): Projectile {
 describe('起始裝備：兩個職業拿的東西不同', () => {
   it('戰士：1 長劍、2 投擲石 ×3，沒有箭；獵手：1 獵刀、2 獵弓（8 支箭）、3 藥劑箭（麻痺 2、冰寒 2）', () => {
     const w = makeWorld(OPEN_ROOM, [], 'warrior');
-    expect(w.player.slots).toEqual(['sword', 'stone']);
-    expect(w.player.tool).toBe('sword');
+    expect(w.player.slots).toEqual(['melee', 'stone']);
+    expect(w.player.tool).toBe('melee');
+    expect(w.player.weapon).toEqual({ id: 'longsword', level: 0 });
     expect([w.player.stones, w.player.arrows]).toEqual([3, 0]);
     const h = makeWorld(OPEN_ROOM, [], 'huntress');
-    expect(h.player.slots).toEqual(['knife', 'bow', 'tipped']);
-    expect(h.player.tool).toBe('knife');
+    expect(h.player.slots).toEqual(['melee', 'bow', 'tipped']);
+    expect(h.player.tool).toBe('melee');
+    expect(h.player.weapon).toEqual({ id: 'knife', level: 0 });
     expect([h.player.arrows, h.player.stones, h.player.tipped.paralysis, h.player.tipped.chill]).toEqual([8, 0, 2, 2]);
     for (const x of [w, h]) expect([x.player.bottles, x.player.potions, x.player.hp]).toEqual([1, 1, PLAYER.maxHp]);
   });
@@ -760,7 +763,7 @@ describe('職業說明', () => {
   it('說明文字由數值生成，與效果一致', () => {
     const wi = classInfo('warrior');
     expect(wi.loadout.map((l) => l.name)).toEqual(['長劍', '臂盾', '投擲石']);
-    expect(wi.loadout[0]!.text).toContain(`${MELEE.sword.damage} 傷害`);
+    expect(wi.loadout[0]!.text).toContain(`${WEAPONS.longsword.damage} 傷害`);
     expect(wi.loadout[1]!.text).toContain(`推退 ${SHIELD.pushDist} m`);
     expect(wi.loadout[2]!.text).toContain(`${CLASSES.warrior.start.stones} 顆`);
     expect(wi.abilities.map((a) => a.name)).toContain('反擊斬');
@@ -773,6 +776,6 @@ describe('職業說明', () => {
       expect(i.moments.length).toBeGreaterThan(0);
       expect(i.summary.length).toBeGreaterThan(0);
     }
-    expect(CS.windup).toBeLessThan(ACTIONS.sword.windup);
+    expect(CS.windup).toBeLessThan(WEAPONS.longsword.windup);
   });
 });

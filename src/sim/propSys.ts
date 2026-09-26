@@ -2,6 +2,7 @@ import { DOOR, NOISE, PLAYER, SMOKE, TRAP } from '../config';
 import { smoothstep } from '../core/math';
 import { damageEnemy } from './enemySys';
 import { STOCK_NAMES, stockFor } from './inventory';
+import { addItem, itemName } from './items';
 import type { World } from './world';
 
 function doorOccupied(w: World, doorId: number): boolean {
@@ -123,6 +124,17 @@ export function updatePickups(w: World): void {
     if (k.taken) continue;
     if (k.y > 2.4) continue;
     if (Math.hypot(k.x - p.x, k.z - p.z) > PLAYER.pickupRadius) continue;
+    if (k.kind === 'item' && k.item) {
+      if (addItem(w, k.item, k.level ?? 0)) {
+        k.taken = true;
+        w.emit({ type: 'pickup', kind: 'item', amount: 1, x: k.x, z: k.z, text: itemName(w, k.item, k.level ?? 0) });
+      } else if (!k.stuckDir) {
+        // 背包滿了：提醒一次
+        k.stuckDir = { x: 0, y: 0, z: 0 };
+        w.emit({ type: 'fullInventory', text: '背包滿了（I 打開背包）' });
+      }
+      continue;
+    }
     const stock = stockFor(p, k.kind);
     if (!stock) continue;
     const room = stock.max - p[stock.key];

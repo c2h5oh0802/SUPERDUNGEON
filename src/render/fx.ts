@@ -135,7 +135,7 @@ export class FxVisual {
           this.burst(x, y, z, 16, [0.8, 0.9, 1], 4, 0.3);
           break;
         case 'hitWall':
-          this.burst(x, y, z, e.kind === 'sword' ? 10 : 7, [1, 0.7, 0.4], 2.5, 0.3);
+          this.burst(x, y, z, e.kind === 'knife' ? 7 : 10, [1, 0.7, 0.4], 2.5, 0.3);
           break;
         case 'bottleBreak':
           this.burst(x, y, z, 26, [0.85, 0.78, 1], 3.5, 0.5);
@@ -470,7 +470,7 @@ export class FxVisual {
 
   private updateSwordArc(): void {
     const a = this.world.player.action;
-    if (a && (a.kind === 'sword' || a.kind === 'knife') && a.t >= a.windup) {
+    if (a && a.kind === 'melee' && a.t >= a.windup) {
       const k = (a.t - a.windup) / Math.max(1e-3, a.active);
       const fade = a.t < a.windup + a.active ? 1 : 1 - smoothstep(0, 0.12, a.t - a.windup - a.active);
       this.swordArcMat.opacity = 0.32 * fade;

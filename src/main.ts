@@ -525,6 +525,7 @@ export class App {
           firePressed: raw.firePressed,
           selectSlot: raw.digit,
           shield: raw.shield,
+          sneak: raw.sneak,
           bottle: raw.bottle,
           interact: raw.interact,
           potion: raw.potion,

@@ -1,4 +1,5 @@
-import { ACTIONS, CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SHIELD, SWORD } from '../config';
+import { ACTIONS, CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SHIELD, TALENT_FX, UPGRADE, WEAPONS } from '../config';
+import { hasTalent } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, aimPoint, crosshairPoint } from './aim';
 import { becomeAlert, interruptEnemy } from './enemySys';
@@ -14,7 +15,9 @@ export interface CounterThreat {
   id: number;
 }
 
-const SWORD_HALF_ARC = ((SWORD.arcDeg / 2) * Math.PI) / 180;
+/** 目前近戰武器的半弧角（反擊、擊開用）。 */
+const meleeHalfArc = (w: World) => ((WEAPONS[w.player.weapon.id].arcDeg / 2) * Math.PI) / 180;
+const meleeReach = (w: World) => WEAPONS[w.player.weapon.id].reach;
 
 /** 敵人的攻擊是否已「鎖定」：方向不能再改、正要出手。 */
 export function attackCommitted(e: Enemy): boolean {
@@ -34,7 +37,7 @@ function inFront(w: World, x: number, z: number, slack = 0): boolean {
   const dx = x - p.x;
   const dz = z - p.z;
   if (Math.hypot(dx, dz) < 0.3) return true;
-  return Math.abs(angleDiff(yawFromDir(dx, dz), p.yaw)) <= SWORD_HALF_ARC + slack;
+  return Math.abs(angleDiff(yawFromDir(dx, dz), p.yaw)) <= meleeHalfArc(w) + slack;
 }
 
 /**
@@ -52,7 +55,7 @@ export function counterThreat(w: World): CounterThreat | null {
     const dz = e.z - p.z;
     const d = Math.hypot(dx, dz);
     if (!inFront(w, e.x, e.z)) continue;
-    const reach = SWORD.reach + c.counterLunge + e.radius;
+    const reach = meleeReach(w) + c.counterLunge + e.radius;
     if (e.kind === 'guard') {
       // 反擊斬的作用要在盾衛揮下之前開始
       const remain = ENEMIES.guard.windup - e.phaseT;
@@ -114,7 +117,7 @@ export function applyCounter(w: World, e: Enemy): boolean {
 export function deflectBolts(w: World): number {
   const p = w.player;
   const a = p.action;
-  if (p.cls !== 'warrior' || !a || a.kind !== 'sword') return 0;
+  if (p.cls !== 'warrior' || !a || a.kind !== 'melee') return 0;
   const c = CLASSES.warrior;
   let n = 0;
   for (const b of w.projectiles) {
@@ -122,8 +125,8 @@ export function deflectBolts(w: World): number {
     const dx = b.pos.x - p.x;
     const dy = b.pos.y - 1.3;
     const dz = b.pos.z - p.z;
-    if (Math.hypot(dx, dy, dz) > SWORD.reach + c.deflectMargin) continue;
-    if (Math.hypot(dx, dz) > 0.3 && Math.abs(angleDiff(yawFromDir(dx, dz), a.lockedYaw)) > SWORD_HALF_ARC + 0.15) continue;
+    if (Math.hypot(dx, dy, dz) > meleeReach(w) + c.deflectMargin) continue;
+    if (Math.hypot(dx, dz) > 0.3 && Math.abs(angleDiff(yawFromDir(dx, dz), a.lockedYaw)) > meleeHalfArc(w) + 0.15) continue;
     // 只擊開正在飛向自己的弩矢
     if (b.vel.x * -dx + b.vel.z * -dz <= 0) continue;
     const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
@@ -163,7 +166,8 @@ export function shieldActive(w: World): boolean {
   const p = w.player;
   const a = p.action;
   if (p.cls !== 'warrior' || p.dead || !a || a.kind !== 'shield') return false;
-  return a.t >= a.windup - 1e-9 && a.t <= a.windup + a.active + 1e-9;
+  const extra = UPGRADE.shieldActive * p.shieldLevel + (hasTalent(p, 'bulwark') ? TALENT_FX.bulwarkActive : 0);
+  return a.t >= a.windup - 1e-9 && a.t <= a.windup + a.active + extra + 1e-9;
 }
 
 /** 從 (x, z) 來的攻擊現在會不會被臂盾擋下。 */
@@ -213,7 +217,8 @@ export function shieldPush(w: World): void {
   const d = Math.hypot(dx, dz) || 1;
   interruptEnemy(e);
   e.phase = 'pushed';
-  e.push = { dx: dx / d, dz: dz / d, left: SHIELD.pushDist };
+  const extra = UPGRADE.shieldPush * p.shieldLevel + (hasTalent(p, 'heavyShield') ? TALENT_FX.heavyShieldPush : 0);
+  e.push = { dx: dx / d, dz: dz / d, left: SHIELD.pushDist + extra };
   if (e.state !== 'alert') becomeAlert(w, e);
   w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'shield');
 }

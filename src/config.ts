@@ -41,8 +41,6 @@ export const PLAYER = {
 
 /** 行動時間（世界秒）。準備 → 作用 → 恢復。 */
 export const ACTIONS = {
-  sword: { windup: 0.15, active: 0.12, recovery: 0.33 },
-  knife: { windup: 0.08, active: 0.1, recovery: 0.22 },
   bow: { windup: 0.12, active: 0, recovery: 0.68 },
   stone: { windup: 0.06, active: 0, recovery: 0.24 },
   shield: { windup: 0.05, active: 0.15, recovery: 0.2 },
@@ -50,15 +48,70 @@ export const ACTIONS = {
   potion: { windup: 0.0, active: 0, recovery: 0.8 },
   door: { windup: 0.0, active: 0, recovery: 0.3 },
   use: { windup: 0.0, active: 0, recovery: 0.6 },
+  read: { windup: 0.0, active: 0, recovery: 0.6 },
+  equip: { windup: 0.0, active: 0, recovery: 0.5 },
+  stunned: { windup: 0.0, active: 0, recovery: 1.5 },
 } as const;
 
-/** 近戰武器：戰士的長劍、獵手的獵刀。 */
-export const MELEE = {
-  sword: { damage: 4, sneakMultiplier: 3, reach: 2.0, arcDeg: 100 },
-  knife: { damage: 3, sneakMultiplier: 3, reach: 1.6, arcDeg: 90 },
-} as const;
+/** 近戰武器（兩個職業都能裝備）。時間是世界秒：準備 → 作用 → 恢復。 */
+export type WeaponId = 'longsword' | 'knife' | 'axe' | 'spear';
 
-export const SWORD = MELEE.sword;
+export interface WeaponSpec {
+  name: string;
+  damage: number;
+  /** 背刺倍率（老兵最多 ×2）。 */
+  sneakMultiplier: number;
+  reach: number;
+  arcDeg: number;
+  windup: number;
+  active: number;
+  recovery: number;
+  /** 每強化一級增加的傷害。 */
+  perLevel: number;
+  /** 命中沒倒下的敵人：失衡秒數（打斷它的出手）。 */
+  stagger: number;
+  /** 一句話特色。 */
+  note: string;
+}
+
+export const WEAPONS: Record<WeaponId, WeaponSpec> = {
+  longsword: { name: '長劍', damage: 4, sneakMultiplier: 3, reach: 2.0, arcDeg: 100, windup: 0.15, active: 0.12, recovery: 0.33, perLevel: 1, stagger: 0, note: '均衡' },
+  knife: { name: '獵刀', damage: 3, sneakMultiplier: 3, reach: 1.6, arcDeg: 90, windup: 0.08, active: 0.1, recovery: 0.22, perLevel: 1, stagger: 0, note: '快、短' },
+  axe: { name: '重斧', damage: 7, sneakMultiplier: 2, reach: 2.1, arcDeg: 110, windup: 0.35, active: 0.14, recovery: 0.51, perLevel: 2, stagger: 0.6, note: '慢，但命中會讓敵人失衡' },
+  spear: { name: '長矛', damage: 4, sneakMultiplier: 2, reach: 2.8, arcDeg: 40, windup: 0.18, active: 0.12, recovery: 0.4, perLevel: 1, stagger: 0, note: '遠、窄' },
+};
+
+export const ALL_WEAPONS: WeaponId[] = ['longsword', 'knife', 'axe', 'spear'];
+
+export const weaponTotal = (id: WeaponId): number => {
+  const w = WEAPONS[id];
+  return w.windup + w.active + w.recovery;
+};
+
+/** 護甲：每次受傷減少的傷害（至少 1）；鎖甲讓腳步聲更大、潛行步更慢。 */
+export type ArmorId = 'cloth' | 'leather' | 'mail';
+
+export const ARMORS: Record<ArmorId, { name: string; reduce: number; stepMul: number; sneakSpeedMul: number; note: string }> = {
+  cloth: { name: '布衣', reduce: 0, stepMul: 1, sneakSpeedMul: 1, note: '沒有防護' },
+  leather: { name: '皮甲', reduce: 1, stepMul: 1, sneakSpeedMul: 1, note: '每次受傷 −1' },
+  mail: { name: '鎖甲', reduce: 2, stepMul: 1.5, sneakSpeedMul: 0.8, note: '每次受傷 −2，但腳步聲大、潛行步慢' },
+};
+
+export const ALL_ARMORS: ArmorId[] = ['cloth', 'leather', 'mail'];
+
+/** 強化：每一級的效果。 */
+export const UPGRADE = {
+  /** 護甲每級多減 1 傷害，總減傷最多這麼多。 */
+  armorPerLevel: 1,
+  armorMaxReduce: 3,
+  /** 獵弓每級：身體 +1、頭部 +2。 */
+  bowBody: 1,
+  bowHead: 2,
+  /** 臂盾每級：推退距離與格擋時間。 */
+  shieldPush: 0.5,
+  shieldActive: 0.05,
+  maxLevel: 5,
+} as const;
 
 /** 藥劑箭：命中後改變敵人的時間軸（盾牌、角盔照樣擋）。 */
 export const TIPS = {
@@ -102,6 +155,23 @@ export const SMOKE = {
   fadeTime: 1.5,
   insideSight: 1.5,
   noise: 6,
+} as const;
+
+/** 潛行：背刺的方向、腳步聲、潛行步、屍體與戒備。 */
+export const STEALTH = {
+  /** 背刺只算從敵人背後這個角度內出手（睡著的敵人不限方向）。 */
+  backArcDeg: 120,
+  /** 正常走動每走這麼遠發出一次腳步聲。 */
+  footstepEvery: 1.0,
+  footstepRadius: 4,
+  /** 潛行步（按住 Shift）：速度倍率，以及每公尺花的世界時間倍率。 */
+  sneakSpeedMul: 0.5,
+  sneakTimeMul: 2,
+  /** 搜索中的敵人：視野與發現速度（填滿時間倍率，越小越快）。 */
+  searchFovDeg: 180,
+  searchFillMul: 0.67,
+  /** 看得到屍體的距離。 */
+  corpseSightRange: 14,
 } as const;
 
 export const NOISE = {
@@ -212,6 +282,15 @@ export const RUN = {
   wakeChance: [0, 0, 0.35, 0.6],
   /** 最底層（暫代首領房）：沉眠之心旁的守衛。 */
   guardians: ['guard', 'charger'] as const,
+  /** 敵人生命每深一層的加成。 */
+  hpPerFloor: 0.15,
+  /** 每層的老兵數量（戴頭盔：背刺只 ×2、生命 ×1.5、發現速度 ×1.3）。 */
+  veterans: [0, 0, 1, 2],
+  veteranHpMul: 1.5,
+  veteranFillMul: 1 / 1.3,
+  veteranSneakMul: 2,
+  /** 閒置的敵人改成巡邏的機率（索引＝樓層 − 1）。 */
+  patrolChance: [0, 0.4, 0.4, 0.5],
 } as const;
 
 export const TRAP = {
@@ -254,8 +333,8 @@ export function runeInfo(id: RuneId): RuneInfo {
         text: `箭與投擲石可穿透 ${RUNES.pierce.extra} 名敵人，後方敵人仍受全額傷害。`,
       };
     case 'swiftBlade': {
-      const sw = total(ACTIONS.sword);
-      const kn = total(ACTIONS.knife);
+      const sw = weaponTotal('longsword');
+      const kn = weaponTotal('knife');
       const m = RUNES.swiftBlade.timeMul;
       return {
         id,
@@ -282,8 +361,9 @@ export const ALL_RUNES: RuneId[] = ['pierce', 'swiftBlade', 'shadow', 'vigor'];
 
 // ---------- 職業：明確的起始武器，加上一條職業規則 ----------
 
-export type Tool = 'sword' | 'knife' | 'bow' | 'tipped' | 'stone';
-export const TOOL_NAMES: Record<Tool, string> = { sword: '長劍', knife: '獵刀', bow: '獵弓', tipped: '藥劑箭', stone: '投擲石' };
+/** 工具欄位：melee＝目前裝備的近戰武器。 */
+export type Tool = 'melee' | 'bow' | 'tipped' | 'stone';
+export const TOOL_NAMES: Record<Tool, string> = { melee: '近戰', bow: '獵弓', tipped: '藥劑箭', stone: '投擲石' };
 
 export interface Loadout {
   arrows: number;
@@ -297,7 +377,8 @@ export interface Loadout {
 export const CLASSES = {
   warrior: {
     /** 數字鍵 1、2 對應的工具；臂盾是右鍵或 F。 */
-    slots: ['sword', 'stone'] as readonly Tool[],
+    slots: ['melee', 'stone'] as readonly Tool[],
+    weapon: 'longsword' as WeaponId,
     start: { arrows: 0, stones: 3, paralysis: 0, chill: 0, bottles: 1, potions: 1 } as Loadout,
     /** 反擊斬：威脅已鎖定、就在眼前時揮劍，出手更快。 */
     counterSwing: { windup: 0.05, active: 0.12, recovery: 0.23 },
@@ -319,7 +400,8 @@ export const CLASSES = {
   },
   huntress: {
     /** 數字鍵 1、2、3 對應的工具；再按一次 3 切換藥劑箭種類。 */
-    slots: ['knife', 'bow', 'tipped'] as readonly Tool[],
+    slots: ['melee', 'bow', 'tipped'] as readonly Tool[],
+    weapon: 'knife' as WeaponId,
     start: { arrows: 8, stones: 0, paralysis: 2, chill: 2, bottles: 1, potions: 1 } as Loadout,
     /** 獵人之眼：落點與提前量最多預測多久（世界秒）。 */
     eyeMaxT: 3,
@@ -353,7 +435,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
   const common = `共通：煙霧瓶 ${st.bottles}（Q）、藥水 ${st.potions}（H，回復 ${PLAYER.potionHeal}）、生命 ${PLAYER.maxHp}。`;
   if (id === 'warrior') {
     const w = CLASSES.warrior;
-    const sw = MELEE.sword;
+    const sw = WEAPONS.longsword;
     const cs = w.counterSwing;
     const sh = ACTIONS.shield;
     const stone = PROJECTILES.stone;
@@ -366,7 +448,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
         {
           key: '1',
           name: '長劍',
-          text: `${sw.damage} 傷害、${fmt(total(ACTIONS.sword))} 秒；對背後或未察覺的敵人 ×${sw.sneakMultiplier}。`,
+          text: `${sw.damage} 傷害、${fmt(weaponTotal('longsword'))} 秒；從背後偷襲沒發現你的敵人（或睡著的敵人）×${sw.sneakMultiplier}。`,
         },
         {
           key: '右鍵／F',
@@ -383,7 +465,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       abilities: [
         {
           name: '反擊斬',
-          text: `敵人的攻擊已鎖定、就在眼前時揮劍：出手 ${fmt(ACTIONS.sword.windup)} → ${fmt(cs.windup)} 秒，並往前踏半步（範圍 +${fmt(w.counterLunge)} m）。命中會打斷攻擊：盾衛失衡 ${fmt(ENEMIES.guard.stagger)} 秒（盾牌放下），突進者暈眩 ${fmt(ENEMIES.charger.stun)} 秒。`,
+          text: `敵人的攻擊已鎖定、就在眼前時揮劍：出手 ${fmt(sw.windup)} → ${fmt(cs.windup)} 秒，並往前踏半步（範圍 +${fmt(w.counterLunge)} m）。命中會打斷攻擊：盾衛失衡 ${fmt(ENEMIES.guard.stagger)} 秒（盾牌放下），突進者暈眩 ${fmt(ENEMIES.charger.stun)} 秒。`,
         },
         {
           name: '擊開',
@@ -391,7 +473,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
         },
         {
           name: '收招',
-          text: `反擊或擊開成功時，這一劍不用收招（一般揮劍 ${fmt(total(ACTIONS.sword))} 秒，其中收招 ${fmt(ACTIONS.sword.recovery)} 秒）。`,
+          text: `反擊或擊開成功時，這一劍不用收招（一般揮劍 ${fmt(weaponTotal('longsword'))} 秒，其中收招 ${fmt(sw.recovery)} 秒）。`,
         },
         {
           name: '盾推的結果',
@@ -407,7 +489,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       ],
     };
   }
-  const kn = MELEE.knife;
+  const kn = WEAPONS.knife;
   const arrow = PROJECTILES.arrow;
   return {
     id,
@@ -418,7 +500,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       {
         key: '1',
         name: '獵刀',
-        text: `${kn.damage} 傷害、${fmt(total(ACTIONS.knife))} 秒；對背後或未察覺的敵人 ×${kn.sneakMultiplier}（${kn.damage * kn.sneakMultiplier}，可以一擊背刺盾衛）。`,
+        text: `${kn.damage} 傷害、${fmt(weaponTotal('knife'))} 秒；從背後偷襲沒發現你的敵人（或睡著的敵人）×${kn.sneakMultiplier}（${kn.damage * kn.sneakMultiplier}，第 1 層可以一擊背刺盾衛）。`,
       },
       {
         key: '2',
@@ -461,4 +543,105 @@ export const RENDER = {
   fov: 75,
   fogColor: 0x141226,
   fogDensity: 0.045,
+} as const;
+
+// ---------- 物品：未鑑定的藥水與卷軸、裝備 ----------
+
+/** 未知藥水（治療藥水一開始就認得，用 H 喝）。 */
+export type PotionId = 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
+/** 未知卷軸（強化卷軸一開始就認得）。 */
+export type ScrollId = 'teleport' | 'mapping' | 'timeStop' | 'lure';
+export type ItemId = `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
+
+export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste'];
+export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'timeStop', 'lure'];
+
+/** 每一局隨機對應的外觀（第一次使用才知道是什麼）。 */
+export const POTION_LOOKS = [
+  { name: '赤紅', color: 0xe0504a },
+  { name: '深藍', color: 0x4a78e0 },
+  { name: '翠綠', color: 0x4ec46a },
+  { name: '紫羅蘭', color: 0xa060e0 },
+  { name: '琥珀', color: 0xe0a040 },
+] as const;
+export const SCROLL_LOOKS = ['灰燼', '潮汐', '荊棘', '星辰'] as const;
+
+export const POTIONS: Record<PotionId, { name: string; drink: string; thrown: string }> = {
+  fire: { name: '火焰藥水', drink: '在腳下燒起來（你也會被燒）', thrown: '碎開處燒起一片火，站在裡面的敵人每 0.5 秒受 1 傷害' },
+  frost: { name: '冰霜藥水', drink: '在腳下結冰（你也會變慢）', thrown: '碎開處結冰，裡面的敵人時間軸變成半速' },
+  gas: { name: '麻痺氣體', drink: '在腳下冒出氣體（你會被麻痺）', thrown: '碎開處冒出氣體，裡面的敵人時間軸暫停' },
+  invisibility: { name: '隱形藥水', drink: '8 秒內敵人看不到你（攻擊會現形）', thrown: '碎了，沒有效果' },
+  haste: { name: '迅捷藥水', drink: '8 秒內你的行動只花一半世界時間', thrown: '碎了，沒有效果' },
+};
+
+export const SCROLLS: Record<ScrollId | 'upgrade', { name: string; text: string }> = {
+  upgrade: { name: '強化卷軸', text: '選一件裝備強化一級' },
+  teleport: { name: '傳送卷軸', text: '傳送到這一層遠離敵人的地方' },
+  mapping: { name: '地圖卷軸', text: '顯示整層地圖與往下的路' },
+  timeStop: { name: '時停卷軸', text: '這一層所有敵人的時間軸暫停 3 秒' },
+  lure: { name: '誘敵卷軸', text: '準星指向的地方發出很大的聲響' },
+};
+
+export const ITEM_FX = {
+  area: {
+    fire: { radius: 2.2, life: 5, tick: 0.5, damage: 1 },
+    frost: { radius: 2.5, life: 3, slow: 2 },
+    gas: { radius: 2.5, life: 4, paralyze: 0.5, playerStun: 1.5 },
+  },
+  invisibility: 8,
+  haste: { duration: 8, timeMul: 0.5 },
+  timeStop: 3,
+  lureRadius: 16,
+  teleportMinDist: 12,
+  /** 背包格數（同種藥水、卷軸疊在一格）。 */
+  slots: 10,
+  /** 敵人倒下時掉東西的機率（老兵一定掉）。 */
+  dropChance: 0.2,
+} as const;
+
+// ---------- 經驗、等級、天賦 ----------
+
+export const XP = {
+  kill: { guard: 4, archer: 3, charger: 5 } as Record<'guard' | 'archer' | 'charger', number>,
+  veteranMul: 2,
+  /** 升到第 n 級所需的累積經驗（索引 0 ＝第 1 級）。 */
+  levels: [0, 10, 25, 45, 70, 100, 135, 175, 220, 270],
+  hpPerLevel: 2,
+  /** 每幾級選一個天賦。 */
+  talentEvery: 2,
+} as const;
+
+export type TalentId = 'combo' | 'heavyShield' | 'bulwark' | 'slinger' | 'toughness' | 'mark' | 'apothecary' | 'senses' | 'lightstep';
+
+export const TALENTS: Record<TalentId, { name: string; text: string }> = {
+  combo: { name: '連擊', text: '反擊或擊開成功後 3 秒內，下一次近戰傷害 ×2' },
+  heavyShield: { name: '重盾', text: '盾推多推 1 m，撞牆失衡多 0.5 秒' },
+  bulwark: { name: '鐵壁', text: '盾推的格擋時間 0.15 → 0.3 秒' },
+  slinger: { name: '投石手', text: '投擲石上限 +3，頭部傷害 +1' },
+  toughness: { name: '堅韌', text: '最大生命 +4，並回復 4' },
+  mark: { name: '狙擊標記', text: '箭命中敵人後 2 秒內，下一次拉弓只要 0.4 秒' },
+  apothecary: { name: '藥劑師', text: '藥劑箭上限 +1；每往下一層，兩種各補 1 支' },
+  senses: { name: '敏銳感官', text: '12 m 內的敵人即使在牆後也會顯示' },
+  lightstep: { name: '輕步', text: '潛行步速度 ×1.5，每公尺世界時間 2 → 1.33 倍' },
+};
+
+export const TALENT_POOLS: Record<PlayerClass, TalentId[]> = {
+  warrior: ['combo', 'heavyShield', 'bulwark', 'slinger', 'toughness'],
+  huntress: ['mark', 'apothecary', 'senses', 'lightstep', 'toughness'],
+};
+
+export const TALENT_FX = {
+  comboWindow: 3,
+  heavyShieldPush: 1,
+  heavyShieldStagger: 0.5,
+  bulwarkActive: 0.15,
+  slingerStones: 3,
+  slingerHead: 1,
+  toughnessHp: 4,
+  markWindow: 2,
+  markBow: { windup: 0.08, active: 0, recovery: 0.32 },
+  apothecaryExtra: 1,
+  sensesRange: 12,
+  lightstepSpeed: 1.5,
+  lightstepTime: 1.33,
 } as const;

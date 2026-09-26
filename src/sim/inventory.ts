@@ -1,5 +1,6 @@
 import { PLAYER } from '../config';
 import type { PickupKind } from '../gen/generator';
+import { maxStones } from './progress';
 import type { Player } from './types';
 
 export type StockKey = 'arrows' | 'stones' | 'bottles' | 'potions';
@@ -10,12 +11,14 @@ export type StockKey = 'arrows' | 'stones' | 'bottles' | 'potions';
  */
 export function stockFor(p: Player, kind: PickupKind): { key: StockKey; max: number } | null {
   switch (kind) {
+    case 'item':
+      return null;
     case 'ammo':
-      return p.cls === 'huntress' ? { key: 'arrows', max: PLAYER.maxArrows } : { key: 'stones', max: PLAYER.maxStones };
+      return p.cls === 'huntress' ? { key: 'arrows', max: PLAYER.maxArrows } : { key: 'stones', max: maxStones(p) };
     case 'arrows':
       return p.cls === 'huntress' ? { key: 'arrows', max: PLAYER.maxArrows } : null;
     case 'stone':
-      return p.cls === 'warrior' ? { key: 'stones', max: PLAYER.maxStones } : null;
+      return p.cls === 'warrior' ? { key: 'stones', max: maxStones(p) } : null;
     case 'bottle':
       return { key: 'bottles', max: PLAYER.maxBottles };
     case 'potion':

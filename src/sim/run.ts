@@ -1,4 +1,23 @@
-import { ALL_CLASSES, ALL_RUNES, PLAYER, RUN, type PlayerClass, type RuneId } from '../config';
+import {
+  ALL_ARMORS,
+  ALL_CLASSES,
+  ALL_POTIONS,
+  ALL_RUNES,
+  ALL_SCROLLS,
+  ALL_WEAPONS,
+  ITEM_FX,
+  PLAYER,
+  RUN,
+  TALENTS,
+  UPGRADE,
+  XP,
+  type ArmorId,
+  type ItemId,
+  type PlayerClass,
+  type RuneId,
+  type TalentId,
+  type WeaponId,
+} from '../config';
 import { generateLevel } from '../gen/validate';
 import type { RunStats } from './types';
 import { World, type PlayerCarry } from './world';
@@ -34,7 +53,16 @@ export function nextFloor(run: RunState, w: World): RunState {
 
 // ---------- 存檔 ----------
 
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
+
+const ITEM_IDS = new Set<string>([
+  ...ALL_POTIONS.map((k) => `potion:${k}`),
+  ...ALL_SCROLLS.map((k) => `scroll:${k}`),
+  'scroll:upgrade',
+  ...ALL_WEAPONS.map((k) => `weapon:${k}`),
+  ...ALL_ARMORS.map((k) => `armor:${k}`),
+]);
+const isInt = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 
 export function serializeRun(run: RunState): string {
   return JSON.stringify({ v: SAVE_VERSION, ...run });
@@ -61,12 +89,12 @@ export function parseRun(text: string | null): RunState | null {
     const t = (c?.tipped ?? {}) as Record<string, unknown>;
     if (
       !c ||
-      !isNum(c.maxHp, 1, 40) ||
+      !isNum(c.maxHp, 1, 80) ||
       !isNum(c.hp, 1, c.maxHp as number) ||
       !isNum(c.arrows, 0, PLAYER.maxArrows) ||
-      !isNum(c.stones, 0, PLAYER.maxStones) ||
-      !isNum(t.paralysis, 0, PLAYER.maxTipped) ||
-      !isNum(t.chill, 0, PLAYER.maxTipped) ||
+      !isNum(c.stones, 0, PLAYER.maxStones + 3) ||
+      !isNum(t.paralysis, 0, PLAYER.maxTipped + 1) ||
+      !isNum(t.chill, 0, PLAYER.maxTipped + 1) ||
       (c.tipKind !== 'paralysis' && c.tipKind !== 'chill') ||
       !isNum(c.bottles, 0, PLAYER.maxBottles) ||
       !isNum(c.potions, 0, PLAYER.maxPotions) ||
@@ -74,6 +102,18 @@ export function parseRun(text: string | null): RunState | null {
       !c.runes.every((r) => ALL_RUNES.includes(r as RuneId))
     )
       return null;
+    const wp = (c.weapon ?? {}) as Record<string, unknown>;
+    const ar = (c.armor ?? {}) as Record<string, unknown>;
+    if (!ALL_WEAPONS.includes(wp.id as WeaponId) || !isInt(wp.level, 0, UPGRADE.maxLevel)) return null;
+    if (!ALL_ARMORS.includes(ar.id as ArmorId) || !isInt(ar.level, 0, UPGRADE.maxLevel)) return null;
+    if (!isInt(c.bowLevel, 0, UPGRADE.maxLevel) || !isInt(c.shieldLevel, 0, UPGRADE.maxLevel)) return null;
+    if (!Array.isArray(c.items) || c.items.length > ITEM_FX.slots) return null;
+    for (const it of c.items as Array<Record<string, unknown>>) {
+      if (!it || !ITEM_IDS.has(it.id as string) || !isInt(it.count, 1, 99) || !isInt(it.level, 0, UPGRADE.maxLevel)) return null;
+    }
+    if (!Array.isArray(c.known) || !c.known.every((k) => ITEM_IDS.has(k as string))) return null;
+    if (!isInt(c.xp, 0, 100000) || !isInt(c.level, 1, XP.levels.length)) return null;
+    if (!Array.isArray(c.talents) || !c.talents.every((t) => (t as string) in TALENTS)) return null;
     carry = {
       hp: c.hp as number,
       maxHp: c.maxHp as number,
@@ -84,6 +124,15 @@ export function parseRun(text: string | null): RunState | null {
       bottles: c.bottles as number,
       potions: c.potions as number,
       runes: (c.runes as RuneId[]).slice(),
+      weapon: { id: wp.id as WeaponId, level: wp.level as number },
+      armor: { id: ar.id as ArmorId, level: ar.level as number },
+      bowLevel: c.bowLevel as number,
+      shieldLevel: c.shieldLevel as number,
+      items: (c.items as Array<{ id: ItemId; count: number; level: number }>).map((it) => ({ id: it.id, count: it.count, level: it.level })),
+      known: (c.known as ItemId[]).slice(),
+      xp: c.xp as number,
+      level: c.level as number,
+      talents: (c.talents as TalentId[]).slice(),
     };
   }
   let stats: RunStats | null = null;
@@ -113,6 +162,7 @@ export function parseRun(text: string | null): RunState | null {
       blocks: num('blocks'),
       wallSlams: num('wallSlams'),
       tipHits: num('tipHits'),
+      itemsUsed: num('itemsUsed'),
     };
   }
   if (o.floor !== 1 && (!carry || !stats)) return null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, CLASSES, ENEMIES, PERCEPTION, PLAYER, RUNES, runeInfo } from '../src/config';
+import { CLASSES, ENEMIES, PERCEPTION, PLAYER, RUNES, runeInfo, WEAPONS } from '../src/config';
 import { fireProjectile } from '../src/sim/playerSys';
 import { emptyInput, type Projectile } from '../src/sim/types';
 import type { World } from '../src/sim/world';
@@ -35,6 +35,7 @@ function inject(w: World, p: Partial<Projectile> & Pick<Projectile, 'kind' | 'po
     avgVel: { ...p.vel },
     deflected: false,
     tip: null,
+    payload: 'smoke',
     ...p,
   };
   w.projectiles.push(proj);
@@ -93,7 +94,7 @@ describe('劍', () => {
     w.applyRune('swiftBlade');
     const t0 = w.time;
     swing(w);
-    const base = ACTIONS.sword.windup + ACTIONS.sword.active + ACTIONS.sword.recovery;
+    const base = WEAPONS.longsword.windup + WEAPONS.longsword.active + WEAPONS.longsword.recovery;
     expect(w.time - t0).toBeCloseTo(base * RUNES.swiftBlade.timeMul, 2);
     const r2 = (n: number) => Math.round(n * 100) / 100;
     expect(runeInfo('swiftBlade').text).toContain(`${r2(base)} → ${r2(base * RUNES.swiftBlade.timeMul)}`);

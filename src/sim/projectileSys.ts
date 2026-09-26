@@ -1,6 +1,8 @@
-import { CLASSES, ENEMIES, PLAYER, PROJECTILES, SMOKE, TIPS } from '../config';
+import { CLASSES, ENEMIES, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS, UPGRADE } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
 import { shieldBlocks } from './classSys';
+import { shatterPotion } from './items';
+import { hasTalent } from './progress';
 import { chargerHelmet, damageEnemy, enemyForward } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
@@ -77,9 +79,15 @@ function findHit(w: World, p: Projectile, a: V3, b: V3, dt: number, tStart: numb
 export function breakBottle(w: World, b: Projectile, pos: V3, air: boolean): void {
   if (!b.alive) return;
   b.alive = false;
+  if (air) w.stats.airbursts++;
+  // 丟出的藥水：碎開的地方產生效果
+  if (b.payload !== 'smoke') {
+    w.emit({ type: 'bottleBreak', x: pos.x, y: pos.y, z: pos.z, air, kind: b.payload });
+    shatterPotion(w, b.payload, pos.x, pos.y, pos.z);
+    return;
+  }
   const y = Math.max(0.25, pos.y);
   w.smokes.push({ id: w.nextId++, x: pos.x, y, z: pos.z, age: 0, radius: 0, air });
-  if (air) w.stats.airbursts++;
   w.emit({ type: 'bottleBreak', x: pos.x, y, z: pos.z, air });
   w.emit({ type: 'smoke', x: pos.x, y, z: pos.z, air });
   w.emitNoise(pos.x, y, pos.z, SMOKE.noise, 'bottle');
@@ -243,9 +251,14 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
         ? { head: CLASSES.warrior.deflectHead, body: CLASSES.warrior.deflectBody }
         : PROJECTILES.stone;
   let dmg: number = head ? spec.head : spec.body;
+  // 獵弓強化；投石手天賦
+  if (p.kind === 'arrow' && !p.deflected) dmg += (head ? UPGRADE.bowHead : UPGRADE.bowBody) * w.player.bowLevel;
+  if (p.kind === 'stone' && head && hasTalent(w.player, 'slinger')) dmg += TALENT_FX.slingerHead;
   if (e.kind === 'charger' && e.phase === 'charge' && fromFront) dmg = Math.ceil(dmg * ENEMIES.charger.frontArmorMul);
   if (e.kind === 'charger' && e.phase === 'stun') dmg *= ENEMIES.charger.stunDamageMul;
   if (!p.deflected) w.stats.shotHits++;
+  // 狙擊標記天賦：命中後短時間內下一次拉弓比較快
+  if (p.kind === 'arrow' && !p.deflected && hasTalent(w.player, 'mark')) w.player.markT = TALENT_FX.markWindow;
   p.hitSet.add(e.id);
   damageEnemy(w, e, dmg, { source: p.deflected ? 'deflect' : p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z });
   w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 8, 'combat');

@@ -24,6 +24,9 @@ const BOW_NOCK: Pose3 = { p: [0.22, -0.4, -0.52], r: [-0.4, 0.15, 0.5] };
 const KNIFE_IDLE: Pose3 = { p: [0.3, -0.34, -0.46], r: [-0.3, 0.2, -0.2] };
 const KNIFE_UP: Pose3 = { p: [0.36, -0.2, -0.36], r: [0.2, -0.3, -1.0] };
 const KNIFE_END: Pose3 = { p: [-0.2, -0.3, -0.56], r: [-0.3, 0.4, 1.2] };
+const SPEAR_IDLE: Pose3 = { p: [0.26, -0.3, -0.4], r: [-Math.PI / 2 + 0.15, 0, 0] };
+const SPEAR_BACK: Pose3 = { p: [0.26, -0.26, -0.2], r: [-Math.PI / 2 + 0.1, 0, 0] };
+const SPEAR_THRUST: Pose3 = { p: [0.16, -0.22, -0.95], r: [-Math.PI / 2, 0, 0] };
 const SHIELD_REST: Pose3 = { p: [-0.36, -0.34, -0.5], r: [0.1, 0.45, 0.1] };
 const SHIELD_UP: Pose3 = { p: [-0.12, -0.2, -0.5], r: [0, 0.1, 0] };
 const SHIELD_PUSH: Pose3 = { p: [-0.08, -0.18, -0.8], r: [0, 0, 0] };
@@ -45,6 +48,8 @@ export class Viewmodel {
   private sword = new THREE.Group();
   private bow = new THREE.Group();
   private knife = new THREE.Group();
+  private axe = new THREE.Group();
+  private spear = new THREE.Group();
   private shield = new THREE.Group();
   private stone = new THREE.Group();
   private flask = new THREE.Group();
@@ -99,6 +104,16 @@ export class Viewmodel {
     this.part(new THREE.ConeGeometry(0.02, 0.06, 4).rotateY(Math.PI / 4), steel, this.knife, 0, 0.43, 0);
     this.knife.rotation.set(-0.4, 0, 0);
     this.right.add(this.knife);
+    // 重斧
+    this.part(new THREE.BoxGeometry(0.045, 0.7, 0.045), wood, this.axe, 0, 0.3, 0);
+    this.part(new THREE.BoxGeometry(0.26, 0.2, 0.03), steel, this.axe, 0.1, 0.58, 0);
+    this.part(new THREE.BoxGeometry(0.06, 0.08, 0.06), gauntlet, this.axe, 0, 0.66, 0);
+    this.axe.rotation.set(-0.4, 0, 0);
+    this.right.add(this.axe);
+    // 長矛
+    this.part(new THREE.CylinderGeometry(0.02, 0.022, 1.5, 6), wood, this.spear, 0, 0.35, 0);
+    this.part(new THREE.ConeGeometry(0.04, 0.2, 4).rotateY(Math.PI / 4), steel, this.spear, 0, 1.18, 0);
+    this.right.add(this.spear);
     // 臂盾（戰士，左臂）
     this.part(new THREE.BoxGeometry(0.34, 0.42, 0.04), wood, this.shield, 0, 0.05, -0.12);
     this.part(new THREE.BoxGeometry(0.38, 0.05, 0.05), gauntlet, this.shield, 0, 0.27, -0.12);
@@ -157,8 +172,12 @@ export class Viewmodel {
     const a = p.action;
     const tool = p.tool;
     const bowTool = tool === 'bow' || tool === 'tipped';
-    this.sword.visible = tool === 'sword';
-    this.knife.visible = tool === 'knife';
+    const wid = p.weapon.id;
+    const melee = tool === 'melee';
+    this.sword.visible = melee && wid === 'longsword';
+    this.knife.visible = melee && wid === 'knife';
+    this.axe.visible = melee && wid === 'axe';
+    this.spear.visible = melee && wid === 'spear';
     this.bow.visible = bowTool;
     this.stone.visible = tool === 'stone';
     this.shield.visible = p.cls === 'warrior';
@@ -168,7 +187,8 @@ export class Viewmodel {
     const by = Math.abs(Math.cos(this.bob)) * 0.014 * bobAmt;
     this.recoil = Math.max(0, this.recoil - realDt * 3);
 
-    let rp: Pose3 = tool === 'sword' ? SWORD_IDLE : tool === 'knife' ? KNIFE_IDLE : bowTool ? BOW_IDLE : STONE_IDLE;
+    const idle = wid === 'knife' ? KNIFE_IDLE : wid === 'spear' ? SPEAR_IDLE : SWORD_IDLE;
+    let rp: Pose3 = melee ? idle : bowTool ? BOW_IDLE : STONE_IDLE;
     let lpose: Pose3 = p.cls === 'warrior' ? SHIELD_REST : LEFT_HIDDEN;
     this.flask.visible = false;
     const tipColor = (tip: string | null) => (tip === 'paralysis' ? 0xc08cff : tip === 'chill' ? 0x7cc8ff : 0xd4a64a);
@@ -183,16 +203,13 @@ export class Viewmodel {
       const act = a.active;
       const rec = a.recovery;
       switch (a.kind) {
-        case 'sword':
-          if (t < w) rp = lp(SWORD_IDLE, SWORD_UP, smoothstep(0, w, t));
-          else if (t < w + act) rp = lp(SWORD_UP, SWORD_END, clamp((t - w) / act, 0, 1));
-          else rp = lp(SWORD_END, SWORD_IDLE, smoothstep(0, rec, t - w - act));
+        case 'melee': {
+          const [a0, a1, a2] = a.weapon === 'knife' ? [KNIFE_IDLE, KNIFE_UP, KNIFE_END] : a.weapon === 'spear' ? [SPEAR_IDLE, SPEAR_BACK, SPEAR_THRUST] : [SWORD_IDLE, SWORD_UP, SWORD_END];
+          if (t < w) rp = lp(a0, a1, smoothstep(0, w, t));
+          else if (t < w + act) rp = lp(a1, a2, clamp((t - w) / act, 0, 1));
+          else rp = lp(a2, a0, smoothstep(0, rec, t - w - act));
           break;
-        case 'knife':
-          if (t < w) rp = lp(KNIFE_IDLE, KNIFE_UP, smoothstep(0, w, t));
-          else if (t < w + act) rp = lp(KNIFE_UP, KNIFE_END, clamp((t - w) / act, 0, 1));
-          else rp = lp(KNIFE_END, KNIFE_IDLE, smoothstep(0, rec, t - w - act));
-          break;
+        }
         case 'shield':
           if (t < w) lpose = lp(SHIELD_REST, SHIELD_UP, smoothstep(0, w, t));
           else if (t < w + act) lpose = lp(SHIELD_UP, SHIELD_PUSH, smoothstep(0, act * 0.5, t - w));

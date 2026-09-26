@@ -1,4 +1,4 @@
-import { PLAYER, RUN, TIP_NAMES, TOOL_NAMES, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { ARMORS, PLAYER, RUN, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
 import type { GameEvent, Player } from '../sim/types';
@@ -40,6 +40,7 @@ export class Hud {
   private heartStatus = $('heart-status');
   private runesEl = $('runes');
   private toolsEl = $('tools');
+  private armorEl = $('armor');
   private bottles = $('bottles');
   private potions = $('potions');
   private icons = $('icons');
@@ -252,6 +253,14 @@ export class Hud {
         el.classList.toggle('pending', t === p.desiredTool && t !== p.tool);
       }
     });
+    this.set('gear', `${p.weapon.id}${p.weapon.level}|${p.armor.id}${p.armor.level}|${p.shieldLevel}`, () => {
+      for (const el of this.toolEls) {
+        const span = el.querySelector('span')!;
+        if (el.dataset.tool === 'melee') span.textContent = `${WEAPONS[p.weapon.id].name}${p.weapon.level ? ` +${p.weapon.level}` : ''}`;
+        if (el.dataset.tool === 'shield') span.textContent = `臂盾${p.shieldLevel ? ` +${p.shieldLevel}` : ''}`;
+      }
+      this.armorEl.textContent = p.armor.id === 'cloth' ? '' : `${ARMORS[p.armor.id].name}${p.armor.level ? ` +${p.armor.level}` : ''}`;
+    });
     this.set('ammo', `${p.arrows}|${p.stones}|${p.tipped.paralysis}|${p.tipped.chill}|${p.tipKind}`, () => {
       for (const el of this.toolEls) {
         const t = el.dataset.tool as Tool | 'shield';
@@ -262,6 +271,7 @@ export class Hud {
           em.classList.toggle('zero', toolEmpty(p, t));
         }
         if (t === 'tipped') el.querySelector('span')!.textContent = TIP_NAMES[p.tipKind as TipKind];
+        if (t === 'bow' && p.bowLevel) el.querySelector('span')!.textContent = `獵弓 +${p.bowLevel}`;
       }
     });
     this.set('bottles', p.bottles, () => {
@@ -318,13 +328,14 @@ export class Hud {
   /** 依職業建立工具列：數字鍵對應的武器（與模擬層的 slots 相同），戰士另有臂盾。 */
   private buildTools(p: Player): void {
     const cells = p.slots.map(
-      (t, k) => `<div class="tool" data-tool="${t}"><kbd>${k + 1}</kbd><span>${TOOL_NAMES[t]}</span>${t === 'sword' || t === 'knife' ? '' : '<em></em>'}</div>`,
+      (t, k) => `<div class="tool" data-tool="${t}"><kbd>${k + 1}</kbd><span>${TOOL_NAMES[t]}</span>${t === 'melee' ? '' : '<em></em>'}</div>`,
     );
     if (p.cls === 'warrior') cells.push('<div class="tool shield" data-tool="shield"><kbd>右鍵/F</kbd><span>臂盾</span></div>');
     this.toolsEl.innerHTML = cells.join('');
     this.toolEls = Array.from(this.toolsEl.querySelectorAll<HTMLElement>('.tool'));
     delete this.last.tool;
     delete this.last.ammo;
+    delete this.last.gear;
   }
 
   /** 準星旁的職業提示：提示出現＝現在按下去有效（與模擬層同一個判定）。 */
@@ -333,7 +344,7 @@ export class Hud {
     let cls = '';
     let text = '';
     if (!p.dead && !p.action) {
-      if (p.cls === 'warrior' && w.cue.counter && p.tool === 'sword') {
+      if (p.cls === 'warrior' && w.cue.counter && p.tool === 'melee') {
         cls = 'counter';
         text = '反擊';
         this.hint('cls-warrior-counter', '戰士：敵人的攻擊鎖定、就在眼前時，準星下出現「反擊」——現在揮劍會更快出手並打斷它（弩矢會被打回去）。', 7);

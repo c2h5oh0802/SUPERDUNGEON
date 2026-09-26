@@ -1,4 +1,5 @@
-import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUNES, SHIELD, TIPS } from '../config';
+import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, RUNES, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2 } from '../core/math';
 import type { EnemySpawn } from '../gen/generator';
 import { recoilPlayer, shieldBlocks } from './classSys';
@@ -8,6 +9,8 @@ import type { Enemy, Projectile } from './types';
 
 export function createEnemy(w: World, s: EnemySpawn): Enemy {
   const spec = ENEMIES[s.kind];
+  // 越深越硬；老兵再 ×1.5
+  const hp = Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
   return {
     id: w.nextId++,
     kind: s.kind,
@@ -17,8 +20,8 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     yaw: s.yaw,
     radius: spec.radius,
     height: spec.height,
-    hp: spec.hp,
-    maxHp: spec.hp,
+    hp,
+    maxHp: hp,
     alive: true,
     deathT: 0,
     state: s.state,
@@ -62,6 +65,8 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     paralyzeT: 0,
     slowT: 0,
     shieldUp: false,
+    veteran: !!s.veteran,
+    corpseFound: false,
   };
 }
 
@@ -103,7 +108,7 @@ function updatePush(w: World, e: Enemy, dt: number): void {
   const nx = e.x + pu.dx * step;
   const nz = e.z + pu.dz * step;
   if (w.grid.circleBlocked(nx, nz, e.radius)) {
-    staggerEnemy(e, SHIELD.wallStagger);
+    staggerEnemy(e, SHIELD.wallStagger + (hasTalent(w.player, 'heavyShield') ? TALENT_FX.heavyShieldStagger : 0));
     w.stats.wallSlams++;
     w.emit({ type: 'bump', id: e.id, kind: 'wall', x: e.x + pu.dx * e.radius, y: 1.0, z: e.z + pu.dz * e.radius });
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
@@ -144,7 +149,7 @@ export interface DamageInfo {
   z: number;
 }
 
-const PLAYER_WEAPONS = new Set(['sword', 'knife', 'arrow', 'stone', 'deflect']);
+const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive) return;
@@ -162,6 +167,7 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     if (e.lodged > 0) w.addPickup('arrows', e.lodged, e.x, 0.05, e.z, null);
     e.lodged = 0;
     w.emit({ type: 'enemyDeath', id: e.id, x: e.x, y: e.y, z: e.z, kind: e.kind });
+    w.onKill(e);
     return;
   }
   if (PLAYER_WEAPONS.has(info.source)) becomeAlert(w, e);
@@ -233,6 +239,48 @@ export function awakenDungeon(w: World): void {
 
 // ---------- 感知 ----------
 
+/** 視野角度：搜索中的敵人會左右張望（180°），戒備中 150°。 */
+function fovDeg(e: Enemy): number {
+  let f: number = PERCEPTION.fovDeg;
+  if (e.awakened) f = Math.max(f, PERCEPTION.awakenedFovDeg);
+  if (e.state === 'search') f = Math.max(f, STEALTH.searchFovDeg);
+  return f;
+}
+
+/** 看到同伴的屍體：前往查看、大喊，整層進入戒備。 */
+function findCorpses(w: World, e: Enemy): void {
+  const eye = { x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z };
+  const half = (fovDeg(e) * Math.PI) / 360;
+  for (const c of w.enemies) {
+    if (c.alive || c.corpseFound || c === e) continue;
+    const dx = c.x - e.x;
+    const dz = c.z - e.z;
+    const d = Math.hypot(dx, dz);
+    if (d > STEALTH.corpseSightRange) continue;
+    if (Math.abs(angleDiff(yawFromDir(dx, dz), e.yaw)) > half && d > 1.2) continue;
+    if (!w.canSee(eye, { x: c.x, y: c.y + 0.3, z: c.z })) continue;
+    c.corpseFound = true;
+    if (e.state === 'sleep') continue;
+    e.state = 'search';
+    e.target = { x: c.x, z: c.z };
+    e.searchT = 0;
+    e.path = null;
+    e.awareness = Math.max(e.awareness, 0.5);
+    w.emit({ type: 'corpseFound', id: e.id, x: e.x, y: e.y, z: e.z });
+    w.emitNoise(e.x, e.y + 1.6, e.z, NOISE.shout, 'shout');
+    raiseAlarm(w);
+    return;
+  }
+}
+
+/** 整層戒備：所有敵人視野變廣、發現更快、搜索更久（不會叫醒睡著的）。 */
+export function raiseAlarm(w: World): void {
+  if (w.alarm) return;
+  w.alarm = true;
+  for (const o of w.enemies) if (o.alive) o.awakened = true;
+  w.emit({ type: 'alarm' });
+}
+
 function perceive(w: World, e: Enemy, interval: number): void {
   const p = w.player;
   e.seesPlayer = false;
@@ -253,15 +301,18 @@ function perceive(w: World, e: Enemy, interval: number): void {
     } else e.sleepProxT = Math.max(0, e.sleepProxT - interval);
     return;
   }
+  if (e.state !== 'alert') findCorpses(w, e);
   let range: number = e.state === 'alert' ? PERCEPTION.alertRange : PERCEPTION.range;
   if (e.suspicious) range *= PERCEPTION.suspiciousRangeMul;
   if (e.awakened) range *= PERCEPTION.awakenedRangeMul;
   if (d > range) return;
   if (e.state !== 'alert') {
-    const fov = ((e.awakened ? PERCEPTION.awakenedFovDeg : PERCEPTION.fovDeg) * Math.PI) / 180;
+    const fov = (fovDeg(e) * Math.PI) / 180;
     const ang = Math.abs(angleDiff(yawFromDir(dx, dz), e.yaw));
     if (ang > fov / 2 && d > 1.2) return;
   }
+  // 隱形：看不到（聲音照樣聽得到）
+  if (p.invisT > 0) return;
   const eye = { x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z };
   const chest = { x: p.x, y: 1.25, z: p.z };
   const head = { x: p.x, y: PLAYER.eyeHeight, z: p.z };
@@ -282,7 +333,8 @@ function updateAwareness(w: World, e: Enemy, interval: number): void {
     let fill = lerp(PERCEPTION.fillNear, PERCEPTION.fillFar, clamp((d - PERCEPTION.nearDist) / (PERCEPTION.range - PERCEPTION.nearDist), 0, 1));
     if (w.hasRune('shadow')) fill *= RUNES.shadow.detectMul;
     if (e.awakened) fill *= PERCEPTION.awakenedFillMul;
-    if (e.state === 'search') fill *= 0.8;
+    if (e.veteran) fill *= RUN.veteranFillMul;
+    if (e.state === 'search') fill *= STEALTH.searchFillMul;
     e.awareness += interval / fill;
     if (e.awareness >= 1) becomeAlert(w, e);
   } else if (e.state !== 'alert') {
@@ -583,6 +635,7 @@ function fireBolt(w: World, e: Enemy): void {
     avgVel: { x: 0, y: 0, z: 0 },
     deflected: false,
     tip: null,
+    payload: 'smoke',
   };
   w.projectiles.push(proj);
   e.phase = 'reload';
@@ -732,8 +785,9 @@ function unawareBehavior(w: World, e: Enemy, dt: number): void {
       if (arrived) {
         e.moving = false;
         e.searchT += dt;
-        if (!e.perched) e.yaw = wrapAngle(e.yaw + Math.sin(e.searchT * 1.6) * 1.4 * dt);
-        if (e.searchT >= PERCEPTION.searchTime) {
+        // 左右張望（範圍大到會轉身看背後）
+        if (!e.perched) e.yaw = wrapAngle(e.yaw + Math.sin(e.searchT * 1.3) * 2.4 * dt);
+        if (e.searchT >= PERCEPTION.searchTime * (e.awakened ? 2 : 1)) {
           e.state = e.patrol.length ? 'patrol' : 'idle';
           e.suspicious = true;
           e.target = null;
