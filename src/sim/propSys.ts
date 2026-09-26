@@ -128,9 +128,9 @@ export function updatePickups(w: World): void {
       if (addItem(w, k.item, k.level ?? 0)) {
         k.taken = true;
         w.emit({ type: 'pickup', kind: 'item', amount: 1, x: k.x, z: k.z, text: itemName(w, k.item, k.level ?? 0) });
-      } else if (!k.stuckDir) {
+      } else if (!k.warned) {
         // 背包滿了：提醒一次
-        k.stuckDir = { x: 0, y: 0, z: 0 };
+        k.warned = true;
         w.emit({ type: 'fullInventory', text: '背包滿了（I 打開背包）' });
       }
       continue;

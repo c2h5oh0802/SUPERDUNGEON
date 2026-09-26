@@ -1024,3 +1024,144 @@ button.ghost {
 .c-down {
   color: #3fe0c0;
 }
+
+/* 背包 */
+.inv-panel {
+  width: min(760px, 100%);
+}
+
+.inv-gear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 13px;
+  color: #d8cfbf;
+  margin-bottom: 10px;
+}
+
+.inv-gear b {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.inv-list {
+  display: grid;
+  gap: 6px;
+  max-height: 52vh;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.inv-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.inv-row .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.inv-row .nm {
+  font-size: 14px;
+}
+
+.inv-row .ds {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.inv-row .acts {
+  display: flex;
+  gap: 6px;
+}
+
+.inv-row .acts button {
+  padding: 5px 10px;
+  font-size: 13px;
+  margin: 0;
+}
+
+.inv-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* 等級、增益、潛行 */
+#xp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #d8cfbf;
+  margin: 4px 0;
+}
+
+.xpbar {
+  width: 110px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.xpbar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+
+#armor {
+  font-size: 12px;
+  color: #b8c0cc;
+}
+
+#buffs {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+}
+
+#buffs span {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(63, 224, 192, 0.18);
+  color: var(--teal);
+}
+
+#stealth {
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+
+#stealth.loud {
+  color: #f0b060;
+}
+
+#stealth.sneak {
+  color: var(--teal);
+}
+
+#stealth.alarm::after {
+  content: ' · 戒備中';
+  color: #ff7050;
+}
+
+.eicon.vet {
+  outline: 2px solid var(--gold);
+}
+
+.eicon.sense {
+  opacity: 0.55;
+  color: var(--teal);
+}

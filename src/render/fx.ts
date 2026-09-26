@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { itemColor } from '../sim/items';
 import { ENEMIES, PLAYER, SMOKE } from '../config';
 import { clamp, forwardFromYaw, smoothstep } from '../core/math';
 import type { GameEvent, Projectile } from '../sim/types';
@@ -57,6 +58,14 @@ export class FxVisual {
   private aimLines = new Map<number, THREE.Mesh>();
   private streaks = new Map<number, THREE.Mesh>();
   private wedges = new Map<number, THREE.Mesh>();
+  /** 藥水碎開後的區域：火（橘）、冰（藍）、麻痺氣體（紫綠）。 */
+  private areaVis = new Map<number, THREE.Mesh>();
+  private areaGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2);
+  private areaMats = {
+    fire: new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }),
+    frost: new THREE.MeshBasicMaterial({ color: 0x8cd8ff, transparent: true, opacity: 0.35, depthWrite: false }),
+    gas: new THREE.MeshBasicMaterial({ color: 0xa6e06a, transparent: true, opacity: 0.35, depthWrite: false }),
+  };
   /** 獵人之眼：空中煙霧瓶的落點圈。 */
   private landRings = new Map<number, THREE.Mesh>();
   private landGeo = new THREE.RingGeometry(0.45, 0.6, 28).rotateX(-Math.PI / 2);
@@ -104,7 +113,8 @@ export class FxVisual {
     this.bottleGeo = new THREE.SphereGeometry(0.15, 10, 8);
     this.geos.push(this.arrowGeo, this.boltGeo, this.stoneGeo, this.bottleGeo);
     this.mats.push(this.matArrow, this.matBolt, this.matStone, this.matBottle, this.aimMat, this.streakMat, this.wedgeMat, this.matDeflected, this.landMat);
-    this.geos.push(this.landGeo);
+    this.geos.push(this.landGeo, this.areaGeo);
+    this.mats.push(this.areaMats.fire, this.areaMats.frost, this.areaMats.gas);
     // 盾衛鎖定後的揮擊範圍：地上的扇形（朝 -z 為正前方，與角色 yaw 慣例一致）
     const half = ((ENEMIES.guard.arcDeg / 2) * Math.PI) / 180;
     this.wedgeGeo = new THREE.RingGeometry(0.5, ENEMIES.guard.reach + PLAYER.radius, 20, 1, Math.PI / 2 - half, half * 2).rotateX(-Math.PI / 2).translate(0, 0.04, 0);
@@ -167,6 +177,17 @@ export class FxVisual {
         case 'tipHit':
           this.burst(x, y, z, 30, e.kind === 'paralysis' ? [0.85, 0.6, 1] : [0.55, 0.85, 1], 3, 0.6);
           break;
+        case 'area':
+          this.burst(x, 0.4, z, 30, e.kind === 'fire' ? [1, 0.5, 0.15] : e.kind === 'frost' ? [0.6, 0.85, 1] : [0.7, 0.95, 0.4], 3.5, 0.6);
+          break;
+        case 'shatter':
+          this.burst(x, y, z, 12, [0.9, 0.9, 0.95], 2.5, 0.3);
+          break;
+        case 'levelUp': {
+          const p = this.world.player;
+          this.burst(p.x, 1.2, p.z, 36, [1, 0.85, 0.4], 3, 0.8);
+          break;
+        }
         case 'helmet':
           this.burst(x, y, z, 10, [0.9, 0.9, 0.8], 3, 0.25);
           break;
@@ -217,10 +238,20 @@ export class FxVisual {
         obj.add(new THREE.Mesh(this.stoneGeo, this.matStone));
         color = new THREE.Color(0xa09888);
         break;
-      case 'bottle':
-        obj.add(new THREE.Mesh(this.bottleGeo, this.matBottle));
-        color = new THREE.Color(0xb8a8ff);
+      case 'bottle': {
+        if (p.payload === 'smoke') {
+          obj.add(new THREE.Mesh(this.bottleGeo, this.matBottle));
+          color = new THREE.Color(0xb8a8ff);
+        } else {
+          // 丟出的藥水：這一局的外觀顏色
+          const c = itemColor(this.world.level.seed, `potion:${p.payload}`);
+          const m = new THREE.MeshBasicMaterial({ color: c });
+          this.mats.push(m);
+          obj.add(new THREE.Mesh(this.bottleGeo, m));
+          color = new THREE.Color(c);
+        }
         break;
+      }
     }
     this.group.add(obj);
     return { obj, trail: [], color, deflected: false };
@@ -466,6 +497,27 @@ export class FxVisual {
     }
     for (const [id, m] of this.landRings) if (!seenLand.has(id)) m.visible = false;
     this.landMat.opacity = 0.4 + 0.25 * Math.abs(Math.sin(realTime * 6));
+    // 區域
+    const seenArea = new Set<number>();
+    for (const a of this.world.areas) {
+      seenArea.add(a.id);
+      let m = this.areaVis.get(a.id);
+      if (!m) {
+        m = new THREE.Mesh(this.areaGeo, this.areaMats[a.kind]);
+        this.group.add(m);
+        this.areaVis.set(a.id, m);
+      }
+      const fade = Math.min(1, (a.life - a.age) / 0.6);
+      m.position.set(a.x, 0.06, a.z);
+      m.scale.setScalar(a.radius * (0.4 + 0.6 * Math.min(1, a.age / 0.25)) * (0.6 + 0.4 * fade));
+      if (a.kind === 'fire' && Math.random() < 0.5) this.burst(a.x + (Math.random() - 0.5) * a.radius, 0.2, a.z + (Math.random() - 0.5) * a.radius, 2, [1, 0.55, 0.2], 1.5, 0.5);
+    }
+    for (const [id, m] of this.areaVis) {
+      if (seenArea.has(id)) continue;
+      m.removeFromParent();
+      this.areaVis.delete(id);
+    }
+    this.areaMats.fire.opacity = 0.3 + 0.15 * Math.abs(Math.sin(realTime * 9));
   }
 
   private updateSwordArc(): void {

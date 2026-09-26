@@ -542,8 +542,9 @@ export class EnemyVisual {
     // 預備動作發光（橘→紅），受擊閃白；麻痺＝紫色定格、冰寒＝冰藍
     u.uGlowAmt!.value = e.paralyzeT > 0 ? 0 : glow;
     (u.uGlow!.value as THREE.Color).setRGB(1.0, lerp(0.45, 0.12, clamp(glow - 0.2, 0, 1)), 0.05);
-    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : 0;
-    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : 0x6cc4ff);
+    // 麻痺紫、冰寒藍；老兵平常帶一點金色（頭盔）
+    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : e.veteran ? 0.22 : 0;
+    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : 0xf2c14e);
     this.rig.uFlash.value = e.hurtT > 0 ? (e.hurtT / 0.3) * 0.75 : 0;
     this.rig.uDim.value = 1;
     this.eyes.visible = e.state !== 'sleep';

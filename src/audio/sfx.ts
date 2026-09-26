@@ -186,6 +186,34 @@ export class Sfx {
         case 'dryFire':
           this.tone('square', 1800, 1500, 0.03, 0.12);
           break;
+        case 'noise':
+          // 自己的腳步聲：輕輕的悶響（提醒你正在出聲）
+          if (e.source === 'step') this.noise(0.06, 0.12, 'lowpass', 380, 160, 1);
+          break;
+        case 'levelUp':
+          for (const [k, f] of [523, 659, 784, 1046].entries()) this.tone('triangle', f, f, 0.25, 0.18, null, k * 0.08);
+          break;
+        case 'identify':
+          this.tone('sine', 880, 1320, 0.2, 0.2);
+          break;
+        case 'read':
+          this.noise(0.3, 0.2, 'highpass', 3000, 5000, 2);
+          this.tone('sine', 440, 880, 0.25, 0.3);
+          break;
+        case 'equip':
+          this.tone('square', 300, 280, 0.08, 0.1);
+          this.noise(0.08, 0.3, 'bandpass', 1500, 900, 1);
+          break;
+        case 'area':
+          this.noise(0.5, 0.35, e.kind === 'fire' ? 'lowpass' : 'highpass', e.kind === 'fire' ? 900 : 3000, e.kind === 'fire' ? 400 : 1800, 2, pos);
+          break;
+        case 'shatter':
+          this.noise(0.12, 0.4, 'highpass', 4000, 2500, 2, pos);
+          break;
+        case 'corpseFound':
+        case 'alarm':
+          this.tone('sawtooth', 330, 420, 0.25, 0.35, pos);
+          break;
         case 'drink':
           this.noise(0.5, 0.12, 'bandpass', 500, 900, 4);
           break;

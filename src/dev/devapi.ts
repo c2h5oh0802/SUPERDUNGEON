@@ -1,4 +1,6 @@
-import { PLAYER } from '../config';
+import { PLAYER, type ItemId } from '../config';
+import { addItem } from '../sim/items';
+import { gainXp } from '../sim/progress';
 import { activeLoopCount } from '../core/loop';
 import { levelSignature } from '../gen/generator';
 import { geometryCacheSize } from '../render/characters';
@@ -56,6 +58,19 @@ export function installDevApi(app: App): void {
           tipped: { ...p.tipped },
           tipKind: p.tipKind,
           slots: p.slots.slice(),
+          weapon: { ...p.weapon },
+          armor: { ...p.armor },
+          bowLevel: p.bowLevel,
+          shieldLevel: p.shieldLevel,
+          items: p.items.map((i) => ({ ...i })),
+          known: p.known.slice(),
+          xp: p.xp,
+          level: p.level,
+          talents: p.talents.slice(),
+          sneaking: p.sneaking,
+          invisT: p.invisT,
+          pendingUse: p.pendingUse ? { ...p.pendingUse } : null,
+          hasteT: p.hasteT,
           bottles: p.bottles,
           potions: p.potions,
           tool: p.tool,
@@ -93,6 +108,7 @@ export function installDevApi(app: App): void {
           perched: e.perched,
           roomKey: e.roomKey,
           shieldUp: e.shieldUp,
+          veteran: e.veteran,
           paralyzeT: e.paralyzeT,
           slowT: e.slowT,
           pushing: !!e.push,
@@ -120,6 +136,9 @@ export function installDevApi(app: App): void {
         interactables: w.interactables.map((i) => ({ id: i.id, kind: i.kind, x: i.x, z: i.z, used: i.used, ref: i.ref })),
         doors: w.grid.doors.map((d) => ({ id: d.id, cx: d.cx, cz: d.cz, progress: d.progress, target: d.target, barred: d.barred, arch: d.arch, axis: d.axis })),
         interactTarget: w.interactTarget,
+        pendingChoice: w.pendingChoice ? { ...w.pendingChoice } : null,
+        alarm: w.alarm,
+        areas: w.areas.map((a) => ({ kind: a.kind, x: a.x, z: a.z, radius: a.radius, age: a.age })),
         stats: { ...w.stats, damageTaken: { ...w.stats.damageTaken } },
       };
     },
@@ -187,6 +206,16 @@ export function installDevApi(app: App): void {
       setHp(hp: number) {
         const w = app.world;
         if (w) w.player.hp = hp;
+      },
+      /** 狀態注入：放一件物品進背包。 */
+      giveItem(id: ItemId, level = 0) {
+        const w = app.world;
+        return w ? addItem(w, id, level) : false;
+      },
+      /** 狀態注入：給經驗。 */
+      giveXp(n: number) {
+        const w = app.world;
+        if (w) gainXp(w, n);
       },
     },
   };

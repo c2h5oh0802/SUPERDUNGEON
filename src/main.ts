@@ -1,6 +1,8 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, RUN, classInfo, runeInfo, type ClassInfo, type PlayerClass, type RuneId } from './config';
+import { ALL_CLASSES, RUN, TALENTS, classInfo, runeInfo, type ClassInfo, type PlayerClass, type RuneId } from './config';
+import { addItem, queueUse, upgradeLabel } from './sim/items';
+import { renderInventory } from './ui/inventory';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -15,11 +17,11 @@ import { Hud } from './ui/hud';
 import { drawMap } from './ui/mapView';
 import { SettingsStore } from './ui/settings';
 
-type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'rune' | 'results';
+type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'rune' | 'choice' | 'inventory' | 'results';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const SCREENS = ['screen-menu', 'screen-help', 'screen-class', 'screen-settings', 'screen-pause', 'screen-rune', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
+const SCREENS = ['screen-menu', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-rune', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
 
 export class App {
   readonly canvas = $<HTMLCanvasElement>('game');
@@ -51,7 +53,7 @@ export class App {
       onLockChange: (locked) => this.onLockChange(locked),
       onLockError: () => {},
       onFocusLost: () => this.onFocusLost(),
-      capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'rune',
+      capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'rune' || this.mode === 'choice' || this.mode === 'inventory',
     });
     this.input.attach();
     this.applySettings();
@@ -87,6 +89,7 @@ export class App {
       `<h4>起始裝備</h4><ul>${gear}</ul><p class="muted">${info.common}</p>`,
       `<h4>職業規則</h4><ul>${rules}</ul>`,
       `<h4>擅長與弱點</h4><ul><li>${info.strengths}</li><li>${info.weaknesses}</li></ul>`,
+      `<h4>天賦（每兩級二選一）</h4><ul>${info.talents.map((t) => `<li><b class="nm">${t.name}</b>：${t.text}</li>`).join('')}</ul>`,
       `<h4>代表性的一刻</h4><ul>${moments}</ul>`,
     ].join('');
   }
@@ -166,6 +169,7 @@ export class App {
     click('btn-restart', () => this.startRun(this.seed, this.practice));
     click('btn-pause-settings', () => this.openSettings('pause'));
     click('btn-pause-class', () => this.openClassScreen());
+    click('btn-inv-close', () => this.closeInventory());
     click('btn-class-back', () => this.show('screen-pause'));
     click('btn-quit', () => this.toMenu());
     click('btn-retry', () => this.startRun(this.seed, this.practice));
@@ -268,7 +272,12 @@ export class App {
   startRun(seed: string, practice: boolean, fromGesture = true): void {
     if (practice) {
       this.run = null;
-      this.startWorld(seed, true, fromGesture, () => new World(generateLevel(seed, { practice: true }), { cls: this.cls }));
+      this.startWorld(seed, true, fromGesture, () => {
+        const w = new World(generateLevel(seed, { practice: true }), { cls: this.cls });
+        // 練習場：先給幾樣東西試（背包 I）
+        for (const id of ['potion:fire', 'potion:frost', 'potion:gas', 'scroll:lure', 'scroll:upgrade', 'weapon:axe'] as const) addItem(w, id);
+        return w;
+      });
       return;
     }
     this.startFloor(newRun(seed, this.cls), fromGesture);
@@ -434,6 +443,77 @@ export class App {
     this.sfx.ui('open');
   }
 
+  /** 天賦或強化的選擇畫面（世界暫停）。 */
+  private openChoice(): void {
+    const w = this.world!;
+    const c = w.pendingChoice;
+    if (!c) return;
+    const cards =
+      c.kind === 'talent'
+        ? c.options.map((t) => ({ name: TALENTS[t].name, text: TALENTS[t].text }))
+        : c.options.map((t) => upgradeLabel(w, t));
+    $('choice-title').textContent = c.kind === 'talent' ? `升到第 ${w.player.level} 級：選一個天賦` : '強化卷軸：選一件裝備強化';
+    $('choice-sub').textContent = c.kind === 'talent' ? '天賦本局有效。按數字鍵或直接點選。' : '強化本局有效，會帶到下一層。按數字鍵或直接點選。';
+    const box = $('choice-cards');
+    box.innerHTML = cards
+      .map((_, k) => `<button class="rune-card" data-idx="${k}"><kbd>${k + 1}</kbd><h3></h3><p></p></button>`)
+      .join('');
+    const btns = Array.from(box.querySelectorAll<HTMLButtonElement>('.rune-card'));
+    btns.forEach((b, k) => {
+      b.querySelector('h3')!.textContent = cards[k]!.name;
+      b.querySelector('p')!.textContent = cards[k]!.text;
+      b.addEventListener('click', () => this.choose(k));
+    });
+    this.releaseForUi();
+    this.mode = 'choice';
+    this.show('screen-choice');
+    this.sfx.ui('open');
+  }
+
+  private choose(idx: number): void {
+    if (this.mode !== 'choice' || !this.world) return;
+    const w = this.world;
+    if (!w.pendingChoice || idx >= w.pendingChoice.options.length) return;
+    w.resolveChoice(idx);
+    const ev = w.drainEvents();
+    this.sfx.onEvents(ev);
+    this.hud.onEvents(ev, w);
+    if (w.pendingChoice) this.openChoice();
+    else this.backToPlay();
+  }
+
+  /** 開背包、選擇畫面時放開滑鼠讓玩家點選（不觸發暫停）。 */
+  private releaseForUi(): void {
+    this.input.clear();
+    if (this.input.locked) {
+      this.intentionalUnlock = true;
+      this.input.exitLock();
+    }
+  }
+
+  private backToPlay(): void {
+    this.enterPlaying();
+    if (!this.input.locked && !this.input.fallback) void this.input.requestLock();
+  }
+
+  private openInventory(): void {
+    const w = this.world!;
+    renderInventory(w, (index, mode) => {
+      queueUse(w, index, mode);
+      this.sfx.ui('click');
+      this.closeInventory();
+    });
+    this.releaseForUi();
+    this.mode = 'inventory';
+    this.show('screen-inventory');
+    this.sfx.ui('open');
+  }
+
+  private closeInventory(): void {
+    if (this.mode !== 'inventory') return;
+    this.backToPlay();
+  }
+
   private chooseRune(idx: number): void {
     if (this.mode !== 'rune' || !this.world) return;
     const card = document.querySelectorAll<HTMLButtonElement>('.rune-card')[idx];
@@ -471,6 +551,8 @@ export class App {
       ['真實時間', mmss(s.realTime)],
       ['世界時間', mmss(s.worldTime)],
       ['擊倒敵人', `${s.kills}（背刺 ${s.backstabs} 次）`],
+      ['等級', `${w.player.level}${w.player.talents.length ? `（${w.player.talents.map((t) => TALENTS[t].name).join('、')}）` : ''}`],
+      ['使用物品', String(s.itemsUsed)],
       [w.player.cls === 'warrior' ? '投擲石命中' : '射箭命中', `${s.shotHits} / ${s.shots}`],
       ...(w.player.cls === 'warrior'
         ? ([
@@ -500,7 +582,9 @@ export class App {
     const w = this.world;
     const raw = this.input.consume();
     if (w && this.mode === 'playing') {
-      if (raw.map) {
+      if (raw.inventory && !w.pendingChoice) {
+        this.openInventory();
+      } else if (raw.map) {
         this.mode = 'map';
         drawMap($<HTMLCanvasElement>('map-canvas'), w);
         $('map-title').textContent = `地圖${this.practice ? '' : ` · 種子 ${this.seed}`}`;
@@ -539,6 +623,7 @@ export class App {
         this.hud.onEvents(events, w);
         this.devLog(events);
         if (w.pendingAltar !== null) this.openRune();
+        else if (w.pendingChoice !== null) this.openChoice();
         if (w.outcome !== 'none') {
           this.outcomeT += realDt;
           const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
@@ -553,6 +638,10 @@ export class App {
       if (raw.map || raw.escape) this.enterPlaying();
     } else if (w && this.mode === 'rune') {
       if (raw.digit === 1 || raw.digit === 2) this.chooseRune(raw.digit - 1);
+    } else if (w && this.mode === 'choice') {
+      if (raw.digit) this.choose(raw.digit - 1);
+    } else if (w && this.mode === 'inventory') {
+      if (raw.inventory || raw.escape) this.closeInventory();
     }
     const t1 = performance.now();
     if (w) {

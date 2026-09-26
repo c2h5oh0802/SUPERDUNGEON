@@ -1,4 +1,5 @@
-import { ARMORS, PLAYER, RUN, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { ARMORS, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { hasTalent, nextLevelXp } from '../sim/progress';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
 import type { GameEvent, Player } from '../sim/types';
@@ -40,6 +41,11 @@ export class Hud {
   private heartStatus = $('heart-status');
   private runesEl = $('runes');
   private toolsEl = $('tools');
+  private xpLevel = $('xp-level');
+  private xpFill = $('xp-fill');
+  private buffsEl = $('buffs');
+  private stealthEl = $('stealth');
+  private bag = $('bag');
   private armorEl = $('armor');
   private bottles = $('bottles');
   private potions = $('potions');
@@ -55,6 +61,7 @@ export class Hud {
   private toolEls: HTMLElement[] = [];
   private iconEls = new Map<number, HTMLDivElement>();
   private visible = new Set<number>();
+  private sensed = new Set<number>();
   private visT = 0;
   private last: Record<string, string | number | boolean> = {};
   private hintT = 0;
@@ -123,7 +130,34 @@ export class Hud {
     for (const e of events) {
       switch (e.type) {
         case 'pickup':
-          this.toast(`+${e.amount} ${e.text ?? ''}`, 'good', 1.6);
+          this.toast(e.kind === 'item' ? `撿到 ${e.text ?? ''}` : `+${e.amount} ${e.text ?? ''}`, 'good', 1.6);
+          if (e.kind === 'item') this.hint('bag', '撿到物品了：按 I 打開背包（世界暫停），可以喝、讀、丟出或裝備。', 7);
+          break;
+        case 'identify':
+        case 'equip':
+        case 'buff':
+          if (e.text) this.toast(e.text, 'good', 2.2);
+          break;
+        case 'levelUp':
+          this.toast(`升到第 ${e.amount} 級！最大生命 +${XP.hpPerLevel}`, 'big', 2.5);
+          break;
+        case 'read':
+          if (e.kind === 'mapping') this.toast('整層地圖都揭開了（Tab）', 'good', 2);
+          if (e.kind === 'timeStop') this.toast('時間停住了！', 'big', 2);
+          if (e.kind === 'teleport') this.toast('你被傳送到別的地方', 'good', 2);
+          if (e.kind === 'lure') this.toast('遠處傳來巨響', 'good', 2);
+          break;
+        case 'shatter':
+          if (e.kind === 'invisibility' || e.kind === 'haste') this.toast('藥水碎了，沒有明顯效果', '', 1.6);
+          break;
+        case 'corpseFound':
+          this.toast('有敵人發現了屍體！', 'bad', 2);
+          break;
+        case 'alarm':
+          this.hint('alarm', '整層進入戒備：敵人視野更廣、發現你更快、搜索更久。下次在看不到的地方下手。', 7);
+          break;
+        case 'suspicious':
+          this.hint('step', '敵人聽到了聲音（頭上的 ?）。正常走路有腳步聲，按住 Shift 潛行步就不會出聲。', 7);
           break;
         case 'playerHurt': {
           const a = yawFromDir((e.x ?? p.x) - p.x, (e.z ?? p.z) - p.z);
@@ -282,6 +316,27 @@ export class Hud {
       this.potions.textContent = String(p.potions);
       this.potions.classList.toggle('zero', p.potions === 0);
     });
+    this.set('bag', p.items.length, () => (this.bag.textContent = String(p.items.length)));
+    // 等級與經驗
+    this.set('xp', `${p.level}|${p.xp}`, () => {
+      const cur = XP.levels[p.level - 1] ?? 0;
+      const next = nextLevelXp(p.level);
+      this.xpLevel.textContent = `Lv ${p.level}`;
+      this.xpFill.style.width = next === null ? '100%' : `${Math.round(((p.xp - cur) / (next - cur)) * 100)}%`;
+    });
+    // 增益
+    const buffs = [p.invisT > 0 ? `隱形 ${p.invisT.toFixed(1)}` : '', p.hasteT > 0 ? `迅捷 ${p.hasteT.toFixed(1)}` : '', p.comboT > 0 ? '連擊' : '', p.markT > 0 ? '標記' : '']
+      .filter(Boolean)
+      .map((b) => `<span>${b}</span>`)
+      .join('');
+    this.set('buffs', buffs, () => (this.buffsEl.innerHTML = buffs));
+    // 腳步聲：潛行／正常（會被聽到）；戒備中
+    const moving = p.lastMoveDist > 0;
+    const st = p.sneaking ? 'sneak' : moving ? 'loud' : '';
+    this.set('stealth', `${st}|${w.alarm}`, () => {
+      this.stealthEl.className = `${st}${w.alarm ? ' alarm' : ''}`;
+      this.stealthEl.textContent = p.sneaking ? '潛行步：安靜' : moving ? '腳步聲（Shift 潛行）' : '靜止';
+    });
     // 時間流速
     const rate = w.lastRealDt > 0 ? w.lastWorldDt / w.lastRealDt : 0;
     const pct = Math.round(Math.min(1, rate) * 100);
@@ -418,6 +473,7 @@ export class Hud {
     if (this.visT <= 0) {
       this.visT = 0.1;
       this.visible.clear();
+      this.sensed.clear();
       const eye = { x: p.x, y: PLAYER.eyeHeight, z: p.z };
       for (const e of w.enemies) {
         if (!e.alive) continue;
@@ -425,6 +481,11 @@ export class Hud {
         if (d > 26) continue;
         const head = { x: e.x, y: e.y + e.height - 0.2, z: e.z };
         if (w.canSee(eye, head)) this.visible.add(e.id);
+        // 敏銳感官：近處的敵人即使在牆後也顯示
+        else if (hasTalent(p, 'senses') && d <= TALENT_FX.sensesRange) {
+          this.visible.add(e.id);
+          this.sensed.add(e.id);
+        }
       }
     }
     const W = window.innerWidth;
@@ -450,6 +511,11 @@ export class Hud {
           this.hint('aware', '敵人頭上的圈填滿就會發現你：退出牠的視線，或用煙霧遮住。');
         }
       }
+      // 敏銳感官：牆後的敵人用淡色小點標出
+      if (!cls && e.alive && this.sensed.has(e.id)) {
+        cls = 'sense';
+        text = '•';
+      }
       if (!cls) {
         if (el) el.style.display = 'none';
         continue;
@@ -465,7 +531,7 @@ export class Hud {
         this.iconEls.set(e.id, el);
       }
       el.style.display = 'flex';
-      el.className = `eicon ${cls}`;
+      el.className = `eicon ${cls}${e.veteran ? ' vet' : ''}`;
       if (el.textContent !== text) el.textContent = text;
       if (cls === 'aware') el.style.setProperty('--p', `${Math.round(e.awareness * 100)}%`);
       el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px)`;

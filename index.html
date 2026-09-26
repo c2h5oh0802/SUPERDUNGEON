@@ -12,6 +12,7 @@
 
     <div id="hud" class="hidden" aria-hidden="true">
       <div class="hud-top-left">
+        <div id="stealth"></div>
         <div class="timeflow">
           <svg class="hourglass" viewBox="0 0 20 24" aria-hidden="true"><path d="M3 2h14M3 22h14M5 2c0 6 5 7 5 10s-5 4-5 10M15 2c0 6-5 7-5 10s5 4 5 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
           <div class="flowbar"><i id="flow-fill"></i></div>
@@ -40,6 +41,8 @@
         <div id="class-badge"></div>
         <div id="hp"></div>
         <div id="armor"></div>
+        <div id="xp"><span id="xp-level"></span><div class="xpbar"><i id="xp-fill"></i></div></div>
+        <div id="buffs"></div>
         <div id="heart-status" class="hidden">◆ 攜帶沉眠之心</div>
         <div id="runes"></div>
       </div>
@@ -47,7 +50,8 @@
         <div class="tools" id="tools"></div>
         <div class="items">
           <div class="item"><kbd>Q</kbd><span>煙霧瓶</span><em id="bottles">1</em></div>
-          <div class="item"><kbd>H</kbd><span>藥水</span><em id="potions">1</em></div>
+          <div class="item"><kbd>H</kbd><span>治療藥水</span><em id="potions">1</em></div>
+          <div class="item"><kbd>I</kbd><span>背包</span><em id="bag">0</em></div>
         </div>
       </div>
       <div id="vignette"></div>
@@ -79,7 +83,7 @@
         </div>
         <div class="rules">
           <div><b>時間</b>：靜止時世界以慢動作流動；移動、攻擊、使用道具時，世界以正常速度前進。</div>
-          <div><b>操作</b>：WASD 移動 · 滑鼠瞄準 · 左鍵 使用武器 · 1/2/3 切換武器（依職業） · 右鍵／F 臂盾（戰士） · Q 煙霧瓶 · E 互動 · H 喝藥 · 空白 等待 · Tab 地圖 · Esc 暫停</div>
+          <div><b>操作</b>：WASD 移動 · 按住 Shift 潛行步 · 滑鼠瞄準 · 左鍵 使用武器 · 1/2/3 切換武器（依職業） · 右鍵／F 臂盾（戰士） · Q 煙霧瓶 · I 背包 · E 互動 · H 喝治療藥水 · 空白 等待 · Tab 地圖 · Esc 暫停</div>
         </div>
       </div>
       <p class="footnote" id="storage-note"></p>
@@ -105,10 +109,15 @@
             <h3>潛入</h3>
             <ul>
               <li>敵人頭上：<b>Zz</b> 睡眠、<b>?</b> 起疑（圈會填滿）、<b>!</b> 發現你。</li>
-              <li>用近戰武器攻擊<b>未察覺</b>的敵人：<b>3 倍傷害</b>。</li>
+              <li><b>背刺</b>（3 倍傷害）：睡著的敵人任何方向都可以；閒置、巡邏中的敵人要<b>從背後</b>出手。正在<b>搜索</b>的敵人（被聲音引來、頭上是 ?）不能背刺。</li>
+              <li>正常走路有<b>腳步聲</b>（約 4 m）；按住 <b>Shift</b> 潛行步沒有聲音，但慢、而且每公尺花兩倍世界時間。</li>
+              <li>敵人看到同伴的<b>屍體</b>會大喊，整層進入<b>戒備</b>：視野更廣、發現更快。</li>
+              <li>越深，敵人越硬；第 3 層起有<b>老兵</b>（頭盔：背刺只 ×2）。</li>
               <li><b>投擲石</b>與箭的落點會發出聲響，把敵人引過去。</li>
               <li><b>煙霧瓶</b>擋住視線但不擋路；也可以用箭或石頭在空中打破它。</li>
               <li>地上的<b>彈藥袋</b>：戰士撿到是投擲石，獵手撿到是一般箭。</li>
+              <li><b>藥水與卷軸</b>一開始不認得（顏色、符文每局不同），喝、讀、丟過才知道。每層有一張<b>強化卷軸</b>。</li>
+              <li>擊倒敵人得<b>經驗</b>；升級加生命，每兩級選一個職業天賦。</li>
             </ul>
             <h3>敵人</h3>
             <ul>
@@ -169,6 +178,24 @@
           <button class="rune-card" data-idx="0"><kbd>1</kbd><h3></h3><p></p></button>
           <button class="rune-card" data-idx="1"><kbd>2</kbd><h3></h3><p></p></button>
         </div>
+      </div>
+    </section>
+
+    <section id="screen-choice" class="screen hidden">
+      <div class="panel wide">
+        <h2 id="choice-title">選擇</h2>
+        <p class="muted" id="choice-sub"></p>
+        <div class="rune-cards" id="choice-cards"></div>
+      </div>
+    </section>
+
+    <section id="screen-inventory" class="screen hidden">
+      <div class="panel wide inv-panel">
+        <h2>背包 <small class="muted" id="inv-count"></small></h2>
+        <div class="inv-gear" id="inv-gear"></div>
+        <div class="inv-list" id="inv-list"></div>
+        <p class="muted small">世界暫停中。未知的藥水與卷軸用了才知道是什麼；丟出的藥水會往準星方向拋出（可以在空中射爆）。按 <kbd>I</kbd> 或 <kbd>Esc</kbd> 關閉。</p>
+        <button id="btn-inv-close">關閉</button>
       </div>
     </section>
 

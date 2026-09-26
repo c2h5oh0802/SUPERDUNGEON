@@ -363,7 +363,8 @@ function meleeHits(w: World): void {
     a.hitSet.add(e.id);
     // 背刺：睡著的敵人任何方向都算；閒置、巡邏中的敵人要從背後出手；搜索中、已發現你的敵人都不算
     const fromBehind = Math.abs(angleDiff(yawFromDir(p.x - e.x, p.z - e.z), e.yaw)) >= Math.PI - backHalf;
-    const sneak = e.state === 'sleep' || ((e.state === 'idle' || e.state === 'patrol') && fromBehind);
+    const unaware = e.state === 'idle' || e.state === 'patrol' || (e.state === 'search' && STEALTH.searchBackstab);
+    const sneak = e.state === 'sleep' || (unaware && fromBehind);
     let dmg = weaponDamage(a.weapon, p.weapon.level);
     if (sneak) dmg *= e.veteran ? Math.min(spec.sneakMultiplier, RUN.veteranSneakMul) : spec.sneakMultiplier;
     if (e.kind === 'charger' && e.phase === 'stun') dmg *= 2;

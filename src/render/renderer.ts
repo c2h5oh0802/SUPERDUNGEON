@@ -38,6 +38,7 @@ export class GameRenderer {
   private run: RunVisual | null = null;
   private slow = 0;
   private hurtKick = 0;
+  private crouch = 0;
   private deathT = 0;
   private realTime = 0;
   private lightT = 0;
@@ -142,7 +143,9 @@ export class GameRenderer {
 
     // 鏡頭
     const cam = this.camera;
-    let eye: number = PLAYER.eyeHeight;
+    // 潛行步：鏡頭壓低（只是畫面回饋，判定不變）
+    this.crouch = lerp(this.crouch, p.sneaking ? 1 : 0, 1 - Math.exp(-realDt * 10));
+    let eye: number = PLAYER.eyeHeight - 0.35 * this.crouch;
     let roll = 0;
     if (p.dead) {
       this.deathT += realDt;

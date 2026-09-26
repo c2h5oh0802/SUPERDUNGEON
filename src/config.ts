@@ -172,6 +172,8 @@ export const STEALTH = {
   searchFillMul: 0.67,
   /** 看得到屍體的距離。 */
   corpseSightRange: 14,
+  /** 搜索中的敵人能不能被背刺（目前的規則：不能）。 */
+  searchBackstab: false,
 } as const;
 
 export const NOISE = {
@@ -426,13 +428,15 @@ export interface ClassInfo {
   strengths: string;
   weaknesses: string;
   moments: string[];
+  /** 升級時可以選的天賦。 */
+  talents: Array<{ name: string; text: string }>;
 }
 
 /** 職業說明由上方數值生成，確保文字與效果一致。 */
 export function classInfo(id: PlayerClass): ClassInfo {
   const cfg = CLASSES[id];
   const st = cfg.start;
-  const common = `共通：煙霧瓶 ${st.bottles}（Q）、藥水 ${st.potions}（H，回復 ${PLAYER.potionHeal}）、生命 ${PLAYER.maxHp}。`;
+  const common = `共通：煙霧瓶 ${st.bottles}（Q）、治療藥水 ${st.potions}（H，回復 ${PLAYER.potionHeal}）、生命 ${PLAYER.maxHp}、布衣。撿到的武器與護甲兩個職業都能裝備；升級時從職業天賦中選一個。`;
   if (id === 'warrior') {
     const w = CLASSES.warrior;
     const sw = WEAPONS.longsword;
@@ -487,6 +491,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
         '盾衛背後就是牆 → 盾推，它撞牆失衡。',
         '弩矢飛到眼前 → 揮劍，把它打回弩手身上。',
       ],
+      talents: TALENT_POOLS.warrior.map((t) => TALENTS[t]),
     };
   }
   const kn = WEAPONS.knife;
@@ -535,6 +540,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       '盾衛舉劍鎖定 → 麻痺箭射中頭部，它定格在舉劍的姿勢 → 再補一箭。',
       '丟出煙霧瓶 → 對準標記一箭射爆，擋住弩手的視線。',
     ],
+    talents: TALENT_POOLS.huntress.map((t) => TALENTS[t]),
   };
 }
 

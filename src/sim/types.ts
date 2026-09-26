@@ -217,6 +217,8 @@ export interface Pickup {
   /** kind 為 item 時：哪一件物品與強化等級。 */
   item?: ItemId;
   level?: number;
+  /** 背包滿時已經提醒過。 */
+  warned?: boolean;
   x: number;
   y: number;
   z: number;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { categoryOf, itemColor } from '../sim/items';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WORLD } from '../config';
 import { smoothstep } from '../core/math';
@@ -298,6 +299,19 @@ export class PropsVisual {
       pieces.push({ geo: T(new THREE.SphereGeometry(0.17, 9, 7).scale(1, 0.8, 1), 0, 0.14, 0), color: 0x8a5e3a });
       pieces.push({ geo: T(new THREE.CylinderGeometry(0.06, 0.09, 0.08, 8), 0, 0.29, 0), color: 0x6b4a30 });
       pieces.push({ geo: T(new THREE.TorusGeometry(0.07, 0.015, 5, 10).rotateX(Math.PI / 2), 0, 0.27, 0), color: 0xf2c14e, glow: 1 });
+    } else if (kind === 'item:scroll') {
+      // 卷軸：捲起來的紙＋封蠟
+      pieces.push({ geo: T(new THREE.CylinderGeometry(0.06, 0.06, 0.34, 8).rotateZ(Math.PI / 2), 0, 0.07, 0), color: 0xffffff, glow: 0.4 });
+      pieces.push({ geo: T(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 8).rotateZ(Math.PI / 2), 0.18, 0.07, 0), color: 0x8a4a30 });
+      pieces.push({ geo: T(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 8).rotateZ(Math.PI / 2), -0.18, 0.07, 0), color: 0x8a4a30 });
+    } else if (kind === 'item:weapon') {
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.05, 0.02, 0.7), 0, 0.05, -0.1), color: 0xffffff, glow: 0.5 });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.2, 0.03, 0.04), 0, 0.05, 0.25), color: 0xd4a64a });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.04, 0.04, 0.16), 0, 0.05, 0.35), color: 0x6b4a30 });
+    } else if (kind === 'item:armor') {
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.42, 0.34, 0.12), 0, 0.1, 0).rotateX(-Math.PI / 2 + 0.2), color: 0xffffff, glow: 0.3 });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.16, 0.12, 0.12), -0.24, 0.08, -0.1), color: 0xcccccc });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.16, 0.12, 0.12), 0.24, 0.08, -0.1), color: 0xcccccc });
     } else if (kind === 'stone') {
       pieces.push({ geo: T(new THREE.IcosahedronGeometry(0.08, 0), 0, 0.07, 0), color: 0xa8a092, glow: 0.4 });
     } else {
@@ -314,9 +328,21 @@ export class PropsVisual {
 
   private buildPickup(p: Pickup): { obj: THREE.Object3D; mat: THREE.ShaderMaterial } {
     const rig = this.rigAt(p.x, 0.6, p.z);
-    const color = p.kind === 'arrows' || p.kind === 'ammo' ? 0xf2c14e : p.kind === 'potion' ? 0x3fe0c0 : p.kind === 'stone' ? 0xd8d0c0 : 0xc8b8ff;
+    const isItem = p.kind === 'item' && !!p.item;
+    const color = isItem
+      ? itemColor(this.world.level.seed, p.item!)
+      : p.kind === 'arrows' || p.kind === 'ammo'
+        ? 0xf2c14e
+        : p.kind === 'potion'
+          ? 0x3fe0c0
+          : p.kind === 'stone'
+            ? 0xd8d0c0
+            : 0xc8b8ff;
     const mat = this.mat(rig, color, 0);
-    const g = this.pickupGeometry(p.kind, p.stuckDir ? 1 : Math.min(3, p.amount));
+    // 藥水沿用瓶子的形狀（顏色依這一局的外觀）；其他物品各有形狀
+    const cat = isItem ? categoryOf(p.item!) : '';
+    const geoKind = isItem ? (cat === 'potion' ? 'bottle' : `item:${cat}`) : p.kind;
+    const g = this.pickupGeometry(geoKind, isItem || p.stuckDir ? 1 : Math.min(3, p.amount));
     const obj = new THREE.Mesh(g.body, mat);
     obj.add(new THREE.Mesh(g.outline, this.outline));
     if (p.stuckDir) {
