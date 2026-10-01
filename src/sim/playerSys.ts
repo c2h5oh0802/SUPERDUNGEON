@@ -1,7 +1,7 @@
-import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, HEALING_POTION, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
 import { eatRation } from './hunger';
 import { meleeCandidates } from './meleeTargets';
-import { addItem, categoryOf, drinkPotion, equipFromBag, readScroll, takeForAction } from './items';
+import { addItem, categoryOf, drinkPotion, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
@@ -65,7 +65,7 @@ function startPendingUse(w: World): void {
   if (!it) return;
   const c = categoryOf(it.id);
   const level = it.level;
-  const id = takeForAction(w, u.index);
+  const id = takeForAction(w, u.index, u.mode);
   if (!id) return;
   if (u.mode === 'throw') {
     startAction(w, 'bottle');
@@ -78,6 +78,7 @@ function startPendingUse(w: World): void {
   } else if (c === 'potion') {
     startAction(w, 'potion');
     p.action!.item = id;
+    w.emit({ type: 'drink' });
   } else if (c === 'scroll') {
     startAction(w, 'read');
     p.action!.item = id;
@@ -124,13 +125,13 @@ export function startActions(w: World, input: FrameInput): void {
   if (p.action) return;
   if (p.pendingUse) return startPendingUse(w);
   if (input.potion) {
-    if (p.potions > 0 && p.hp < p.maxHp) {
-      p.potions--;
-      w.stats.potionsUsed++;
-      startAction(w, 'potion');
-      w.emit({ type: 'drink' });
-    } else if (p.potions <= 0) w.emit({ type: 'fullInventory', text: '沒有藥水' });
-    else w.emit({ type: 'fullInventory', text: '生命已滿' });
+    const index = isKnown(w, 'potion:healing') ? p.items.findIndex((it) => it.id === 'potion:healing') : -1;
+    if (p.hp >= p.maxHp) w.emit({ type: 'fullInventory', text: '生命已滿' });
+    else if (index < 0) w.emit({ type: 'fullInventory', text: '沒有已知的治療藥水；未知藥水請從背包試喝' });
+    else {
+      queueUse(w, index, 'use');
+      startPendingUse(w);
+    }
     return;
   }
   if (input.bottle) {
@@ -311,7 +312,6 @@ export function updatePlayerAction(w: World, dt: number): void {
       if (!a.fired && done) {
         a.fired = true;
         if (a.item) drinkPotion(w, a.item.split(':')[1] as PotionId);
-        else p.hp = Math.min(p.maxHp, p.hp + PLAYER.potionHeal);
       }
       break;
     case 'read':
@@ -502,11 +502,10 @@ function performUse(w: World, it: Interactable): void {
       const c = w.level.chests[it.ref]!.contents;
       giveOrDrop(w, 'ammo', c.ammo, it);
       giveOrDrop(w, 'bottle', c.bottles, it);
-      giveOrDrop(w, 'potion', c.potions, it);
-      if (c.item) {
+      for (const [index, item] of c.items.entries()) {
         // 寶箱裡的物品放在寶箱前方（走過去撿）
         const f = forwardFromYaw(it.yaw);
-        w.addPickup('item', 1, it.x + f.x * 1.0, 0.15, it.z + f.z * 1.0, null, c.item.id, c.item.level);
+        w.addPickup('item', 1, it.x + f.x * 1.0 + f.z * index * 0.35, 0.15, it.z + f.z * 1.0 - f.x * index * 0.35, null, item.id, item.level);
       }
       w.emit({ type: 'chest', id: it.id, x: it.x, z: it.z });
       return;
@@ -533,9 +532,16 @@ function performUse(w: World, it: Interactable): void {
         for (const k of ALL_TIPS) p.tipped[k] = maxTipped(p);
       } else p.stones = maxStones(p);
       p.bottles = PLAYER.maxBottles;
-      p.potions = PLAYER.maxPotions;
       p.hp = p.maxHp;
       if (w.level.practice) {
+        identify(w, 'potion:healing');
+        const healing = p.items.filter((it) => it.id === 'potion:healing').reduce((n, it) => n + it.count, 0);
+        for (let k = healing; k < HEALING_POTION.practiceCount; k++) {
+          if (!addItem(w, 'potion:healing')) {
+            w.emit({ type: 'fullInventory', text: '背包滿了，治療藥水未補入；先使用一格物品再補給' });
+            break;
+          }
+        }
         const food = p.items.find((it) => it.id === 'food:ration')?.count ?? 0;
         for (let k = food; k < HUNGER.practiceRations; k++) {
           if (!addItem(w, 'food:ration')) {
@@ -564,7 +570,7 @@ function giveOrDrop(w: World, kind: PickupKind, amount: number, it: Interactable
   if (rest > 0) {
     // 放不下的放在寶箱前方
     const f = forwardFromYaw(it.yaw);
-    w.addPickup(kind, rest, it.x + f.x * 0.9 + (kind === 'bottle' ? 0.3 : kind === 'potion' ? -0.3 : 0), 0.15, it.z + f.z * 0.9, null);
+    w.addPickup(kind, rest, it.x + f.x * 0.9 + (kind === 'bottle' ? 0.3 : 0), 0.15, it.z + f.z * 0.9, null);
   }
 }
 

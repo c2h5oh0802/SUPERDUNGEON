@@ -281,7 +281,7 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
       await bot.waitIdle(); continue;
     }
     // 治療
-    if (p.hp <= 4 && p.potions > 0 && !p.action) {
+    if (p.hp <= p.maxHp * 0.5 && p.known.includes('potion:healing') && p.items.some((it) => it.id === 'potion:healing') && !p.action) {
       await bot.releaseAll();
       await bot.tap('KeyH');
       await bot.waitIdle();

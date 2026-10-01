@@ -11,9 +11,10 @@ try {
     await page.click(`.class-card[data-cls="${cls}"]`);
     await startRun(page, 'CHAPTER-UI');
     const s = await bot.st();
-    const expected = cls === 'warrior' ? ['potion:fire', 'scroll:teleport'] : ['potion:invisibility', 'scroll:mapping'];
+    const expected = cls === 'warrior' ? ['potion:healing', 'scroll:teleport'] : ['potion:invisibility', 'scroll:mapping'];
     assert.deepEqual(s.player.known, expected);
-    assert.equal(s.player.potions, 1);
+    assert.ok(!Object.hasOwn(s.player, 'potions'));
+    assert.ok(!s.player.items.some((it) => it.id === 'potion:healing'));
     const current = await page.evaluate(() => window.__sd.level().signature);
     if (signature) assert.equal(current, signature); else signature = current;
     assert.equal(s.specialRooms.length, 2);

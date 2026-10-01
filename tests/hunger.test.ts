@@ -226,7 +226,7 @@ describe('Food distribution, carry and backwards-compatible v2 saves', () => {
     expect(w.player.items.find((it) => it.id === 'food:ration')?.count).toBe(HUNGER.practiceRations);
     // Resupply provides food, rather than silently giving a free Hunger reset.
     expect(w.player.hunger).toBeGreaterThan(HUNGER.hungryAt);
-    queueUse(w, 0, 'use'); w.frame(dt, emptyInput()); finishAction(w);
+    queueUse(w, w.player.items.findIndex((it) => it.id === 'food:ration'), 'use'); w.frame(dt, emptyInput()); finishAction(w);
     expect(w.player.hunger).toBeLessThan(HUNGER.hungryAt);
   });
 

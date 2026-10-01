@@ -1,0 +1,7 @@
+{
+  "scripts/healing-calibration/harness.mjs": "2443ca3d02b89da9a00e671c74381e27cc4bc079f0197dd42e0e396990109b8d",
+  "scripts/healing-calibration/run-calibration.mjs": "6dda171fe3de952e0d536d828c906b09b209d6ce3f7ce351e121190247a21c15",
+  "scripts/healing-calibration/supply.mjs": "0b035898f2de2940c106eb2c157d24c27774e798af4fd2ebabf108b6cb453b97",
+  "scripts/healing-calibration/validate-results.mjs": "1ce96ad1441de63b85d6d1aca1487dc042468c05ed8487b14523e01290f30f28",
+  "scripts/healing-calibration/compare-results.mjs": "0568cc389577a9f7aa353d3a3df982adf81b11e577413c46cc992e9ec2160db2"
+}

@@ -3,7 +3,7 @@ import type { PickupKind } from '../gen/generator';
 import { maxStones } from './progress';
 import type { Player } from './types';
 
-export type StockKey = 'arrows' | 'stones' | 'bottles' | 'potions';
+export type StockKey = 'arrows' | 'stones' | 'bottles';
 
 /**
  * 這種物資對這個玩家是什麼、上限多少。
@@ -21,9 +21,7 @@ export function stockFor(p: Player, kind: PickupKind): { key: StockKey; max: num
       return p.cls === 'warrior' ? { key: 'stones', max: maxStones(p) } : null;
     case 'bottle':
       return { key: 'bottles', max: PLAYER.maxBottles };
-    case 'potion':
-      return { key: 'potions', max: PLAYER.maxPotions };
   }
 }
 
-export const STOCK_NAMES: Record<StockKey, string> = { arrows: '一般箭', stones: '投擲石', bottles: '煙霧瓶', potions: '藥水' };
+export const STOCK_NAMES: Record<StockKey, string> = { arrows: '一般箭', stones: '投擲石', bottles: '煙霧瓶' };

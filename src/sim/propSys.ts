@@ -127,6 +127,7 @@ export function updatePickups(w: World): void {
     if (k.kind === 'item' && k.item) {
       if (addItem(w, k.item, k.level ?? 0)) {
         k.taken = true;
+        if (k.item === 'potion:healing') w.stats.healingFound++;
         w.emit({ type: 'pickup', kind: 'item', amount: 1, x: k.x, z: k.z, text: itemName(w, k.item, k.level ?? 0) });
       } else if (!k.warned) {
         // 背包滿了：提醒一次

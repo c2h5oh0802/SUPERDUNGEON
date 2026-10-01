@@ -28,6 +28,8 @@ import { World, type PlayerCarry } from './world';
 export interface RunState {
   seed: string;
   cls: PlayerClass;
+  /** 舊局保留五種藥水的既有外觀；新局使用六種藥水的完整排列。 */
+  potionLooksVersion?: 1 | 2;
   /** 目前樓層（1 起算）。 */
   floor: number;
   /** 進入這一層時的玩家狀態（第 1 層為 null＝職業起始裝備）。 */
@@ -37,12 +39,13 @@ export interface RunState {
 }
 
 export function newRun(seed: string, cls: PlayerClass): RunState {
-  return { seed, cls, floor: 1, carry: null, stats: null };
+  return { seed, cls, potionLooksVersion: 2, floor: 1, carry: null, stats: null };
 }
 
 /** 生成這一層並建立世界。 */
 export function createFloorWorld(run: RunState): World {
   const level = generateLevel(run.seed, { floor: run.floor });
+  level.potionLooksVersion = run.potionLooksVersion ?? 2;
   return new World(level, { cls: run.cls, carry: run.carry ?? undefined, stats: run.stats ?? undefined });
 }
 
@@ -54,6 +57,9 @@ export function nextFloor(run: RunState, w: World): RunState {
 // ---------- 存檔 ----------
 
 const SAVE_VERSION = 2;
+// Additive v2 marker: only migrated healing can occupy one extra bag slot.
+const INVENTORY_VERSION = 1;
+const LEGACY_MAX_POTIONS = 3;
 
 const ITEM_IDS = new Set<string>([
   'food:ration',
@@ -68,7 +74,11 @@ const ITEM_IDS = new Set<string>([
 const isInt = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 
 export function serializeRun(run: RunState): string {
-  return JSON.stringify({ v: SAVE_VERSION, chapter: 2, ...run });
+  const carry = run.carry ? { ...run.carry } : null;
+  // Do not reintroduce retired numeric stock even if an old runtime caller passed it.
+  if (carry) Reflect.deleteProperty(carry, 'potions');
+  return JSON.stringify({ v: SAVE_VERSION, chapter: 2, inventoryVersion: INVENTORY_VERSION, ...run,
+    potionLooksVersion: run.potionLooksVersion ?? 2, carry });
 }
 
 const isNum = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
@@ -83,6 +93,9 @@ export function parseRun(text: string | null): RunState | null {
     return null;
   }
   if (!o || o.v !== SAVE_VERSION || (o.chapter !== undefined && o.chapter !== 2)) return null;
+  if (o.inventoryVersion !== undefined && o.inventoryVersion !== INVENTORY_VERSION) return null;
+  if (o.potionLooksVersion !== undefined && o.potionLooksVersion !== 1 && o.potionLooksVersion !== 2) return null;
+  const potionLooksVersion = o.potionLooksVersion === undefined ? 1 : o.potionLooksVersion;
   // Legacy floor-4 checkpoints keep their carry and resume exploration floor 4;
   // the new arena follows. Floor-start saves never contain a won/Heart-taken state.
   if (typeof o.seed !== 'string' || !o.seed || o.seed.length > 32) return null;
@@ -101,8 +114,7 @@ export function parseRun(text: string | null): RunState | null {
       !isNum(t.paralysis, 0, PLAYER.maxTipped + 1) ||
       !isNum(t.chill, 0, PLAYER.maxTipped + 1) ||
       (c.tipKind !== 'paralysis' && c.tipKind !== 'chill') ||
-      !isNum(c.bottles, 0, PLAYER.maxBottles) ||
-      !isNum(c.potions, 0, PLAYER.maxPotions)
+      !isNum(c.bottles, 0, PLAYER.maxBottles)
     )
       return null;
     const wp = (c.weapon ?? {}) as Record<string, unknown>;
@@ -110,7 +122,12 @@ export function parseRun(text: string | null): RunState | null {
     if (!ALL_WEAPONS.includes(wp.id as WeaponId) || !isInt(wp.level, 0, UPGRADE.maxLevel)) return null;
     if (!ALL_ARMORS.includes(ar.id as ArmorId) || !isInt(ar.level, 0, UPGRADE.maxLevel)) return null;
     if (!isInt(c.bowLevel, 0, UPGRADE.maxLevel) || !isInt(c.shieldLevel, 0, UPGRADE.maxLevel)) return null;
-    if (!Array.isArray(c.items) || c.items.length > ITEM_FX.slots) return null;
+    const legacyPotions = c.potions === undefined ? 0 : c.potions;
+    if (!isInt(legacyPotions, 0, LEGACY_MAX_POTIONS)) return null;
+    if (!Array.isArray(c.items)) return null;
+    const hasHealingOverflow = o.inventoryVersion === INVENTORY_VERSION && c.potions === undefined &&
+      c.items.length === ITEM_FX.slots + 1 && c.items.some((it) => it?.id === 'potion:healing');
+    if (c.items.length > ITEM_FX.slots && !hasHealingOverflow) return null;
     for (const it of c.items as Array<Record<string, unknown>>) {
       if (!it || !ITEM_IDS.has(it.id as string) || !isInt(it.count, 1, 99) || !isInt(it.level, 0, UPGRADE.maxLevel)) return null;
     }
@@ -140,13 +157,13 @@ export function parseRun(text: string | null): RunState | null {
       tipped: { paralysis: t.paralysis as number, chill: t.chill as number },
       tipKind: c.tipKind,
       bottles: c.bottles as number,
-      potions: c.potions as number,
       weapon: { id: wp.id as WeaponId, level: wp.level as number },
       armor: { id: ar.id as ArmorId, level: ar.level as number },
       bowLevel: c.bowLevel as number,
       shieldLevel: c.shieldLevel as number,
-      items: migrateItems(c.items as Array<{ id: string; count: number; level: number }>),
-      known: [...new Set((c.known as string[]).filter((id) => id !== 'scroll:lure').map((id) => id === 'scroll:timeStop' ? 'scroll:sleep' : id))] as ItemId[],
+      items: migrateItems(c.items as Array<{ id: string; count: number; level: number }>, legacyPotions),
+      known: [...new Set([...(c.known as string[]).filter((id) => id !== 'scroll:lure').map((id) => id === 'scroll:timeStop' ? 'scroll:sleep' : id),
+        ...(legacyPotions > 0 ? ['potion:healing'] : [])])] as ItemId[],
       xp: c.xp as number,
       level: c.level as number,
       talents: (c.talents as TalentId[]).slice(),
@@ -169,6 +186,10 @@ export function parseRun(text: string | null): RunState | null {
       airbursts: num('airbursts'),
       bottlesThrown: num('bottlesThrown'),
       potionsUsed: num('potionsUsed'),
+      healingFound: num('healingFound'),
+      healingUsed: num('healingUsed'),
+      healingRestored: num('healingRestored'),
+      healingWasted: num('healingWasted'),
       damageTaken: out,
       realTime: num('realTime'),
       worldTime: num('worldTime'),
@@ -183,12 +204,14 @@ export function parseRun(text: string | null): RunState | null {
     };
   }
   if (o.floor !== 1 && (!carry || !stats)) return null;
-  return { seed: o.seed, cls: o.cls as PlayerClass, floor: o.floor, carry, stats };
+  return { seed: o.seed, cls: o.cls as PlayerClass, potionLooksVersion, floor: o.floor, carry, stats };
 }
 
 /** Retired lure is discarded, not compensated with a stronger resource. Sleep aliases
- * merge without losing quantities, preserving >99 as a second valid legacy stack. */
-function migrateItems(items: Array<{ id: string; count: number; level: number }>): PlayerCarry['items'] {
+ * merge without losing quantities, preserving >99 as a second valid legacy stack.
+ * Numeric healing stock is moved into the bag after normal item migration. A full
+ * old bag may retain one extra healing stack until enough items have been used. */
+function migrateItems(items: Array<{ id: string; count: number; level: number }>, legacyPotions: number): PlayerCarry['items'] {
   const out: PlayerCarry['items'] = [];
   for (const it of items) {
     if (it.id === 'scroll:lure') continue;
@@ -200,5 +223,13 @@ function migrateItems(items: Array<{ id: string; count: number; level: number }>
     }
     if (count) out.push({ id, count, level: it.level });
   }
+  let healingLeft = legacyPotions;
+  for (const stack of out) {
+    if (stack.id !== 'potion:healing' || healingLeft === 0) continue;
+    const added = Math.min(healingLeft, 99 - stack.count);
+    stack.count += added;
+    healingLeft -= added;
+  }
+  if (healingLeft > 0) out.push({ id: 'potion:healing', count: healingLeft, level: 0 });
   return out;
 }

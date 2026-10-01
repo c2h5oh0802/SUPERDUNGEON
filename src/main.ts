@@ -1,7 +1,7 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, RUN, TALENTS, classInfo, type ClassInfo, type PlayerClass } from './config';
-import { addItem, queueUse, upgradeLabel } from './sim/items';
+import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, classInfo, type ClassInfo, type PlayerClass } from './config';
+import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
 import { renderInventory } from './ui/inventory';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
@@ -272,6 +272,8 @@ export class App {
       this.run = null;
       this.startWorld(seed, true, fromGesture, () => {
         const w = new World(generateLevel(seed, { practice: true }), { cls: this.cls });
+        identify(w, 'potion:healing');
+        for (let k = 0; k < HEALING_POTION.practiceCount; k++) addItem(w, 'potion:healing');
         // 練習場：先給幾樣東西試（背包 I）
         for (const id of ['potion:fire', 'potion:frost', 'potion:gas', 'scroll:sleep', 'scroll:upgrade', 'weapon:axe'] as const) addItem(w, id);
         return w;

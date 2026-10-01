@@ -1,4 +1,5 @@
 import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type TipKind, type Tool } from '../config';
+import { knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
@@ -325,9 +326,10 @@ export class Hud {
       this.bottles.textContent = String(p.bottles);
       this.bottles.classList.toggle('zero', p.bottles === 0);
     });
-    this.set('potions', p.potions, () => {
-      this.potions.textContent = String(p.potions);
-      this.potions.classList.toggle('zero', p.potions === 0);
+    const healing = knownHealingCount(w);
+    this.set('potions', healing, () => {
+      this.potions.textContent = String(healing);
+      this.potions.classList.toggle('zero', healing === 0);
     });
     this.set('bag', p.items.length, () => (this.bag.textContent = String(p.items.length)));
     // 等級與經驗

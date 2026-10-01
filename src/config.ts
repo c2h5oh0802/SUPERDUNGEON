@@ -48,8 +48,6 @@ export const PLAYER = {
   maxStones: 5,
   maxTipped: 2,
   maxBottles: 3,
-  maxPotions: 3,
-  potionHeal: 4,
   pickupRadius: 0.9,
   interactRange: 2.2,
 } as const;
@@ -363,7 +361,6 @@ export interface Loadout {
   paralysis: number;
   chill: number;
   bottles: number;
-  potions: number;
 }
 
 export const CLASSES = {
@@ -371,7 +368,7 @@ export const CLASSES = {
     /** 數字鍵 1、2 對應的工具；位置推擊是右鍵或 F。 */
     slots: ['melee', 'stone'] as readonly Tool[],
     weapon: 'longsword' as WeaponId,
-    start: { arrows: 0, stones: 3, paralysis: 0, chill: 0, bottles: 1, potions: 1 } as Loadout,
+    start: { arrows: 0, stones: 3, paralysis: 0, chill: 0, bottles: 1 } as Loadout,
     /** 反擊斬：威脅已鎖定、就在眼前時揮劍，出手更快。 */
     counterSwing: { windup: 0.05, active: 0.12, recovery: 0.23 },
     /** 反擊斬往前踏半步：劍的範圍加長，蓋過盾衛揮擊的範圍（盾衛 2.3 + 玩家半徑 0.35）。 */
@@ -394,7 +391,7 @@ export const CLASSES = {
     /** 數字鍵 1、2、3 對應的工具；再按一次 3 切換藥劑箭種類。 */
     slots: ['melee', 'bow', 'tipped'] as readonly Tool[],
     weapon: 'knife' as WeaponId,
-    start: { arrows: 8, stones: 0, paralysis: 2, chill: 2, bottles: 1, potions: 1 } as Loadout,
+    start: { arrows: 8, stones: 0, paralysis: 2, chill: 2, bottles: 1 } as Loadout,
     /** 獵人之眼：落點與提前量最多預測多久（世界秒）。 */
     eyeMaxT: 3,
   },
@@ -405,7 +402,7 @@ export const ALL_CLASSES: PlayerClass[] = ['warrior', 'huntress'];
 
 /** Knowledge only: no loot, appearance or dungeon RNG is consumed. */
 export const CLASS_KNOWLEDGE: Record<PlayerClass, readonly ItemId[]> = {
-  warrior: ['potion:fire', 'scroll:teleport'],
+  warrior: ['potion:healing', 'scroll:teleport'],
   huntress: ['potion:invisibility', 'scroll:mapping'],
 };
 
@@ -432,8 +429,8 @@ export interface ClassInfo {
 export function classInfo(id: PlayerClass): ClassInfo {
   const cfg = CLASSES[id];
   const st = cfg.start;
-  const knowledge = id === 'warrior' ? '火焰藥水、傳送卷軸' : '隱形藥水、地圖卷軸';
-  const common = `起初認得${knowledge}；強化卷軸兩職業都認得。共通：煙霧瓶 ${st.bottles}（Q）、治療藥水 ${st.potions}（H，回復 ${PLAYER.potionHeal}）、生命 ${PLAYER.maxHp}、布衣。撿到的武器與護甲兩個職業都能裝備；升級時從職業天賦中選一個。`;
+  const knowledge = id === 'warrior' ? '治療藥水、傳送卷軸' : '隱形藥水、地圖卷軸';
+  const common = `起初認得${knowledge}；強化卷軸兩職業都認得。共通：煙霧瓶 ${st.bottles}（Q）；H 快速飲用背包中已知的治療藥水（開局不贈送）、生命 ${PLAYER.maxHp}、布衣。撿到的武器與護甲兩個職業都能裝備；升級時從職業天賦中選一個。`;
   if (id === 'warrior') {
     const w = CLASSES.warrior;
     const sw = WEAPONS.longsword;
@@ -550,13 +547,13 @@ export const RENDER = {
 
 // ---------- 物品：未鑑定的藥水與卷軸、裝備 ----------
 
-/** 未知藥水（治療藥水一開始就認得，用 H 喝）。 */
-export type PotionId = 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
+/** 六種藥水共用隨種子外觀；職業僅決定初始知識。 */
+export type PotionId = 'healing' | 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
 /** 未知卷軸（強化卷軸一開始就認得）。 */
 export type ScrollId = 'teleport' | 'mapping' | 'sleep';
 export type ItemId = 'food:ration' | `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
 
-export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste'];
+export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste', 'healing'];
 export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'sleep'];
 
 /** 每一局隨機對應的外觀（第一次使用才知道是什麼）。 */
@@ -566,10 +563,14 @@ export const POTION_LOOKS = [
   { name: '翠綠', color: 0x4ec46a },
   { name: '紫羅蘭', color: 0xa060e0 },
   { name: '琥珀', color: 0xe0a040 },
+  { name: '銀白', color: 0xd8e2e8 },
 ] as const;
 export const SCROLL_LOOKS = ['灰燼', '潮汐', '荊棘', '星辰'] as const;
 
+export const HEALING_POTION = { fraction: 0.5, practiceCount: 3 } as const;
+
 export const POTIONS: Record<PotionId, { name: string; drink: string; thrown: string }> = {
+  healing: { name: '治療藥水', drink: `回復最大生命 ${HEALING_POTION.fraction * 100}%（向上取整）；已知且滿血時保留`, thrown: '碎了，沒有效果' },
   fire: { name: '火焰藥水', drink: '在腳下燒起來（你也會被燒）', thrown: '碎開處燒起一片火，站在裡面的敵人每 0.5 秒受 1 傷害' },
   frost: { name: '冰霜藥水', drink: '在腳下結冰、熄滅接觸的火焰', thrown: '碎開處結冰，裡面的敵人時間軸變成半速，並熄滅接觸的火焰' },
   gas: { name: '麻痺氣體', drink: '在腳下冒出氣體（你會被麻痺）', thrown: '碎開處冒出氣體，裡面的敵人時間軸暫停' },

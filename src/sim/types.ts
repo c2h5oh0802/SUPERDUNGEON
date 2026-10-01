@@ -101,7 +101,6 @@ export interface Player {
   tipped: Record<TipKind, number>;
   tipKind: TipKind;
   bottles: number;
-  potions: number;
   tool: Tool;
   desiredTool: Tool;
   action: ActionState | null;
@@ -349,7 +348,12 @@ export interface RunStats {
   shotHits: number;
   airbursts: number;
   bottlesThrown: number;
+  /** Completed healing drinks; retained historical statistic name. */
   potionsUsed: number;
+  healingFound: number;
+  healingUsed: number;
+  healingRestored: number;
+  healingWasted: number;
   damageTaken: Record<string, number>;
   realTime: number;
   worldTime: number;

@@ -52,7 +52,6 @@ export interface PlayerCarry {
   tipped: { paralysis: number; chill: number };
   tipKind: 'paralysis' | 'chill';
   bottles: number;
-  potions: number;
   weapon: { id: WeaponId; level: number };
   armor: { id: ArmorId; level: number };
   bowLevel: number;
@@ -119,6 +118,10 @@ export class World {
     airbursts: 0,
     bottlesThrown: 0,
     potionsUsed: 0,
+    healingFound: 0,
+    healingUsed: 0,
+    healingRestored: 0,
+    healingWasted: 0,
     damageTaken: {},
     realTime: 0,
     worldTime: 0,
@@ -188,7 +191,6 @@ export class World {
       tipped: { paralysis: start.paralysis, chill: start.chill },
       tipKind: 'paralysis',
       bottles: start.bottles,
-      potions: start.potions,
       tool: slots[0]!,
       desiredTool: slots[0]!,
       action: null,
@@ -208,7 +210,6 @@ export class World {
       p.tipped = { ...c.tipped };
       p.tipKind = c.tipKind;
       p.bottles = c.bottles;
-      p.potions = c.potions;
       p.weapon = { ...c.weapon };
       p.armor = { ...c.armor };
       p.bowLevel = c.bowLevel;
@@ -494,7 +495,6 @@ export class World {
       tipped: { ...p.tipped },
       tipKind: p.tipKind,
       bottles: p.bottles,
-      potions: p.potions,
       weapon: { ...p.weapon },
       armor: { ...p.armor },
       bowLevel: p.bowLevel,

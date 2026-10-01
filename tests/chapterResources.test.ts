@@ -100,7 +100,7 @@ describe('Chapter 1: four exploration floors plus dedicated guardian arena', () 
 describe('knowledge, appearances and conservative v2 migration', () => {
   it.each(['warrior', 'huntress'] as const)('%s receives exactly its initial knowledge, without bonus items or healing stock', (cls) => {
     const w = createFloorWorld(newRun('KNOWLEDGE', cls));
-    expect(w.player.known).toEqual(CLASS_KNOWLEDGE[cls]); expect(w.player.items).toEqual([]); expect(w.player.potions).toBe(1);
+    expect(w.player.known).toEqual(CLASS_KNOWLEDGE[cls]); expect(w.player.items).toEqual([]); expect(w.player).not.toHaveProperty('potions');
     expect(isKnown(w, 'scroll:upgrade')).toBe(true);
     for (const id of ['potion:frost', 'scroll:sleep'] as const) {
       expect(isKnown(w, id)).toBe(false); expect(itemDesc(w, id)).toContain('未知');
@@ -122,8 +122,9 @@ describe('knowledge, appearances and conservative v2 migration', () => {
     for (let k = 0; k < 50; k++) {
       const seed = `OLD-LOOK${k}`, rng = new Rng(`${seed}#looks`);
       const pi = rng.shuffle([0, 1, 2, 3, 4]), si = rng.shuffle([0, 1, 2, 3]);
-      const looks = looksFor(seed);
-      ALL_POTIONS.forEach((id, index) => expect(looks.potion[id]).toBe(pi[index]));
+      const looks = looksFor(seed, 1);
+      ALL_POTIONS.filter((id) => id !== 'healing').forEach((id, index) => expect(looks.potion[id]).toBe(pi[index]));
+      expect(looks.potion.healing).toBe(5);
       expect(looks.scroll).toEqual({ teleport: si[0], mapping: si[1], sleep: si[2] });
     }
     expect(ALL_SCROLLS).toEqual(['teleport', 'mapping', 'sleep']);

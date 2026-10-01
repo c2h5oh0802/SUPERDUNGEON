@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { PLAYER, TIME, WEAPONS } from '../src/config';
+import { HEALING_POTION, PLAYER, TIME, WEAPONS } from '../src/config';
 import { clampRealDt, computeWorldDt, substeps } from '../src/core/time';
+import { addItem } from '../src/sim/items';
 import { emptyInput } from '../src/sim/types';
 import { finishAction, makeWorld, run } from './helpers';
 
@@ -161,9 +162,10 @@ describe('行動結束效果（回歸）', () => {
     for (const frame of [1 / 60, 1 / 144, 1 / 30, 0.037, 0.1]) {
       const w = makeWorld();
       w.player.hp = 3;
+      addItem(w, 'potion:healing');
       w.frame(frame, { ...emptyInput(), potion: true });
       for (let k = 0; k < 2000 && w.player.action; k++) w.frame(frame, emptyInput());
-      expect(w.player.hp, `frame ${frame}`).toBe(3 + PLAYER.potionHeal);
+      expect(w.player.hp, `frame ${frame}`).toBe(3 + Math.ceil(w.player.maxHp * HEALING_POTION.fraction));
     }
   });
 });

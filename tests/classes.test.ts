@@ -138,7 +138,7 @@ describe('起始裝備：兩個職業拿的東西不同', () => {
     expect(h.player.tool).toBe('melee');
     expect(h.player.weapon).toEqual({ id: 'knife', level: 0 });
     expect([h.player.arrows, h.player.stones, h.player.tipped.paralysis, h.player.tipped.chill]).toEqual([8, 0, 2, 2]);
-    for (const x of [w, h]) expect([x.player.bottles, x.player.potions, x.player.hp]).toEqual([1, 1, PLAYER.maxHp]);
+    for (const x of [w, h]) expect([x.player.bottles, x.player.hp]).toEqual([1, PLAYER.maxHp]);
   });
 
   it('數字鍵依職業對應工具；戰士沒有第 3 格；獵手再按一次 3 切換麻痺／冰寒', () => {

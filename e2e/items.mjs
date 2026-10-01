@@ -33,8 +33,8 @@ async function waitIdle() {
 }
 
 let s = await st();
-check('練習場：背包裡有 7 樣東西（含乾糧）', s.player.items.length === 7, s.player.items.map((i) => i.id).join(','));
-check('戰士初始認得火焰與傳送，其他未知', s.player.known.includes('potion:fire') && s.player.known.includes('scroll:teleport') && !s.player.known.includes('potion:frost'));
+check('練習場：背包裡有 8 樣東西（含乾糧與正式治療藥水）', s.player.items.length === 8, s.player.items.map((i) => i.id).join(','));
+check('戰士初始認得治療與傳送，其他未知', s.player.known.includes('potion:healing') && s.player.known.includes('scroll:teleport') && !s.player.known.includes('potion:frost'));
 check('刻印介面已移除', await page.locator('#screen-rune, #runes, .rune-chip, .rune-card, .rune-cards').count() === 0);
 check('開發狀態不含刻印或待選祭壇', !Object.hasOwn(s.player, 'runes') && !Object.hasOwn(s, 'pendingAltar'));
 check('開發地圖與互動物不含祭壇', await page.evaluate(() => {

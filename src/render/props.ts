@@ -290,9 +290,8 @@ export class PropsVisual {
     } else if (kind === 'stone') {
       pieces.push({ geo: T(new THREE.IcosahedronGeometry(0.08, 0), 0, 0.07, 0), color: 0xa8a092, glow: 0.4 });
     } else {
-      const teal = kind === 'potion';
-      pieces.push({ geo: T(new THREE.SphereGeometry(0.13, 10, 8), 0, 0.13, 0), color: teal ? 0x37c9a7 : 0xb7a6ea, glow: 1 });
-      pieces.push({ geo: T(new THREE.CylinderGeometry(0.045, 0.055, 0.12, 8), 0, 0.3, 0), color: teal ? 0x37c9a7 : 0xb7a6ea, glow: 1 });
+      pieces.push({ geo: T(new THREE.SphereGeometry(0.13, 10, 8), 0, 0.13, 0), color: 0xb7a6ea, glow: 1 });
+      pieces.push({ geo: T(new THREE.CylinderGeometry(0.045, 0.055, 0.12, 8), 0, 0.3, 0), color: 0xb7a6ea, glow: 1 });
       pieces.push({ geo: T(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 8), 0, 0.38, 0), color: 0x8a6a48 });
     }
     const body = merge(pieces);
@@ -305,12 +304,10 @@ export class PropsVisual {
     const rig = this.rigAt(p.x, 0.6, p.z);
     const isItem = p.kind === 'item' && !!p.item;
     const color = isItem
-      ? itemColor(this.world.level.seed, p.item!)
+      ? itemColor(this.world.level.seed, p.item!, this.world.level.potionLooksVersion)
       : p.kind === 'arrows' || p.kind === 'ammo'
         ? 0xf2c14e
-        : p.kind === 'potion'
-          ? 0x3fe0c0
-          : p.kind === 'stone'
+        : p.kind === 'stone'
             ? 0xd8d0c0
             : 0xc8b8ff;
     const mat = this.mat(rig, color, 0);

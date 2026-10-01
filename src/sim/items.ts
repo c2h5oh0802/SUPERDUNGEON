@@ -4,6 +4,7 @@ import {
   ARMORS,
   ITEM_FX,
   HUNGER,
+  HEALING_POTION,
   PLAYER,
   POTIONS,
   POTION_LOOKS,
@@ -41,18 +42,21 @@ interface Looks {
 const looksCache = new Map<string, Looks>();
 
 /** 這一局（種子）的外觀對應：同一個種子永遠一樣，所以跨層、續玩都一致。 */
-export function looksFor(seed: string): Looks {
-  let l = looksCache.get(seed);
+export function looksFor(seed: string, version: 1 | 2 = 2): Looks {
+  const cacheKey = `${seed}#${version}`;
+  let l = looksCache.get(cacheKey);
   if (l) return l;
   const rng = new Rng(`${seed}#looks`);
-  const pi = rng.shuffle(ALL_POTIONS.map((_, k) => k));
+  // Preserve old scroll glyph RNG independently of the added sixth potion.
+  const legacy = rng.shuffle([0, 1, 2, 3, 4]);
+  const pi = version === 1 ? [...legacy, 5] : new Rng(`${seed}#potion-looks-v2`).shuffle(ALL_POTIONS.map((_, k) => k));
   // Preserve v2 glyph assignments: old timeStop slot becomes Sleep; slot 3 is retired.
   const si = rng.shuffle([0, 1, 2, 3]);
   l = {
     potion: Object.fromEntries(ALL_POTIONS.map((id, k) => [id, pi[k]!])) as Record<PotionId, number>,
     scroll: Object.fromEntries(ALL_SCROLLS.map((id, k) => [id, si[k]!])) as Record<ScrollId, number>,
   };
-  looksCache.set(seed, l);
+  looksCache.set(cacheKey, l);
   return l;
 }
 
@@ -63,7 +67,7 @@ export function isKnown(w: World, id: ItemId): boolean {
 }
 
 function lookName(w: World, id: ItemId): string {
-  const looks = looksFor(w.level.seed);
+  const looks = looksFor(w.level.seed, w.level.potionLooksVersion);
   if (categoryOf(id) === 'potion') return `${POTION_LOOKS[looks.potion[keyOf(id) as PotionId]]!.name}藥水`;
   return `${SCROLL_LOOKS[looks.scroll[keyOf(id) as ScrollId]]!}符文卷軸`;
 }
@@ -103,9 +107,9 @@ export function itemDesc(w: World, id: ItemId): string {
 }
 
 /** 物品在畫面上的顏色（藥水依這一局的外觀）。 */
-export function itemColor(seed: string, id: ItemId): number {
+export function itemColor(seed: string, id: ItemId, version: 1 | 2 = 2): number {
   const c = categoryOf(id);
-  if (c === 'potion') return POTION_LOOKS[looksFor(seed).potion[keyOf(id) as PotionId]]!.color;
+  if (c === 'potion') return POTION_LOOKS[looksFor(seed, version).potion[keyOf(id) as PotionId]]!.color;
   if (c === 'scroll') return id === 'scroll:upgrade' ? 0xf2c14e : 0xe8dcc0;
   if (c === 'food') return 0xc59a5c;
   if (c === 'armor') return 0x9aa4b0;
@@ -148,7 +152,15 @@ export function queueUse(w: World, index: number, mode: 'use' | 'throw'): void {
 }
 
 /** 行動開始時從背包拿出來（避免排隊期間背包變動）。 */
-export function takeForAction(w: World, index: number): ItemId | null {
+export function knownHealingCount(w: World): number {
+  return isKnown(w, 'potion:healing') ? w.player.items.filter((it) => it.id === 'potion:healing').reduce((n, it) => n + it.count, 0) : 0;
+}
+
+export function takeForAction(w: World, index: number, mode: 'use' | 'throw' = 'use'): ItemId | null {
+  if (mode === 'use' && w.player.items[index]?.id === 'potion:healing' && isKnown(w, 'potion:healing') && w.player.hp >= w.player.maxHp) {
+    w.emit({ type: 'fullInventory', text: '生命已滿，治療藥水已保留' });
+    return null;
+  }
   if (w.player.items[index]?.id === 'food:ration' && w.player.hunger <= 0) {
     w.emit({ type: 'fullInventory', text: '已經飽食，乾糧已保留' });
     return null;
@@ -168,6 +180,17 @@ export function drinkPotion(w: World, id: PotionId): void {
   w.stats.itemsUsed++;
   identify(w, `potion:${id}`);
   switch (id) {
+    case 'healing': {
+      const amount = Math.ceil(p.maxHp * HEALING_POTION.fraction);
+      const restored = Math.min(amount, p.maxHp - p.hp);
+      p.hp += restored;
+      w.stats.potionsUsed++;
+      w.stats.healingUsed++;
+      w.stats.healingRestored += restored;
+      w.stats.healingWasted += amount - restored;
+      w.emit({ type: 'buff', kind: 'healing', text: `回復 ${restored} 生命` });
+      return;
+    }
     case 'invisibility':
       p.invisT = ITEM_FX.invisibility;
       w.emit({ type: 'buff', kind: 'invisibility', text: `隱形 ${ITEM_FX.invisibility} 秒` });
@@ -187,7 +210,7 @@ export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: n
   w.emit({ type: 'shatter', kind: id, x, y, z });
   w.emitNoise(x, y, z, 6, 'bottle');
   identify(w, `potion:${id}`);
-  if (id === 'invisibility' || id === 'haste') return;
+  if (id === 'invisibility' || id === 'haste' || id === 'healing') return;
   spawnArea(w, id, x, z);
 }
 
@@ -309,18 +332,27 @@ function teleport(w: World): void {
 
 // ---------- 裝備與強化 ----------
 
-/** 換上背包裡的裝備；換下來的放回同一格。 */
+/** Return outgoing gear to the bag, or leave a recoverable physical item.
+ * A migrated over-cap healing stack (or a pickup during equip windup) can occupy
+ * the slot reserved by taking the incoming gear. Never silently erase old gear. */
+function returnEquipment(w: World, id: ItemId, level: number): void {
+  if (addItem(w, id, level)) return;
+  w.addPickup('item', 1, w.player.x, 0.15, w.player.z, null, id, level);
+  w.emit({ type: 'fullInventory', text: '背包滿了，換下的裝備留在腳邊' });
+}
+
+/** 換上背包裡的裝備；換下來的回背包或安全留在腳邊。 */
 export function equipFromBag(w: World, id: ItemId, level: number): void {
   const p = w.player;
   const c = categoryOf(id);
   if (c === 'weapon') {
     const old = p.weapon;
     p.weapon = { id: keyOf(id) as typeof p.weapon.id, level };
-    addItem(w, `weapon:${old.id}`, old.level);
+    returnEquipment(w, `weapon:${old.id}`, old.level);
   } else if (c === 'armor') {
     const old = p.armor;
     p.armor = { id: keyOf(id) as typeof p.armor.id, level };
-    if (old.id !== 'cloth') addItem(w, `armor:${old.id}`, old.level);
+    if (old.id !== 'cloth') returnEquipment(w, `armor:${old.id}`, old.level);
   }
   w.emit({ type: 'equip', kind: id, text: `裝備：${itemName(w, id, level)}` });
 }
@@ -368,7 +400,7 @@ export function applyUpgrade(w: World, t: UpgradeTarget): void {
 export function dropLoot(w: World, e: Enemy): void {
   if (w.level.encounter) return;
   if (!e.veteran && !w.rng.chance(ITEM_FX.dropChance)) return;
-  const roll = e.veteran ? rollItem(w.rng, w.level.floor) : rollConsumable(w.rng);
+  const roll = e.veteran ? rollItem(w.rng, w.level.floor, 'enemy') : rollConsumable(w.rng, 'enemy');
   w.addPickup('item', 1, e.x + 0.3, 0.15, e.z + 0.3, null, roll.id, roll.level);
 }
 

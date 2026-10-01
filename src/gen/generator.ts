@@ -27,7 +27,7 @@ export interface EnemySpawn {
  * 地上的物資。生成只放中性的「彈藥袋」（ammo），撿到時依職業變成一般箭或投擲石，
  * 所以同一個種子兩個職業的關卡完全相同。arrows／stone 是射出去之後可以撿回的箭與石頭。
  */
-export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'potion' | 'item';
+export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'item';
 
 export interface PickupSpawn {
   kind: PickupKind;
@@ -46,7 +46,7 @@ export interface PropSpawn {
 }
 
 export interface ChestSpawn extends PropSpawn {
-  contents: { ammo: number; bottles: number; potions: number; item: { id: ItemId; level: number } | null };
+  contents: { ammo: number; bottles: number; items: Array<{ id: ItemId; level: number }> };
 }
 
 export interface TorchSpawn {
@@ -91,6 +91,8 @@ export interface SpecialRoom {
 
 export interface LevelData {
   seed: string;
+  /** Missing means current six-potion looks; 1 preserves legacy continuing runs. */
+  potionLooksVersion?: 1 | 2;
   /** 第幾層（1 起算）。 */
   floor: number;
   /** 這一層的目標：往下的階梯，或最底層的沉眠之心（位置都在 heart）。 */
@@ -215,7 +217,7 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, 
             z: cz,
             yaw: faceInward(li, lj, W, H),
             roomKey: tr.key,
-            contents: { ammo: 3, bottles: 1, potions: 1, item: null },
+            contents: { ammo: 3, bottles: 1, items: [{ id: 'potion:healing', level: 0 }] },
           });
           break;
         case 'H':
@@ -515,7 +517,7 @@ function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
     item({ id: 'scroll:upgrade', level: 0 }),
     { kind: 'ammo', amount: 3 },
     item(rollPotion(rng)),
-    { kind: 'potion', amount: 1 },
+    item({ id: 'potion:healing', level: 0 }),
     item(rollScroll(rng)),
     { kind: 'ammo', amount: 3 },
     item(rollEquipment(rng, floor)),
@@ -605,7 +607,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   for (const room of d.rooms) roomTorches(d, room, rng);
 
   const pickups = opts.practice || floor === RUN.floors ? [] : placePickups(d, rng, floor);
-  for (const c of d.chests) c.contents.item = rollItem(rng, floor);
+  for (const c of d.chests) c.contents.items.push(rollItem(rng, floor));
   if (mirrored) {
     mirrorDraft(d);
     for (const p of pickups) p.x = w - p.x;

@@ -1,0 +1,1324 @@
+{
+  "harnessVersion": "healing-supply-census-v1",
+  "source": "/workspace/shared/healing-before-source",
+  "player": {
+    "radius": 0.35,
+    "eyeHeight": 1.6,
+    "height": 1.8,
+    "moveSpeed": 4.5,
+    "accel": 40,
+    "maxHp": 10,
+    "maxArrows": 12,
+    "maxStones": 5,
+    "maxTipped": 2,
+    "maxBottles": 3,
+    "maxPotions": 3,
+    "potionHeal": 4,
+    "pickupRadius": 0.9,
+    "interactRange": 2.2
+  },
+  "potionPool": [
+    "fire",
+    "frost",
+    "gas",
+    "invisibility",
+    "haste"
+  ],
+  "starts": {
+    "warrior": {
+      "loadout": {
+        "arrows": 0,
+        "stones": 3,
+        "paralysis": 0,
+        "chill": 0,
+        "bottles": 1,
+        "potions": 1
+      },
+      "hp": 10,
+      "maxHp": 10,
+      "known": [
+        "potion:fire",
+        "scroll:teleport"
+      ],
+      "items": [],
+      "healing": 1
+    },
+    "huntress": {
+      "loadout": {
+        "arrows": 8,
+        "stones": 0,
+        "paralysis": 2,
+        "chill": 2,
+        "bottles": 1,
+        "potions": 1
+      },
+      "hp": 10,
+      "maxHp": 10,
+      "known": [
+        "potion:invisibility",
+        "scroll:mapping"
+      ],
+      "items": [],
+      "healing": 1
+    }
+  },
+  "results": [
+    {
+      "seed": "FLOW1",
+      "chestCount": 8,
+      "generatedHealing": 12,
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "D1",
+              "x": 46.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:fire",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "D2",
+              "x": 28.5,
+              "z": 8.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:invisibility",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 33.5,
+              "z": 14.5
+            }
+          ],
+          "foodCount": 1,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 44.5,
+              "z": 33.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 32.5,
+              "z": 51.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 67.5,
+              "z": 30.5
+            },
+            {
+              "id": "weapon:spear",
+              "count": 1,
+              "x": 14.5,
+              "z": 51.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 47.5,
+              "z": 49.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 23.5,
+              "z": 51.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 51.60344827586207,
+              "z": 28.017241379310345
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 27.5,
+              "z": 27.5
+            }
+          ]
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "N0",
+              "x": 64.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:frost",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "Ch",
+              "x": 10.5,
+              "z": 44.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:haste",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 15.5,
+              "z": 50.5
+            }
+          ],
+          "foodCount": 1,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 67.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:fire",
+              "count": 1,
+              "x": 26.5,
+              "z": 52.5
+            },
+            {
+              "id": "scroll:mapping",
+              "count": 1,
+              "x": 49.5,
+              "z": 50.5
+            },
+            {
+              "id": "weapon:spear",
+              "count": 1,
+              "x": 44.5,
+              "z": 33.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 4.5,
+              "z": 50.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 51.60344827586207,
+              "z": 28.017241379310345
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 9.5
+            }
+          ]
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "N0",
+              "x": 9.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "weapon:knife",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "Ch",
+              "x": 63.5,
+              "z": 44.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:gas",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 47.5,
+              "z": 15.5
+            }
+          ],
+          "foodCount": 2,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 50.5,
+              "z": 49.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 58.5,
+              "z": 50.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 6.5,
+              "z": 30.5
+            },
+            {
+              "id": "armor:leather",
+              "count": 1,
+              "x": 29.5,
+              "z": 52.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 24.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 69.5,
+              "z": 50.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 22.466292134831463,
+              "z": 28.00561797752809
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 45.5,
+              "z": 45.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 27.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 27.5,
+              "z": 9.5
+            }
+          ]
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "N0",
+              "x": 64.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:fire",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "Ch",
+              "x": 10.5,
+              "z": 44.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:fire",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 15.5,
+              "z": 50.5
+            }
+          ],
+          "foodCount": 2,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 67.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:gas",
+              "count": 1,
+              "x": 4.5,
+              "z": 50.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 41.5,
+              "z": 13.5
+            },
+            {
+              "id": "armor:leather",
+              "count": 1,
+              "x": 50.5,
+              "z": 51.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 46.5,
+              "z": 34.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 52.5948275862069,
+              "z": 27.974137931034484
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 27.5,
+              "z": 45.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 9.5
+            }
+          ]
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "chestCount": 0,
+          "chests": [],
+          "chestHealing": 0,
+          "looseHealingCount": 0,
+          "looseHealing": [],
+          "foodCount": 0,
+          "upgradeCount": 0,
+          "allLooseItems": []
+        }
+      ]
+    },
+    {
+      "seed": "FLOW2",
+      "chestCount": 8,
+      "generatedHealing": 12,
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "D1",
+              "x": 46.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "scroll:mapping",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "D2",
+              "x": 28.5,
+              "z": 8.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "scroll:teleport",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 67.5,
+              "z": 30.5
+            }
+          ],
+          "foodCount": 1,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 8.5,
+              "z": 52.5
+            },
+            {
+              "id": "potion:fire",
+              "count": 1,
+              "x": 47.5,
+              "z": 49.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 49.5,
+              "z": 14.5
+            },
+            {
+              "id": "weapon:spear",
+              "count": 1,
+              "x": 8.5,
+              "z": 33.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 41.5,
+              "z": 31.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 52.5948275862069,
+              "z": 27.974137931034484
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 29.5,
+              "z": 29.5
+            }
+          ]
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "D1",
+              "x": 46.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:gas",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "D2",
+              "x": 28.5,
+              "z": 8.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:frost",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 50.5,
+              "z": 33.5
+            }
+          ],
+          "foodCount": 1,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 26.5,
+              "z": 34.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 49.5,
+              "z": 14.5
+            },
+            {
+              "id": "scroll:mapping",
+              "count": 1,
+              "x": 8.5,
+              "z": 51.5
+            },
+            {
+              "id": "weapon:axe",
+              "count": 1,
+              "x": 22.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 13.5,
+              "z": 32.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 51.56818181818182,
+              "z": 28.318181818181817
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 47.5,
+              "z": 29.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 27.5,
+              "z": 27.5
+            }
+          ]
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "N0",
+              "x": 64.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:fire",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "Ch",
+              "x": 10.5,
+              "z": 44.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:gas",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 26.5,
+              "z": 15.5
+            }
+          ],
+          "foodCount": 2,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 67.5,
+              "z": 30.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 67.5,
+              "z": 14.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 4.5,
+              "z": 50.5
+            },
+            {
+              "id": "weapon:axe",
+              "count": 1,
+              "x": 41.5,
+              "z": 13.5
+            },
+            {
+              "id": "potion:fire",
+              "count": 1,
+              "x": 15.5,
+              "z": 50.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 51.56818181818182,
+              "z": 28.318181818181817
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 27.5,
+              "z": 45.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 47.5,
+              "z": 29.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 9.5
+            }
+          ]
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "D1",
+              "x": 27.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:gas",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "D2",
+              "x": 45.5,
+              "z": 8.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "armor:leather",
+                  "level": 1
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 68.5,
+              "z": 31.5
+            }
+          ],
+          "foodCount": 2,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 51.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 24.5,
+              "z": 14.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 29.5,
+              "z": 34.5
+            },
+            {
+              "id": "weapon:spear",
+              "count": 1,
+              "x": 40.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:gas",
+              "count": 1,
+              "x": 6.5,
+              "z": 30.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 23.463483146067418,
+              "z": 28.047752808988765
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 63.5,
+              "z": 45.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 27.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            }
+          ]
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "chestCount": 0,
+          "chests": [],
+          "chestHealing": 0,
+          "looseHealingCount": 0,
+          "looseHealing": [],
+          "foodCount": 0,
+          "upgradeCount": 0,
+          "allLooseItems": []
+        }
+      ]
+    },
+    {
+      "seed": "LIVING1",
+      "chestCount": 8,
+      "generatedHealing": 12,
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "N0",
+              "x": 64.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "scroll:mapping",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "Ch",
+              "x": 10.5,
+              "z": 44.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:fire",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 4.5,
+              "z": 50.5
+            }
+          ],
+          "foodCount": 1,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 50.5,
+              "z": 33.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 26.5,
+              "z": 52.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 46.5,
+              "z": 52.5
+            },
+            {
+              "id": "weapon:longsword",
+              "count": 1,
+              "x": 15.5,
+              "z": 50.5
+            },
+            {
+              "id": "potion:fire",
+              "count": 1,
+              "x": 41.5,
+              "z": 13.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 23.5,
+              "z": 13.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 51.56818181818182,
+              "z": 28.318181818181817
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 47.5,
+              "z": 29.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 9.5
+            }
+          ]
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "D1",
+              "x": 27.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:haste",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "D2",
+              "x": 45.5,
+              "z": 8.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:invisibility",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 26.5,
+              "z": 49.5
+            }
+          ],
+          "foodCount": 1,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 40.5,
+              "z": 14.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 65.5,
+              "z": 52.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 24.5,
+              "z": 14.5
+            },
+            {
+              "id": "weapon:knife",
+              "count": 1,
+              "x": 51.5,
+              "z": 14.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 42.5,
+              "z": 32.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 21.469101123595507,
+              "z": 27.963483146067414
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 27.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            }
+          ]
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "D1",
+              "x": 46.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "armor:leather",
+                  "level": 1
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "D2",
+              "x": 28.5,
+              "z": 8.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:fire",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 8.5,
+              "z": 33.5
+            }
+          ],
+          "foodCount": 2,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 67.5,
+              "z": 30.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 47.5,
+              "z": 49.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 22.5,
+              "z": 14.5
+            },
+            {
+              "id": "weapon:spear",
+              "count": 1,
+              "x": 14.5,
+              "z": 51.5
+            },
+            {
+              "id": "scroll:teleport",
+              "count": 1,
+              "x": 23.5,
+              "z": 31.5
+            },
+            {
+              "id": "potion:haste",
+              "count": 1,
+              "x": 23.5,
+              "z": 51.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 50.61206896551724,
+              "z": 28.060344827586206
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 11.5,
+              "z": 47.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 27.5,
+              "z": 27.5
+            }
+          ]
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "chestCount": 2,
+          "chests": [
+            {
+              "roomKey": "N0",
+              "x": 64.5,
+              "z": 7.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "weapon:knife",
+                  "level": 1
+                }
+              ],
+              "healing": 1
+            },
+            {
+              "roomKey": "Ch",
+              "x": 10.5,
+              "z": 44.5,
+              "legacyHealing": 1,
+              "items": [
+                {
+                  "id": "potion:invisibility",
+                  "level": 0
+                }
+              ],
+              "healing": 1
+            }
+          ],
+          "chestHealing": 2,
+          "looseHealingCount": 1,
+          "looseHealing": [
+            {
+              "kind": "potion",
+              "amount": 1,
+              "x": 67.5,
+              "z": 14.5
+            }
+          ],
+          "foodCount": 2,
+          "upgradeCount": 1,
+          "allLooseItems": [
+            {
+              "id": "scroll:upgrade",
+              "count": 1,
+              "x": 4.5,
+              "z": 50.5
+            },
+            {
+              "id": "potion:fire",
+              "count": 1,
+              "x": 67.5,
+              "z": 30.5
+            },
+            {
+              "id": "scroll:mapping",
+              "count": 1,
+              "x": 49.5,
+              "z": 32.5
+            },
+            {
+              "id": "weapon:knife",
+              "count": 1,
+              "x": 41.5,
+              "z": 49.5
+            },
+            {
+              "id": "scroll:sleep",
+              "count": 1,
+              "x": 26.5,
+              "z": 52.5
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 50.61206896551724,
+              "z": 28.060344827586206
+            },
+            {
+              "id": "food:ration",
+              "count": 1,
+              "x": 27.5,
+              "z": 45.5
+            },
+            {
+              "id": "potion:frost",
+              "count": 1,
+              "x": 45.5,
+              "z": 27.5
+            },
+            {
+              "id": "potion:invisibility",
+              "count": 1,
+              "x": 45.5,
+              "z": 9.5
+            }
+          ]
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "chestCount": 0,
+          "chests": [],
+          "chestHealing": 0,
+          "looseHealingCount": 0,
+          "looseHealing": [],
+          "foodCount": 0,
+          "upgradeCount": 0,
+          "allLooseItems": []
+        }
+      ]
+    }
+  ]
+}

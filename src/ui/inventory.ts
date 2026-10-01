@@ -1,5 +1,5 @@
 import { ARMORS, WEAPONS } from '../config';
-import { categoryOf, itemColor, itemDesc, itemName } from '../sim/items';
+import { categoryOf, isKnown, itemColor, itemDesc, itemName } from '../sim/items';
 import type { World } from '../sim/world';
 
 // 背包畫面：列出目前的裝備與背包內容，每一格提供可以做的事（喝、讀、丟出、裝備）。
@@ -30,14 +30,14 @@ export function renderInventory(w: World, onAction: (index: number, mode: 'use' 
       const c = categoryOf(it.id);
       const acts =
         c === 'potion'
-          ? `<button data-k="${k}" data-m="use">喝</button><button data-k="${k}" data-m="throw">丟出</button>`
+          ? `<button data-k="${k}" data-m="use"${it.id === 'potion:healing' && isKnown(w, it.id) && p.hp >= p.maxHp ? ' disabled' : ''}>喝</button><button data-k="${k}" data-m="throw">丟出</button>`
           : c === 'food'
             ? `<button data-k="${k}" data-m="use"${p.hunger <= 0 ? ' disabled' : ''}>${p.hunger <= 0 ? '已飽食' : '吃'}</button>`
           : c === 'scroll'
             ? `<button data-k="${k}" data-m="use">讀</button>`
             : `<button data-k="${k}" data-m="use">裝備</button>`;
       const count = it.count > 1 ? ` ×${it.count}` : '';
-      return `<div class="inv-row"><span class="swatch" style="background:${hex(itemColor(w.level.seed, it.id))}"></span><div><div class="nm">${esc(itemName(w, it.id, it.level))}${count}</div><div class="ds">${esc(itemDesc(w, it.id))}</div></div><div class="acts">${acts}</div></div>`;
+      return `<div class="inv-row"><span class="swatch" style="background:${hex(itemColor(w.level.seed, it.id, w.level.potionLooksVersion))}"></span><div><div class="nm">${esc(itemName(w, it.id, it.level))}${count}</div><div class="ds">${esc(itemDesc(w, it.id))}</div></div><div class="acts">${acts}</div></div>`;
     })
     .join('');
   for (const b of Array.from(list.querySelectorAll<HTMLButtonElement>('button[data-k]')))

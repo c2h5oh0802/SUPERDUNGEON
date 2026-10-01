@@ -1,0 +1,21 @@
+Verified baseline: 9f137289427b54bdd7a677e886d113aae1d1adee
+Baseline original snapshot: npm test — PASS 325 tests / 23 files.
+Final 2026-10-01:
+npm run typecheck — PASS
+npm run lint — PASS
+npm test — PASS 374 tests / 25 files
+npm run build — PASS; JS index-BAbo2mPx.js, CSS index-D6qEvMEW.css
+npx vitest run tests/healing.test.ts tests/healingSave.test.ts — PASS 49 focused tests (included in full suite)
+node --check e2e/{healing,items,chapter-resources,hunger,floors,classes}.mjs — PASS individually
+Vite npm run dev -- --host 127.0.0.1 --port 5174 + same-process node fetch — PASS HTTP 200; HTML contains /src/main.ts. This does not verify rendering.
+BROWSER_PATH=/usr/bin/chromium node e2e/healing.mjs — BLOCKED before navigation
+BROWSER_PATH=/usr/bin/chromium node e2e/items.mjs — BLOCKED before navigation
+BROWSER_PATH=/usr/bin/chromium node e2e/chapter-resources.mjs — BLOCKED before navigation
+BROWSER_PATH=/usr/bin/chromium node e2e/hunger.mjs — BLOCKED before navigation
+BROWSER_PATH=/usr/bin/chromium node e2e/floors.mjs — BLOCKED before navigation
+BROWSER_PATH=/usr/bin/chromium node e2e/classes.mjs — BLOCKED before navigation
+All browser failures: process_singleton_posix.cc:297 socket() failed: Operation not permitted (1). No browser assertion passed.
+git diff --check — PASS
+Independent read-only review: overflow gear-loss found, fixed by recoverable outgoing pickup, both weapon/armor regression tests and original migration reproduction pass; no remaining actionable findings.
+Calibration commands, source hashes, scenario results and assertions: METHODOLOGY.md and validation.txt in this directory.
+No automated result establishes human balance or feel.

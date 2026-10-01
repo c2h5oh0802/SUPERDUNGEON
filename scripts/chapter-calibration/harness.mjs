@@ -34,9 +34,13 @@ function navFor(w) {
 }
 const stockKeys = ["arrows", "stones", "bottles", "potions", "paralysis", "chill"];
 const consumable = (id) => /^(food|potion|scroll):/.test(id);
+// Historical checkouts used stock; current source only uses known bag healing.
+const legacyHealingStock = (p) => Object.hasOwn(p, "potions") ? Reflect.get(p, "potions") : 0;
+const availableHealing = (p) => legacyHealingStock(p) + (p.known.includes("potion:healing")
+  ? p.items.filter((i) => i.id === "potion:healing").reduce((n, i) => n + i.count, 0) : 0);
 function inventory(w) {
   const p = w.player;
-  const out = { arrows: p.arrows, stones: p.stones, bottles: p.bottles, potions: p.potions, paralysis: p.tipped.paralysis, chill: p.tipped.chill };
+  const out = { arrows: p.arrows, stones: p.stones, bottles: p.bottles, potions: legacyHealingStock(p), paralysis: p.tipped.paralysis, chill: p.tipped.chill };
   for (const it of p.items) if (consumable(it.id)) out[it.id] = (out[it.id] || 0) + it.count;
   return out;
 }
@@ -91,7 +95,7 @@ function visible(w, e) {
 function attackStep(w, e) {
   const p = w.player, d = dist(w, e), yaw = yawFromDir(e.x - p.x, e.z - p.z);
   const reach = WEAPONS[p.weapon.id].reach + e.radius - 0.1;
-  if (p.hp <= Math.max(4, p.maxHp * 0.5) && p.potions > 0 && !p.action && !healGuard) {
+  if (p.hp <= Math.max(4, p.maxHp * 0.5) && availableHealing(p) > 0 && !p.action && !healGuard) {
     frame(w, { potion: true });
     return;
   }
@@ -268,7 +272,7 @@ function run(seed, cls, policy, guard, food = true) {
   const out = { seed, cls, policy, guard, expectedFloors: RUN.floors, segments, control: traversalControl ? "enemies removed; traps retained" : "live AI/combat", eatEnabled: food, foodFound: metrics.found["food:ration"] || 0, ...metrics, endHunger: round(final.player.hunger), starvationHP: final.stats.damageTaken["\u98E2\u9913"] || 0, foodRemaining: inventory(final)["food:ration"] || 0, initial, remaining: inventory(final), totalEnemies, worldTime: round(final.stats.worldTime), realTime: round(final.stats.realTime), distance: round(traveled), kills: final.stats.kills, damage: final.stats.damageTaken, phaseTimes, complete: floors.length === RUN.floors && floors.at(-1).outcome === "win", policyCompleted: floors.every((f) => f.ok), floors };
   results.push(out);
   console.log("RESULT " + JSON.stringify({ seed, cls, policy, guard, worldTime: out.worldTime, foodFound: out.foodFound, foodUsed: out.foodUsed, endHunger: out.endHunger, starvationHP: out.starvationHP, complete: out.complete }));
-  writeFileSync(process.env.OUTPUT, JSON.stringify({ harnessVersion: "chapter-resource-cost-v1.3", source: process.env.SOURCE_REPO, configuration: { HUNGER, eatSeconds: ACTIONS.eat.recovery, starts: { warrior: CLASSES.warrior.start, huntress: CLASSES.huntress.start } }, results }, null, 2));
+  writeFileSync(process.env.OUTPUT, JSON.stringify({ harnessVersion: "chapter-resource-cost-v1.4", source: process.env.SOURCE_REPO, configuration: { HUNGER, eatSeconds: ACTIONS.eat.recovery, starts: { warrior: CLASSES.warrior.start, huntress: CLASSES.huntress.start } }, results }, null, 2));
 }
 const seeds = (process.env.SEEDS || "FLOW1,FLOW2,LIVING1").split(",");
 const classes = (process.env.CLASSES || "warrior,huntress").split(",");

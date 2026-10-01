@@ -1,0 +1,767 @@
+{
+  "harnessVersion": "chapter-resource-cost-v1.4",
+  "source": "/workspace/scratch/8fd9c03827c2/superdungeon-healing",
+  "configuration": {
+    "HUNGER": {
+      "hungryAt": 120,
+      "starvingAt": 180,
+      "damageEvery": 15,
+      "foodRestore": 60,
+      "foodStackMax": 99,
+      "foodPerFloor": [
+        1,
+        1,
+        2,
+        2,
+        0
+      ],
+      "practiceRations": 3
+    },
+    "eatSeconds": 0.8,
+    "starts": {
+      "warrior": {
+        "arrows": 0,
+        "stones": 3,
+        "paralysis": 0,
+        "chill": 0,
+        "bottles": 1
+      },
+      "huntress": {
+        "arrows": 8,
+        "stones": 0,
+        "paralysis": 2,
+        "chill": 2,
+        "bottles": 1
+      }
+    }
+  },
+  "results": [
+    {
+      "seed": "FLOW1",
+      "cls": "warrior",
+      "policy": "normal",
+      "guard": true,
+      "expectedFloors": 5,
+      "segments": {
+        "exploration": {
+          "floors": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "worldTime": 137.829,
+          "startHunger": 0,
+          "endHunger": 77.828,
+          "foodFound": 4,
+          "foodUsed": 1,
+          "starvationHP": 0,
+          "hungryTime": 0.8,
+          "starvingTime": 0
+        },
+        "arena": {
+          "floors": [
+            5
+          ],
+          "worldTime": 8.356,
+          "startHunger": 77.828,
+          "endHunger": 80.313,
+          "foodFound": 0,
+          "foodUsed": 0,
+          "starvationHP": 0,
+          "hungryTime": 0,
+          "starvingTime": 0
+        }
+      },
+      "control": "live AI/combat",
+      "eatEnabled": true,
+      "foodFound": 4,
+      "foodUsed": 1,
+      "foodRestored": 60,
+      "maxHunger": 120.78342545941818,
+      "hungryTime": 0.7999999999999545,
+      "starvingTime": 0,
+      "transitions": [
+        {
+          "floor": 4,
+          "worldTime": 120,
+          "state": "hungry"
+        },
+        {
+          "floor": 4,
+          "worldTime": 120.8,
+          "state": "normal"
+        }
+      ],
+      "found": {
+        "food:ration": 4,
+        "stones": 2,
+        "bottles": 2,
+        "potion:fire": 2,
+        "potion:healing": 4,
+        "potion:invisibility": 3,
+        "potion:frost": 1,
+        "potion:haste": 1,
+        "scroll:mapping": 2
+      },
+      "used": {
+        "food:ration": 1
+      },
+      "granted": {},
+      "endHunger": 80.313,
+      "starvationHP": 0,
+      "foodRemaining": 3,
+      "initial": {
+        "arrows": 0,
+        "stones": 3,
+        "bottles": 1,
+        "potions": 0,
+        "paralysis": 0,
+        "chill": 0
+      },
+      "remaining": {
+        "arrows": 0,
+        "stones": 5,
+        "bottles": 3,
+        "potions": 0,
+        "paralysis": 0,
+        "chill": 0,
+        "food:ration": 3,
+        "potion:healing": 4,
+        "potion:fire": 2,
+        "potion:invisibility": 3,
+        "potion:frost": 1,
+        "potion:haste": 1,
+        "scroll:mapping": 2
+      },
+      "totalEnemies": 66,
+      "worldTime": 146.184,
+      "realTime": 147.4,
+      "distance": 476.331,
+      "kills": 33,
+      "damage": {
+        "火焰": 13,
+        "弩手的弩矢": 14,
+        "盾衛的劍": 42,
+        "突進者的衝撞": 4
+      },
+      "phaseTimes": {
+        "walk": 62.615397141939916,
+        "interact": 5.5528395061726075,
+        "fight": 59.34918867010795,
+        "incidental_combat": 17.866666666665985,
+        "eat": 0.7999999999999545
+      },
+      "complete": true,
+      "policyCompleted": true,
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "hungerAtStart": 0,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 41.034,
+          "distance": 153.608,
+          "kills": 7,
+          "enemies": 11,
+          "alive": 4,
+          "chests": 1,
+          "hp": 18,
+          "maxHp": 18,
+          "endHunger": 41.034,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 2,
+            "bottles": 1,
+            "potion:fire": 1,
+            "potion:healing": 1,
+            "potion:invisibility": 1
+          },
+          "used": {},
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 2,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 1,
+            "potion:healing": 1,
+            "potion:fire": 1,
+            "potion:invisibility": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 9,
+            "potion:healing": 3,
+            "scroll:sleep": 2,
+            "weapon:spear": 1,
+            "bottle": 1,
+            "potion:frost": 1,
+            "potion:fire": 2
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "hungerAtStart": 41.034,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 30.997,
+          "distance": 102.176,
+          "kills": 6,
+          "enemies": 15,
+          "alive": 9,
+          "chests": 1,
+          "hp": 20,
+          "maxHp": 20,
+          "endHunger": 72.031,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 0,
+            "bottles": 1,
+            "potion:fire": 0,
+            "potion:healing": 1,
+            "potion:invisibility": 0,
+            "potion:frost": 1
+          },
+          "used": {},
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 2,
+            "potion:healing": 2,
+            "potion:fire": 1,
+            "potion:invisibility": 1,
+            "potion:frost": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 9,
+            "potion:fire": 1,
+            "potion:healing": 1,
+            "scroll:mapping": 1,
+            "weapon:spear": 1,
+            "bottle": 1,
+            "potion:haste": 1,
+            "potion:frost": 1,
+            "potion:invisibility": 1
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "hungerAtStart": 72.031,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 30.882,
+          "distance": 99.69,
+          "kills": 8,
+          "enemies": 19,
+          "alive": 11,
+          "chests": 1,
+          "hp": 22,
+          "maxHp": 22,
+          "endHunger": 102.913,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 0,
+            "bottles": 0,
+            "potion:fire": 0,
+            "potion:healing": 1,
+            "potion:invisibility": 1,
+            "potion:frost": 0,
+            "potion:haste": 1,
+            "scroll:mapping": 1
+          },
+          "used": {},
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 3,
+            "potion:healing": 3,
+            "potion:fire": 1,
+            "potion:invisibility": 2,
+            "potion:frost": 1,
+            "potion:haste": 1,
+            "scroll:mapping": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 11,
+            "potion:healing": 3,
+            "scroll:teleport": 1,
+            "armor:leather": 1,
+            "bottle": 2,
+            "scroll:sleep": 1,
+            "food:ration": 1,
+            "potion:frost": 1
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "hungerAtStart": 102.913,
+          "hungryTime": 0.8,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 34.916,
+          "distance": 100.96,
+          "kills": 10,
+          "enemies": 19,
+          "alive": 9,
+          "chests": 1,
+          "hp": 24,
+          "maxHp": 24,
+          "endHunger": 77.828,
+          "foodUsed": 1,
+          "found": {
+            "food:ration": 1,
+            "stones": 0,
+            "bottles": 0,
+            "potion:fire": 1,
+            "potion:healing": 1,
+            "potion:invisibility": 1,
+            "potion:frost": 0,
+            "potion:haste": 0,
+            "scroll:mapping": 1
+          },
+          "used": {
+            "food:ration": 1
+          },
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 3,
+            "potion:healing": 4,
+            "potion:fire": 2,
+            "potion:invisibility": 3,
+            "potion:frost": 1,
+            "potion:haste": 1,
+            "scroll:mapping": 2
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 9,
+            "potion:invisibility": 2,
+            "potion:healing": 1,
+            "scroll:teleport": 2,
+            "armor:leather": 1,
+            "bottle": 2,
+            "food:ration": 1,
+            "potion:frost": 1
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "hungerAtStart": 77.828,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 8.356,
+          "distance": 19.899,
+          "kills": 2,
+          "enemies": 2,
+          "alive": 0,
+          "chests": 0,
+          "hp": 26,
+          "maxHp": 26,
+          "endHunger": 80.313,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 0,
+            "stones": 0,
+            "bottles": 0,
+            "potion:fire": 0,
+            "potion:healing": 0,
+            "potion:invisibility": 0,
+            "potion:frost": 0,
+            "potion:haste": 0,
+            "scroll:mapping": 0
+          },
+          "used": {
+            "food:ration": 0
+          },
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 3,
+            "potion:healing": 4,
+            "potion:fire": 2,
+            "potion:invisibility": 3,
+            "potion:frost": 1,
+            "potion:haste": 1,
+            "scroll:mapping": 2
+          },
+          "groundRemaining": {},
+          "outcome": "win",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "seed": "FLOW1",
+      "cls": "warrior",
+      "policy": "normal",
+      "guard": false,
+      "expectedFloors": 5,
+      "segments": {
+        "exploration": {
+          "floors": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "worldTime": 111.647,
+          "startHunger": 0,
+          "endHunger": 111.647,
+          "foodFound": 4,
+          "foodUsed": 0,
+          "starvationHP": 0,
+          "hungryTime": 0,
+          "starvingTime": 0
+        },
+        "arena": {
+          "floors": [],
+          "worldTime": 0,
+          "startHunger": null,
+          "endHunger": null,
+          "foodFound": 0,
+          "foodUsed": 0,
+          "starvationHP": 0,
+          "hungryTime": 0,
+          "starvingTime": 0
+        }
+      },
+      "control": "live AI/combat",
+      "eatEnabled": true,
+      "foodFound": 4,
+      "foodUsed": 0,
+      "foodRestored": 0,
+      "maxHunger": 111.64689706617234,
+      "hungryTime": 0,
+      "starvingTime": 0,
+      "transitions": [],
+      "found": {
+        "food:ration": 4,
+        "stones": 2,
+        "bottles": 2,
+        "potion:fire": 1,
+        "potion:healing": 3,
+        "potion:invisibility": 2,
+        "potion:frost": 1,
+        "potion:haste": 1,
+        "scroll:mapping": 1
+      },
+      "used": {
+        "potion:healing": 3
+      },
+      "granted": {},
+      "endHunger": 111.647,
+      "starvationHP": 0,
+      "foodRemaining": 4,
+      "initial": {
+        "arrows": 0,
+        "stones": 3,
+        "bottles": 1,
+        "potions": 0,
+        "paralysis": 0,
+        "chill": 0
+      },
+      "remaining": {
+        "arrows": 0,
+        "stones": 5,
+        "bottles": 3,
+        "potions": 0,
+        "paralysis": 0,
+        "chill": 0,
+        "food:ration": 4,
+        "potion:fire": 1,
+        "potion:invisibility": 2,
+        "potion:frost": 1,
+        "potion:haste": 1,
+        "scroll:mapping": 1
+      },
+      "totalEnemies": 64,
+      "worldTime": 111.647,
+      "realTime": 112.55,
+      "distance": 385.655,
+      "kills": 22,
+      "damage": {
+        "火焰": 10,
+        "弩手的弩矢": 10,
+        "盾衛的劍": 24,
+        "突進者的衝撞": 4
+      },
+      "phaseTimes": {
+        "walk": 50.23909189663205,
+        "interact": 3.723580246913431,
+        "fight": 45.82589158925505,
+        "incidental_combat": 11.858333333332986
+      },
+      "complete": false,
+      "policyCompleted": false,
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "hungerAtStart": 0,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 40.532,
+          "distance": 153.564,
+          "kills": 7,
+          "enemies": 11,
+          "alive": 4,
+          "chests": 1,
+          "hp": 9,
+          "maxHp": 18,
+          "endHunger": 40.532,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 2,
+            "bottles": 1,
+            "potion:fire": 1,
+            "potion:healing": 1,
+            "potion:invisibility": 1
+          },
+          "used": {
+            "potion:healing": 1
+          },
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 2,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 1,
+            "potion:fire": 1,
+            "potion:invisibility": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 9,
+            "potion:healing": 3,
+            "scroll:sleep": 2,
+            "weapon:spear": 1,
+            "bottle": 1,
+            "potion:frost": 1,
+            "potion:fire": 2
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "hungerAtStart": 40.532,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 31.067,
+          "distance": 102.151,
+          "kills": 6,
+          "enemies": 15,
+          "alive": 9,
+          "chests": 1,
+          "hp": 7,
+          "maxHp": 20,
+          "endHunger": 71.599,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 0,
+            "bottles": 1,
+            "potion:fire": 0,
+            "potion:healing": 1,
+            "potion:invisibility": 0,
+            "potion:frost": 1
+          },
+          "used": {
+            "potion:healing": 1
+          },
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 2,
+            "potion:fire": 1,
+            "potion:invisibility": 1,
+            "potion:frost": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 9,
+            "potion:fire": 1,
+            "potion:healing": 1,
+            "scroll:mapping": 1,
+            "weapon:spear": 1,
+            "bottle": 1,
+            "potion:haste": 1,
+            "potion:frost": 1,
+            "potion:invisibility": 1
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "hungerAtStart": 71.599,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 30.947,
+          "distance": 99.641,
+          "kills": 8,
+          "enemies": 19,
+          "alive": 11,
+          "chests": 1,
+          "hp": 6,
+          "maxHp": 22,
+          "endHunger": 102.546,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 0,
+            "bottles": 0,
+            "potion:fire": 0,
+            "potion:healing": 1,
+            "potion:invisibility": 1,
+            "potion:frost": 0,
+            "potion:haste": 1,
+            "scroll:mapping": 1
+          },
+          "used": {
+            "potion:healing": 1
+          },
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 3,
+            "potion:fire": 1,
+            "potion:invisibility": 2,
+            "potion:frost": 1,
+            "potion:haste": 1,
+            "scroll:mapping": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 11,
+            "potion:healing": 3,
+            "scroll:teleport": 1,
+            "armor:leather": 1,
+            "bottle": 2,
+            "scroll:sleep": 1,
+            "food:ration": 1,
+            "potion:frost": 1
+          },
+          "outcome": "descend",
+          "ok": true
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "hungerAtStart": 102.546,
+          "hungryTime": 0,
+          "starvingTime": 0,
+          "starvationHP": 0,
+          "worldTime": 9.101,
+          "distance": 30.298,
+          "kills": 1,
+          "enemies": 19,
+          "alive": 18,
+          "chests": 0,
+          "hp": 0,
+          "maxHp": 22,
+          "endHunger": 111.647,
+          "foodUsed": 0,
+          "found": {
+            "food:ration": 1,
+            "stones": 0,
+            "bottles": 0,
+            "potion:fire": 0,
+            "potion:healing": 0,
+            "potion:invisibility": 0,
+            "potion:frost": 0,
+            "potion:haste": 0,
+            "scroll:mapping": 0
+          },
+          "used": {
+            "potion:healing": 0
+          },
+          "remaining": {
+            "arrows": 0,
+            "stones": 5,
+            "bottles": 3,
+            "potions": 0,
+            "paralysis": 0,
+            "chill": 0,
+            "food:ration": 4,
+            "potion:fire": 1,
+            "potion:invisibility": 2,
+            "potion:frost": 1,
+            "potion:haste": 1,
+            "scroll:mapping": 1
+          },
+          "groundRemaining": {
+            "scroll:upgrade": 1,
+            "ammo": 6,
+            "potion:invisibility": 2,
+            "potion:healing": 1,
+            "scroll:teleport": 2,
+            "armor:leather": 1,
+            "bottle": 1,
+            "food:ration": 1,
+            "potion:frost": 1
+          },
+          "outcome": "dead",
+          "ok": false
+        }
+      ]
+    }
+  ]
+}

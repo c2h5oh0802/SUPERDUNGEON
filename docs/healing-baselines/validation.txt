@@ -1,0 +1,6 @@
+docs/healing-baselines/before.json: 36 unique scenarios; resource/HP/healing/floor accounting passed
+docs/healing-baselines/before-upgrades.json: 36 unique scenarios; resource/HP/healing/floor accounting passed
+docs/healing-baselines/after.json: 36 unique scenarios; resource/HP/healing/floor accounting passed
+docs/healing-baselines/after-upgrades.json: 36 unique scenarios; resource/HP/healing/floor accounting passed
+docs/healing-baselines/chapter-adapter-legacy-smoke.json: 2 unique scenarios; resource accounting and outcome assertions passed
+docs/healing-baselines/chapter-adapter-smoke.json: 2 unique scenarios; resource accounting and outcome assertions passed

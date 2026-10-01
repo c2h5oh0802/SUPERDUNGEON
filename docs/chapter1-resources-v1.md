@@ -57,7 +57,7 @@ Raw reports include per-floor time, food found/used/remaining, Hungry/Starving e
 
 | Class | Initially knows |
 |---|---|
-| Warrior | Fire potion, Teleport scroll |
+| Warrior | Healing potion, Teleport scroll (Healing Integration v1) |
 | Huntress | Invisibility potion, Mapping scroll |
 | Both | Upgrade, equipment and food; healing stock stays 1 |
 
@@ -112,7 +112,7 @@ The storage version stays **v2**, with the existing floor-start checkpoints, sto
 - Old `scroll:timeStop` inventory/knowledge becomes `scroll:sleep`; no global paralysis behavior survives
 - Retired `scroll:lure` inventory/knowledge is discarded without compensation or a free stronger consumable. Other unknown/corrupt item IDs still fail validation
 - If old and new Sleep stacks coexist, quantities merge into ≤99 stacks, retaining overflow as another existing bag slot. Subsequent pickups choose a non-full stack/free slot or remain on the ground, so the next save remains valid
-- Appearance RNG deliberately keeps the historical **five-potion shuffle followed by four scroll slots**. Teleport/Mapping glyphs stay identical; Sleep takes the old timeStop slot; the fourth glyph is a retired compatibility slot, not active Lure generation. Existing potion colors and identified aliases never remap on Continue
+- Healing Integration v1 adds a versioned six-potion shuffle for new runs. Old checkpoints retain their five existing potion colors plus an unused sixth appearance for Healing; scroll glyphs retain the old RNG mapping in both versions. Teleport/Mapping stay identical and Sleep inherits timeStop. See [healing save compatibility](healing-potion-v1.md#save-compatibility).
 - The prior removal-only Rune migration remains; Rune state/effects are not restored. Missing legacy Hunger fields retain prior 0/0 defaults
 
 ## Verification and remaining limits
@@ -127,9 +127,13 @@ The storage version stays **v2**, with the existing floor-start checkpoints, sto
 
 ### Manual acceptance: three runs plus arena boundary
 
-1. **Warrior normal run, fixed seed FLOW1:** verify Fire/Teleport known and other effects hidden. Explore for food and deliberately solve one problem with a potion and one with Teleport. Record consumables picked/used/unused at victory, HP, world time, food and end Hunger. Invest Upgrade as useful equipment growth
+1. **Warrior normal run, fixed seed FLOW1:** verify Healing/Teleport known and other effects hidden. Explore for food and deliberately solve one problem with a potion and one with Teleport. Record consumables picked/used/unused at victory, HP, world time, food and end Hunger. Invest Upgrade as useful equipment growth
 2. **Huntress same seed FLOW1:** compare identical map/enemy/item positions and appearances; only initial names differ. Use Mapping for a route decision and Invisibility for the sentry chest or patrol bypass. Check noise/locked attacks/surprise still feel legible
 3. **Heavy/full-clear run:** visit both branches and all rooms; record food found/used/remaining per floor and when Hunger becomes uncomfortable. Compare the human late-run food report with this six-opportunity candidate, without assuming the bot's omniscient route or restored HP
 4. **Arena boundary in any run:** wait in the antechamber and see Hunger advance. Enter/engage and see it stop while actions still progress. Try Sleep on a guardian; verify it does not sleep. Heart must remain unavailable until both die; after victory nothing ticks
 
 Human review should judge whether the dungeon creates problems that naturally suggest different consumables, whether unused hoarding still dominates, and whether optional rooms feel like options rather than disguised keys. Those outcomes are **unproven**. Food Economy v2 remains provisional; Upgrade remains core investment; class differences are knowledge, not loot.
+
+## Healing Integration v1 update
+
+The old numeric healing stock is retired. Existing two chest bottles plus one loose bottle per exploration floor are real potion:healing items (12 reliable chapter opportunities); no free starting bottle, no ordinary arena source. Random floor potion rolls may add Healing; generic enemy drops cannot. Food 1/1/2/2, restoration60, four Upgrade Scrolls, local Sleep and both optional consumable-room relationships remain unchanged. Current healing balance and same-seed knowledge behavior are documented in [Healing Integration v1](healing-potion-v1.md). Historical Chapter baseline reports below describe the pre-integration stock system and are retained as historical evidence.

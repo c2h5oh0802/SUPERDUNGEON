@@ -82,7 +82,6 @@ export function installDevApi(app: App): void {
           pendingUse: p.pendingUse ? { ...p.pendingUse } : null,
           hasteT: p.hasteT,
           bottles: p.bottles,
-          potions: p.potions,
           tool: p.tool,
           desiredTool: p.desiredTool,
           action: p.action

@@ -1,0 +1,806 @@
+{
+  "primary simple-melee control": {
+    "before": {
+      "n": 18,
+      "deaths": 18,
+      "floor1Deaths": 6,
+      "wins": 0,
+      "healingFound": {
+        "total": 38,
+        "range": [
+          0,
+          4
+        ]
+      },
+      "healingReserved": {
+        "total": 56,
+        "range": [
+          1,
+          5
+        ]
+      },
+      "healingCompleted": {
+        "total": 52,
+        "range": [
+          1,
+          5
+        ]
+      },
+      "healingRestored": {
+        "total": 208,
+        "range": [
+          4,
+          20
+        ]
+      },
+      "healingRemaining": [
+        0,
+        0
+      ],
+      "upgradesUsed": [
+        0,
+        0
+      ],
+      "foodFound": [
+        1,
+        3
+      ],
+      "foodUsed": [
+        0,
+        1
+      ],
+      "foodRemaining": [
+        1,
+        3
+      ],
+      "hungerFinal": [
+        18.752,
+        118.018
+      ],
+      "starvationHP": [
+        0,
+        0
+      ],
+      "floorReached": [
+        1,
+        3
+      ],
+      "byClass": {
+        "warrior": {
+          "n": 9,
+          "deaths": 9,
+          "floor1Deaths": 2,
+          "wins": 0,
+          "healingFound": {
+            "total": 25,
+            "range": [
+              1,
+              4
+            ]
+          },
+          "healingReserved": {
+            "total": 34,
+            "range": [
+              2,
+              5
+            ]
+          },
+          "healingCompleted": {
+            "total": 32,
+            "range": [
+              1,
+              5
+            ]
+          },
+          "healingRestored": {
+            "total": 128,
+            "range": [
+              4,
+              20
+            ]
+          },
+          "healingRemaining": [
+            0,
+            0
+          ],
+          "upgradesUsed": [
+            0,
+            0
+          ],
+          "foodFound": [
+            1,
+            3
+          ],
+          "foodUsed": [
+            0,
+            1
+          ],
+          "foodRemaining": [
+            1,
+            3
+          ],
+          "hungerFinal": [
+            20.891,
+            118.018
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            3
+          ]
+        },
+        "huntress": {
+          "n": 9,
+          "deaths": 9,
+          "floor1Deaths": 4,
+          "wins": 0,
+          "healingFound": {
+            "total": 13,
+            "range": [
+              0,
+              2
+            ]
+          },
+          "healingReserved": {
+            "total": 22,
+            "range": [
+              1,
+              3
+            ]
+          },
+          "healingCompleted": {
+            "total": 20,
+            "range": [
+              1,
+              3
+            ]
+          },
+          "healingRestored": {
+            "total": 80,
+            "range": [
+              4,
+              12
+            ]
+          },
+          "healingRemaining": [
+            0,
+            0
+          ],
+          "upgradesUsed": [
+            0,
+            0
+          ],
+          "foodFound": [
+            1,
+            3
+          ],
+          "foodUsed": [
+            0,
+            0
+          ],
+          "foodRemaining": [
+            1,
+            3
+          ],
+          "hungerFinal": [
+            18.752,
+            82.972
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            3
+          ]
+        }
+      }
+    },
+    "after": {
+      "n": 18,
+      "deaths": 17,
+      "floor1Deaths": 3,
+      "wins": 1,
+      "healingFound": {
+        "total": 53,
+        "range": [
+          0,
+          8
+        ]
+      },
+      "healingReserved": {
+        "total": 53,
+        "range": [
+          0,
+          8
+        ]
+      },
+      "healingCompleted": {
+        "total": 50,
+        "range": [
+          0,
+          8
+        ]
+      },
+      "healingRestored": {
+        "total": 409,
+        "range": [
+          0,
+          83
+        ]
+      },
+      "healingRemaining": [
+        0,
+        0
+      ],
+      "upgradesUsed": [
+        0,
+        0
+      ],
+      "foodFound": [
+        1,
+        5
+      ],
+      "foodUsed": [
+        0,
+        3
+      ],
+      "foodRemaining": [
+        1,
+        3
+      ],
+      "hungerFinal": [
+        17.952,
+        105.821
+      ],
+      "starvationHP": [
+        0,
+        0
+      ],
+      "floorReached": [
+        1,
+        5
+      ],
+      "byClass": {
+        "warrior": {
+          "n": 9,
+          "deaths": 8,
+          "floor1Deaths": 0,
+          "wins": 1,
+          "healingFound": {
+            "total": 38,
+            "range": [
+              2,
+              8
+            ]
+          },
+          "healingReserved": {
+            "total": 38,
+            "range": [
+              2,
+              8
+            ]
+          },
+          "healingCompleted": {
+            "total": 36,
+            "range": [
+              2,
+              8
+            ]
+          },
+          "healingRestored": {
+            "total": 327,
+            "range": [
+              13,
+              83
+            ]
+          },
+          "healingRemaining": [
+            0,
+            0
+          ],
+          "upgradesUsed": [
+            0,
+            0
+          ],
+          "foodFound": [
+            2,
+            5
+          ],
+          "foodUsed": [
+            0,
+            3
+          ],
+          "foodRemaining": [
+            1,
+            3
+          ],
+          "hungerFinal": [
+            60.894,
+            105.821
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            2,
+            5
+          ]
+        },
+        "huntress": {
+          "n": 9,
+          "deaths": 9,
+          "floor1Deaths": 3,
+          "wins": 0,
+          "healingFound": {
+            "total": 15,
+            "range": [
+              0,
+              4
+            ]
+          },
+          "healingReserved": {
+            "total": 15,
+            "range": [
+              0,
+              4
+            ]
+          },
+          "healingCompleted": {
+            "total": 14,
+            "range": [
+              0,
+              4
+            ]
+          },
+          "healingRestored": {
+            "total": 82,
+            "range": [
+              0,
+              28
+            ]
+          },
+          "healingRemaining": [
+            0,
+            0
+          ],
+          "upgradesUsed": [
+            0,
+            0
+          ],
+          "foodFound": [
+            1,
+            3
+          ],
+          "foodUsed": [
+            0,
+            0
+          ],
+          "foodRemaining": [
+            1,
+            3
+          ],
+          "hungerFinal": [
+            17.952,
+            100.626
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            3
+          ]
+        }
+      }
+    }
+  },
+  "upgrade-seeking sensitivity": {
+    "before": {
+      "n": 18,
+      "deaths": 18,
+      "floor1Deaths": 2,
+      "wins": 0,
+      "healingFound": {
+        "total": 66,
+        "range": [
+          2,
+          8
+        ]
+      },
+      "healingReserved": {
+        "total": 80,
+        "range": [
+          1,
+          9
+        ]
+      },
+      "healingCompleted": {
+        "total": 77,
+        "range": [
+          1,
+          9
+        ]
+      },
+      "healingRestored": {
+        "total": 308,
+        "range": [
+          4,
+          36
+        ]
+      },
+      "healingRemaining": [
+        0,
+        2
+      ],
+      "upgradesUsed": [
+        1,
+        4
+      ],
+      "foodFound": [
+        1,
+        4
+      ],
+      "foodUsed": [
+        0,
+        4
+      ],
+      "foodRemaining": [
+        0,
+        3
+      ],
+      "hungerFinal": [
+        46.45,
+        121.009
+      ],
+      "starvationHP": [
+        0,
+        0
+      ],
+      "floorReached": [
+        1,
+        4
+      ],
+      "byClass": {
+        "warrior": {
+          "n": 9,
+          "deaths": 9,
+          "floor1Deaths": 1,
+          "wins": 0,
+          "healingFound": {
+            "total": 38,
+            "range": [
+              2,
+              8
+            ]
+          },
+          "healingReserved": {
+            "total": 45,
+            "range": [
+              1,
+              9
+            ]
+          },
+          "healingCompleted": {
+            "total": 43,
+            "range": [
+              1,
+              9
+            ]
+          },
+          "healingRestored": {
+            "total": 172,
+            "range": [
+              4,
+              36
+            ]
+          },
+          "healingRemaining": [
+            0,
+            2
+          ],
+          "upgradesUsed": [
+            1,
+            4
+          ],
+          "foodFound": [
+            1,
+            4
+          ],
+          "foodUsed": [
+            0,
+            4
+          ],
+          "foodRemaining": [
+            0,
+            3
+          ],
+          "hungerFinal": [
+            46.98,
+            121.009
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            4
+          ]
+        },
+        "huntress": {
+          "n": 9,
+          "deaths": 9,
+          "floor1Deaths": 1,
+          "wins": 0,
+          "healingFound": {
+            "total": 28,
+            "range": [
+              2,
+              5
+            ]
+          },
+          "healingReserved": {
+            "total": 35,
+            "range": [
+              1,
+              6
+            ]
+          },
+          "healingCompleted": {
+            "total": 34,
+            "range": [
+              1,
+              6
+            ]
+          },
+          "healingRestored": {
+            "total": 136,
+            "range": [
+              4,
+              24
+            ]
+          },
+          "healingRemaining": [
+            0,
+            2
+          ],
+          "upgradesUsed": [
+            1,
+            3
+          ],
+          "foodFound": [
+            1,
+            3
+          ],
+          "foodUsed": [
+            0,
+            2
+          ],
+          "foodRemaining": [
+            0,
+            3
+          ],
+          "hungerFinal": [
+            46.45,
+            118.532
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            3
+          ]
+        }
+      }
+    },
+    "after": {
+      "n": 18,
+      "deaths": 11,
+      "floor1Deaths": 2,
+      "wins": 7,
+      "healingFound": {
+        "total": 89,
+        "range": [
+          1,
+          8
+        ]
+      },
+      "healingReserved": {
+        "total": 85,
+        "range": [
+          1,
+          8
+        ]
+      },
+      "healingCompleted": {
+        "total": 82,
+        "range": [
+          0,
+          8
+        ]
+      },
+      "healingRestored": {
+        "total": 797,
+        "range": [
+          0,
+          95
+        ]
+      },
+      "healingRemaining": [
+        0,
+        2
+      ],
+      "upgradesUsed": [
+        1,
+        4
+      ],
+      "foodFound": [
+        1,
+        6
+      ],
+      "foodUsed": [
+        0,
+        6
+      ],
+      "foodRemaining": [
+        0,
+        3
+      ],
+      "hungerFinal": [
+        41.003,
+        180
+      ],
+      "starvationHP": [
+        0,
+        0
+      ],
+      "floorReached": [
+        1,
+        5
+      ],
+      "byClass": {
+        "warrior": {
+          "n": 9,
+          "deaths": 4,
+          "floor1Deaths": 1,
+          "wins": 5,
+          "healingFound": {
+            "total": 51,
+            "range": [
+              2,
+              8
+            ]
+          },
+          "healingReserved": {
+            "total": 47,
+            "range": [
+              2,
+              8
+            ]
+          },
+          "healingCompleted": {
+            "total": 45,
+            "range": [
+              1,
+              8
+            ]
+          },
+          "healingRestored": {
+            "total": 468,
+            "range": [
+              5,
+              95
+            ]
+          },
+          "healingRemaining": [
+            0,
+            2
+          ],
+          "upgradesUsed": [
+            1,
+            4
+          ],
+          "foodFound": [
+            1,
+            6
+          ],
+          "foodUsed": [
+            0,
+            5
+          ],
+          "foodRemaining": [
+            0,
+            3
+          ],
+          "hungerFinal": [
+            47.855,
+            180
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            5
+          ]
+        },
+        "huntress": {
+          "n": 9,
+          "deaths": 7,
+          "floor1Deaths": 1,
+          "wins": 2,
+          "healingFound": {
+            "total": 38,
+            "range": [
+              1,
+              8
+            ]
+          },
+          "healingReserved": {
+            "total": 38,
+            "range": [
+              1,
+              8
+            ]
+          },
+          "healingCompleted": {
+            "total": 37,
+            "range": [
+              0,
+              8
+            ]
+          },
+          "healingRestored": {
+            "total": 329,
+            "range": [
+              0,
+              85
+            ]
+          },
+          "healingRemaining": [
+            0,
+            0
+          ],
+          "upgradesUsed": [
+            1,
+            4
+          ],
+          "foodFound": [
+            1,
+            6
+          ],
+          "foodUsed": [
+            0,
+            6
+          ],
+          "foodRemaining": [
+            0,
+            3
+          ],
+          "hungerFinal": [
+            41.003,
+            114.46
+          ],
+          "starvationHP": [
+            0,
+            0
+          ],
+          "floorReached": [
+            1,
+            5
+          ]
+        }
+      }
+    }
+  }
+}

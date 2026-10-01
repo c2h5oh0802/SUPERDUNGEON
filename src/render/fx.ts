@@ -244,7 +244,7 @@ export class FxVisual {
           color = new THREE.Color(0xb8a8ff);
         } else {
           // 丟出的藥水：這一局的外觀顏色
-          const c = itemColor(this.world.level.seed, `potion:${p.payload}`);
+          const c = itemColor(this.world.level.seed, `potion:${p.payload}`, this.world.level.potionLooksVersion);
           const m = new THREE.MeshBasicMaterial({ color: c });
           this.mats.push(m);
           obj.add(new THREE.Mesh(this.bottleGeo, m));

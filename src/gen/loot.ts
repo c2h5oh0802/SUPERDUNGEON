@@ -8,8 +8,9 @@ export interface LootRoll {
   level: number;
 }
 
-export function rollPotion(rng: Rng): LootRoll {
-  return { id: `potion:${rng.pick(ALL_POTIONS)}`, level: 0 };
+export function rollPotion(rng: Rng, source: 'floor' | 'enemy' = 'floor'): LootRoll {
+  const pool = source === 'enemy' ? ALL_POTIONS.filter((id) => id !== 'healing') : ALL_POTIONS;
+  return { id: `potion:${rng.pick(pool)}`, level: 0 };
 }
 
 export function rollScroll(rng: Rng): LootRoll {
@@ -25,10 +26,10 @@ export function rollEquipment(rng: Rng, floor: number): LootRoll {
   return { id, level };
 }
 
-export function rollConsumable(rng: Rng): LootRoll {
-  return rng.chance(0.6) ? rollPotion(rng) : rollScroll(rng);
+export function rollConsumable(rng: Rng, source: 'floor' | 'enemy' = 'floor'): LootRoll {
+  return rng.chance(0.6) ? rollPotion(rng, source) : rollScroll(rng);
 }
 
-export function rollItem(rng: Rng, floor: number): LootRoll {
-  return rng.chance(0.7) ? rollConsumable(rng) : rollEquipment(rng, floor);
+export function rollItem(rng: Rng, floor: number, source: 'floor' | 'enemy' = 'floor'): LootRoll {
+  return rng.chance(0.7) ? rollConsumable(rng, source) : rollEquipment(rng, floor);
 }
