@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HEALING_POTION, PLAYER } from '../src/config';
+import { HEALING_POTION, PLAYER, WORLD } from '../src/config';
 import { Rng } from '../src/core/rng';
 import type { LevelData } from '../src/gen/generator';
 import { generateLevel } from '../src/gen/validate';
@@ -51,6 +51,15 @@ describe('provisional chapter healing supply v2', () => {
       if (floor >= 2 && floor <= 4) {
         expect(level.chests[1]!.contents.items).toHaveLength(1);
         level.chests[1]!.contents.items.unshift({ id: 'potion:healing', level: 0 });
+      }
+      // These historical hashes predate ground-mobile sanctum archers. Undo only
+      // their tested one-metre landing delta, keeping the original resource proof.
+      const sanctum = level.rooms.find((r) => r.layoutId === 'sanctum');
+      for (const e of level.enemies.filter((e) => e.kind === 'archer' && e.roomKey === sanctum?.key)) {
+        expect(e).toMatchObject({ z: sanctum!.z0 + 3.5, y: 0, perched: false });
+        e.z -= 1;
+        e.y = WORLD.platformHeight;
+        e.perched = true;
       }
       expect(await fingerprint(level)).toBe(hash);
     } finally {

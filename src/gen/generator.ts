@@ -1,5 +1,5 @@
 import type { PracticeTrialId } from './practiceTrials';
-import { HUNGER, PLAYER, RUN, WORLD, type ItemId } from '../config';
+import { ENEMIES, HUNGER, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
@@ -542,6 +542,29 @@ function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
   return out;
 }
 
+/** Leave specialist firing galleries intact; ordinary sanctum archers can reposition. */
+function groundCampaignArchers(d: Draft, grid: Grid): void {
+  const sanctums = new Set(d.rooms.filter((r) => r.layoutId === 'sanctum').map((r) => r.key));
+  const archers = d.enemies.filter((e) => e.kind === 'archer' && e.perched && sanctums.has(e.roomKey));
+  if (!archers.length) return;
+  // Match the shared enemy navigation clearance, not just the smaller archer body.
+  const radius = Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius);
+  const nav = new Nav(grid, radius);
+  const seen = nav.flood(d.spawn!.x, d.spawn!.z, false);
+  for (const e of archers) {
+    // Both authored sanctum ledges face south. Their adjacent floor is still south
+    // after horizontal mirroring; retain the ledges and every other geometry cell.
+    const x = e.x, z = e.z + 1;
+    if (grid.get(Math.floor(x), Math.floor(z)) !== T.Floor || grid.circleBlocked(x, z, radius) ||
+        !seen[nav.cellOf(x, z)] ||
+        d.traps.some((t) => Math.hypot(t.i + .5 - x, t.j + .5 - z) < 1.2) ||
+        d.enemies.some((other) => other !== e && Math.hypot(other.x - x, other.z - z) < radius + ENEMIES[other.kind].radius)) continue;
+    e.z = z;
+    e.y = 0;
+    e.perched = false;
+  }
+}
+
 export interface GenerateOptions {
   practice?: boolean;
   /** 第幾層（1 起算，預設 1）。 */
@@ -707,6 +730,9 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     const fire = embers ? { x: chest.x, z: chest.z + 2 } : undefined;
     specialRooms.push({ kind: embers ? 'embers' : 'sentries', roomKey: room.key, solution, supply, fire });
   }
+  // Convert only after all RNG use and deterministic supply placement. Moving this
+  // above addPatrols would consume extra random rolls and reshuffle unrelated loot.
+  if (!opts.practice && floor <= RUN.explorationFloors) groundCampaignArchers(d, grid);
   return {
     seed,
     floor,

@@ -65,6 +65,8 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     hitDone: false,
     chargeDist: 0,
     aimPoint: null,
+    archerMove: null,
+    archerMovePause: 0,
     path: null,
     pathT: 0,
     pathGoal: null,
@@ -92,6 +94,7 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
 
 /** 打斷敵人目前的出手（盾推、踉蹌）。 */
 export function interruptEnemy(e: Enemy): void {
+  stopArcherMove(e);
   e.locked = false;
   e.aimPoint = null;
   e.hitDone = true;
@@ -181,6 +184,7 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
   if (e.hp <= 0) {
     e.hp = 0;
     e.alive = false;
+    stopArcherMove(e);
     e.deathT = 0;
     e.phase = 'none';
     e.moving = false;
@@ -236,6 +240,7 @@ function investigate(w: World, e: Enemy, target: V2): void {
 }
 
 function beginSearch(e: Enemy): void {
+  stopArcherMove(e);
   e.state = 'search';
   e.searchT = 0;
   e.searchIdx = -1;
@@ -444,7 +449,7 @@ function separate(w: World, e: Enemy, x: number, z: number): { x: number; z: num
 }
 
 /** 沿導航路徑移動；回傳是否已抵達目標。 */
-function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveDist = 0.5, faceMove = true): boolean {
+function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveDist = 0.5, faceMove = true, fixedPath = false): boolean {
   if (e.push) { e.moving = false; return false; }
   if (e.perched) return true;
   const dGoal = Math.hypot(goal.x - e.x, goal.z - e.z);
@@ -454,12 +459,12 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
   }
   e.pathT -= dt;
   const goalMoved = !e.pathGoal || Math.hypot(e.pathGoal.x - goal.x, e.pathGoal.z - goal.z) > 1.0;
-  if (!e.path || e.pathT <= 0 || goalMoved) {
+  if (!fixedPath && (!e.path || e.pathT <= 0 || goalMoved)) {
     e.path = w.enav.findPath(e.x, e.z, goal.x, goal.z) ?? [];
     e.pathGoal = { ...goal };
     e.pathT = ENEMIES.repathInterval + (e.id % 5) * 0.05;
   }
-  if (!e.path.length) {
+  if (!e.path?.length) {
     e.moving = false;
     return false;
   }
@@ -483,7 +488,7 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
   if (doorId >= 0) {
     const door = w.grid.doors[doorId]!;
     e.moving = false;
-    if (door.barred) {
+    if (door.barred || fixedPath) {
       e.path = null;
       return false;
     }
@@ -633,50 +638,150 @@ function chase(w: World, e: Enemy, dt: number, speed: number, stopDist: number):
   }
 }
 
+/** Finish a leg without immediately starting another; interrupts keep this paid window. */
+function stopArcherMove(e: Enemy): void {
+  if (!e.archerMove) return;
+  e.archerMove = null;
+  e.archerMovePause = ENEMIES.archer.repositionPause;
+  e.path = null;
+  e.pathGoal = null;
+  e.moving = false;
+}
+
+/** Tactical decisions require sight now, not a stale perception sample or a hidden position. */
+function archerSeesNow(w: World, e: Enemy): boolean {
+  const p = w.player;
+  const eye = { x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z };
+  return e.seesPlayer && !p.dead && p.invisT <= 0 &&
+    (w.canSee(eye, { x: p.x, y: 1.25, z: p.z }) ||
+      w.canSee(eye, { x: p.x, y: PLAYER.eyeHeight, z: p.z }));
+}
+
+/** Sixteen deterministic local goals, never a whole-room or hidden-player search. */
+function startArcherMove(w: World, e: Enemy, kind: 'angle' | 'retreat'): boolean {
+  if (e.perched || e.push || e.archerMovePause > 0) return false;
+  const s = ENEMIES.archer;
+  const target = { x: w.player.x, y: 1.2, z: w.player.z };
+  const distance = Math.hypot(e.x - target.x, e.z - target.z);
+  const away = Math.atan2(e.z - target.z, e.x - target.x);
+  let best: { goal: V2; path: V2[]; score: number } | null = null;
+  const used = new Set<number>();
+  for (let ring = 1; ring <= s.repositionRings; ring++) {
+    for (let k = 0; k < s.repositionDirections; k++) {
+      // Stable handedness; a blocker cannot make the archer flip its goal each frame.
+      const angle = away + k * 2 * Math.PI / s.repositionDirections * (e.id % 2 ? 1 : -1);
+      const radius = s.repositionRadius * ring / s.repositionRings;
+      const cell = w.enav.cellOf(e.x + Math.cos(angle) * radius, e.z + Math.sin(angle) * radius);
+      if (used.has(cell) || !w.enav.passable(cell)) continue;
+      used.add(cell);
+      const goal = w.enav.center(cell);
+      const displacement = Math.hypot(goal.x - e.x, goal.z - e.z);
+      if (displacement < 0.6 || displacement > s.repositionRadius || w.grid.circleBlocked(goal.x, goal.z, e.radius)) continue;
+      const nextDistance = Math.hypot(goal.x - target.x, goal.z - target.z);
+      if (nextDistance > s.fireRange || (kind === 'retreat' && nextDistance < distance + s.retreatGain)) continue;
+      if (!w.canSee({ x: goal.x, y: e.y + PERCEPTION.eyeHeight, z: goal.z }, target)) continue;
+      const clear = archerLineClearAt(w, e, goal, yawFromDir(target.x - goal.x, target.z - goal.z), target);
+      if (kind === 'angle' && !clear) continue;
+      const path = w.enav.findPath(e.x, e.z, goal.x, goal.z, false, s.repositionMaxExpand);
+      if (!path?.length) continue;
+      let length = 0, previous: V2 = e, safe = true;
+      for (const point of path) {
+        const leg = Math.hypot(point.x - previous.x, point.z - previous.z);
+        length += leg;
+        // Navigation remains authoritative. Sample the body sweep as well: a local
+        // dodge never opens a door, crosses a pit/corner, or routes through an ally.
+        const steps = Math.max(1, Math.ceil(leg / 0.2));
+        for (let j = 1; j <= steps; j++) {
+          const q = { x: lerp(previous.x, point.x, j / steps), z: lerp(previous.z, point.z, j / steps) };
+          if (w.grid.circleBlocked(q.x, q.z, e.radius) ||
+              Math.hypot(q.x - target.x, q.z - target.z) < (kind === 'retreat' ? distance - 0.05 : PLAYER.radius + e.radius + 0.1) ||
+              w.enemies.some(o => o !== e && o.alive && !o.perched && Math.hypot(q.x - o.x, q.z - o.z) < e.radius + o.radius + 0.05)) {
+            safe = false;
+            break;
+          }
+        }
+        if (!safe) break;
+        previous = point;
+      }
+      if (!safe || length > s.repositionPathMax) continue;
+      // Prefer short clear sidesteps; retreat prefers more distance but still values a shot.
+      const score = kind === 'angle' ? -length : Math.min(nextDistance - distance, 2) + (clear ? 1 : 0) - length * 0.2;
+      if (!best || score > best.score + 1e-6) best = { goal, path, score };
+    }
+  }
+  if (!best) return false;
+  e.archerMove = { goal: best.goal, kind, time: 0, travel: 0 };
+  e.path = best.path;
+  e.pathGoal = { ...best.goal };
+  e.pathT = s.repositionTime;
+  e.stuckT = 0;
+  e.aimPoint = null;
+  e.locked = false;
+  return true;
+}
+
+function updateArcherMove(w: World, e: Enemy, dt: number): void {
+  const move = e.archerMove!;
+  const s = ENEMIES.archer;
+  const budget = Math.min(dt, s.repositionTime - move.time,
+    (s.repositionTravelMax - move.travel) / (s.speed * s.repositionSpeedMul));
+  if (budget <= 0 || e.push) { stopArcherMove(e); return; }
+  const x = e.x, z = e.z;
+  const arrived = moveTo(w, e, move.goal, s.speed * s.repositionSpeedMul, budget, s.repositionArrive, false, true);
+  move.time += dt;
+  move.travel += Math.hypot(e.x - x, e.z - z);
+  if (arrived || move.time >= s.repositionTime || move.travel >= s.repositionTravelMax || !e.path?.length) stopArcherMove(e);
+  // Never begin aim on this tick, even when the leg just ended.
+}
+
 function archerAlert(w: World, e: Enemy, dt: number): void {
   const s = ENEMIES.archer;
   const p = w.player;
-  const d = Math.hypot(p.x - e.x, p.z - e.z);
+  const visible = archerSeesNow(w, e);
+  if (!visible) e.seesPlayer = false;
+  if (!e.archerMove) e.archerMovePause = Math.max(0, e.archerMovePause - dt);
   switch (e.phase) {
     case 'none':
-    case 'reload':
+    case 'reload': {
       if (e.phase === 'reload') {
         e.phaseT += dt;
         if (e.phaseT >= s.reload) e.phase = 'none';
       }
-      if (e.seesPlayer) {
-        facePlayer(w, e, 5, dt);
-        if (!e.perched && d < s.minDist) {
-          // 保持距離：往遠離玩家的方向退
-          const away = { x: e.x + ((e.x - p.x) / (d || 1)) * 4, z: e.z + ((e.z - p.z) / (d || 1)) * 4 };
-          const stuck = moveTo(w, e, away, s.speed * 0.85, dt, 0.4, false);
-          if (e.phase === 'none' && (stuck || d < 3.5)) startAim(w, e);
-          return;
-        }
-        if (e.phase === 'none' && d <= s.fireRange) startAim(w, e);
-        else if (!e.perched && d > s.maxDist) moveTo(w, e, { x: p.x, z: p.z }, s.speed, dt, s.maxDist * 0.9, false);
+      if (!visible) {
+        stopArcherMove(e);
+        if (!e.perched && e.lastKnown) moveTo(w, e, e.lastKnown, s.speed, dt, 0.6);
         else e.moving = false;
-      } else if (!e.perched && e.lastKnown) {
-        moveTo(w, e, e.lastKnown, s.speed, dt, 0.6);
-      } else e.moving = false;
+        return;
+      }
+      facePlayer(w, e, 5, dt);
+      if (e.archerMove) { updateArcherMove(w, e, dt); return; }
+      const d = Math.hypot(p.x - e.x, p.z - e.z);
+      const clear = archerLineClear(w, e);
+      if (!e.perched && e.archerMovePause <= 0 && (d < s.minDist || (!clear && d <= s.fireRange))) {
+        const started = (d < s.minDist && startArcherMove(w, e, 'retreat')) ||
+          (!clear && d <= s.fireRange && startArcherMove(w, e, 'angle'));
+        // One cooldown covers the entire decision: failed retreat must still allow
+        // a same-tick firing-angle fallback, then failed searches also back off.
+        e.archerMovePause = s.repositionPause;
+        if (started) { updateArcherMove(w, e, dt); return; }
+      }
+      if (e.phase === 'none' && d <= s.fireRange) startAim(w, e);
+      else if (!e.perched && d > s.maxDist) moveTo(w, e, { x: p.x, z: p.z }, s.speed, dt, s.maxDist * 0.9, false);
+      else e.moving = false;
       return;
+    }
     case 'aim': {
+      e.moving = false;
       // Recheck even on the tick crossing lockAt; after lock the aim point is immutable.
-      if (!e.locked && (!e.seesPlayer || !archerLineClear(w, e) || (e.aimPoint && !archerLineClear(w, e, e.aimPoint)))) {
+      if (!e.locked && (!visible || !archerLineClear(w, e) || (e.aimPoint && !archerLineClear(w, e, e.aimPoint)))) {
         e.phase = 'none';
         e.phaseT = 0;
         e.aimPoint = null;
         return;
       }
       e.phaseT += dt;
-      e.moving = false;
       const lockAt = s.aim - s.lockBefore;
       if (e.phaseT < lockAt) {
-        if (!e.seesPlayer) {
-          e.phase = 'none';
-          e.aimPoint = null;
-          return;
-        }
         facePlayer(w, e, 6, dt);
         e.aimPoint = { x: p.x, y: 1.2, z: p.z };
       } else if (!e.locked) {
@@ -689,17 +794,23 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       return;
     }
     default:
+      stopArcherMove(e);
       e.phase = 'none';
   }
 }
 
 /** Current muzzle-to-player path, checked only before commitment. */
 export function archerLineClear(w: World, e: Enemy, target: V3 = { x: w.player.x, y: 1.2, z: w.player.z }): boolean {
-  const f = forwardFromYaw(e.yaw);
-  const from = { x: e.x + f.x * 0.5, y: e.y + 1.45, z: e.z + f.z * 0.5 };
-  const to = target;
-  if (w.grid.segmentHit(from, to, false, PROJECTILES.bolt.radius)) return false;
-  return !w.enemies.some((o) => o !== e && o.alive && segmentEnemy(from, to, o, PROJECTILES.bolt.radius));
+  return archerLineClearAt(w, e, e, e.yaw, target);
+}
+
+function archerLineClearAt(w: World, e: Enemy, position: V2, yaw: number, target: V3): boolean {
+  const f = forwardFromYaw(yaw);
+  const body = { x: position.x, y: e.y + 1.45, z: position.z };
+  const from = { x: position.x + f.x * 0.5, y: body.y, z: position.z + f.z * 0.5 };
+  if (w.grid.segmentHit(body, from, false, PROJECTILES.bolt.radius) ||
+      w.grid.segmentHit(from, target, false, PROJECTILES.bolt.radius)) return false;
+  return !w.enemies.some((o) => o !== e && o.alive && segmentEnemy(from, target, o, PROJECTILES.bolt.radius));
 }
 
 function startAim(w: World, e: Enemy): void {
@@ -1033,6 +1144,7 @@ export function updateEnemies(w: World, dt: number): void {
       else if (e.kind === 'archer') archerAlert(w, e, edt);
       else chargerAlert(w, e, edt);
     } else {
+      stopArcherMove(e);
       if (e.phase !== 'none' && e.phase !== 'stun') e.phase = 'none';
       if (e.phase === 'stun') {
         e.phaseT += edt;

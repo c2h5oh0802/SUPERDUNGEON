@@ -154,6 +154,10 @@ export interface Enemy {
   hitDone: boolean;
   chargeDist: number;
   aimPoint: V3 | null;
+  /** One fixed, local combat leg; never serialized into floor-start saves. */
+  archerMove: { goal: V2; kind: 'angle' | 'retreat'; time: number; travel: number } | null;
+  /** Standing/aiming window between bounded movement attempts. */
+  archerMovePause: number;
   path: V2[] | null;
   pathT: number;
   pathGoal: V2 | null;
