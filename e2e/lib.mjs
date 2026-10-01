@@ -9,6 +9,7 @@ export const OUT = new URL('./out/', import.meta.url).pathname;
 export async function launch({ headless = true, viewport = { width: 1280, height: 720 } } = {}) {
   const browser = await chromium.launch({
     headless,
+    executablePath: process.env.BROWSER_PATH,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'],
   });
   const context = await browser.newContext({ viewport });

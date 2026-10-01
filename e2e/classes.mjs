@@ -81,7 +81,7 @@ await page.reload();
 await page.mouse.move(320, 180);
 check('重新整理後仍是獵手', (await page.getAttribute('.class-card[data-cls="huntress"]', 'aria-checked')) === 'true');
 const cardText = await page.textContent('.class-card[data-cls="warrior"]');
-check('職業卡顯示名稱、承諾與起始武器', cardText.includes('戰士') && cardText.includes('長劍') && cardText.includes('臂盾'), cardText.slice(0, 40));
+check('職業卡顯示名稱、承諾與起始武器', cardText.includes('戰士') && cardText.includes('長劍') && cardText.includes('推擊'), cardText.slice(0, 40));
 const hDetail = await page.textContent('#class-detail');
 check(
   '選中獵手：展開完整說明（起始裝備、職業規則、擅長與弱點、代表性的一刻）',
@@ -91,7 +91,7 @@ check(
 await shot('menu');
 await page.click('.class-card[data-cls="warrior"]');
 const wDetail = await page.textContent('#class-detail');
-check('選中戰士：說明換成戰士（長劍、臂盾、反擊斬、盾推）', ['長劍', '臂盾', '投擲石', '反擊斬', '盾推的結果'].every((k) => wDetail.includes(k)), wDetail.slice(0, 60));
+check('選中戰士：說明換成戰士（長劍、推擊、反擊斬、推擊）', ['長劍', '推擊', '投擲石', '反擊斬', '推擊的結果'].every((k) => wDetail.includes(k)), wDetail.slice(0, 60));
 
 async function startPractice(cls) {
   await page.click(`.class-card[data-cls="${cls}"]`);
@@ -103,7 +103,7 @@ async function startPractice(cls) {
   const badge = await page.textContent('#class-badge');
   check('HUD 顯示目前職業', badge.includes(cls === 'warrior' ? '戰士' : '獵手'), badge);
   const tools = await page.textContent('#tools');
-  const want = cls === 'warrior' ? ['長劍', '投擲石', '臂盾'] : ['獵刀', '獵弓', '麻痺箭'];
+  const want = cls === 'warrior' ? ['長劍', '投擲石', '推擊'] : ['獵刀', '獵弓', '麻痺箭'];
   check('工具列顯示這個職業的武器', want.every((k) => tools.includes(k)), tools);
 }
 
@@ -251,8 +251,8 @@ await startPractice('warrior');
   if (!counterShot) check('戰士：盾衛鎖定時準星下出現「反擊」', false, '沒有等到反擊時機');
 }
 {
-  // 臂盾：把睡著的盾衛往最近的牆推。一次推 2 m；還沒撞到牆，就繞回它與牆的反方向再推一次
-  await resetPractice('戰士盾推');
+  // 推擊：把睡著的盾衛往最近的牆推。一次推 1 m；還沒撞到牆，就繞回它與牆的反方向再推一次
+  await resetPractice('戰士推擊');
   const s0 = await st();
   const g = s0.enemies.find((e) => e.kind === 'guard' && e.alive && e.state === 'sleep');
   let dir = null;
@@ -283,7 +283,7 @@ await startPractice('warrior');
         continue;
       }
       // 站位：盾衛與牆的反方向（盾衛大致在我和牆之間就推）
-      const want = { x: gg.x - dir.dx * 1.5, z: gg.z - dir.dz * 1.5 };
+      const want = { x: gg.x - dir.dx * 1.3, z: gg.z - dir.dz * 1.3 };
       const off = Math.hypot(want.x - p.x, want.z - p.z);
       const gd = Math.hypot(gg.x - p.x, gg.z - p.z) || 1;
       const aligned = ((gg.x - p.x) * dir.dx + (gg.z - p.z) * dir.dz) / gd > 0.85;
@@ -291,9 +291,9 @@ await startPractice('warrior');
         await lookAtPoint(gg.x, 1.2, gg.z, 0.05);
         const s2 = await st();
         if (s2.cue.push !== g.id) continue;
-        if (first) check('戰士：盾衛就在身前時出現「盾推」提示', s2.cueText === '盾推', `cue.push=${s2.cue.push} text=${s2.cueText}`);
+        if (first) check('戰士：盾衛就在身前時出現「推擊」提示', s2.cueText === '推擊', `cue.push=${s2.cue.push} text=${s2.cueText}`);
         first = false;
-        console.log('INFO 盾推', `player=(${p.x.toFixed(1)},${p.z.toFixed(1)}) guard=(${gg.x.toFixed(1)},${gg.z.toFixed(1)}) ${gg.state}/${gg.phase}`);
+        console.log('INFO 推擊', `player=(${p.x.toFixed(1)},${p.z.toFixed(1)}) guard=(${gg.x.toFixed(1)},${gg.z.toFixed(1)}) ${gg.state}/${gg.phase}`);
         await bot.tap('KeyF');
         await bot.waitIdle();
         continue;
@@ -309,9 +309,9 @@ await startPractice('warrior');
     const s = await st();
     const g2 = s.enemies.find((e) => e.id === g.id);
     await shot('warrior-shield-wall');
-    check('戰士：盾推把盾衛推去撞牆（失衡）', s.stats.pushes >= 1 && s.stats.wallSlams >= 1, `pushes=${s.stats.pushes} wallSlams=${s.stats.wallSlams} phase=${g2?.phase}`);
+    check('戰士：推擊把盾衛推去撞牆（失衡）', s.stats.pushes >= 1 && s.stats.wallSlams >= 1, `pushes=${s.stats.pushes} wallSlams=${s.stats.wallSlams} phase=${g2?.phase}`);
     const la = s.lastAction;
-    check('戰士：盾推花完整行動時間（0.4 秒）', !!la && la.kind === 'shield' && Math.abs(la.spent - 0.4) < 0.02, JSON.stringify(la));
+    check('戰士：推擊花完整行動時間（0.4 秒）', !!la && la.kind === 'shield' && Math.abs(la.spent - 0.4) < 0.02, JSON.stringify(la));
   }
 }
 {

@@ -156,7 +156,7 @@ describe('卷軸', () => {
     const w = makeWorld(OPEN_ROOM, [], 'warrior');
     readScroll(w, 'upgrade');
     expect(w.pendingChoice?.kind).toBe('upgrade');
-    expect(w.pendingChoice?.options).toEqual(['weapon', 'shield']);
+    expect(w.pendingChoice?.options).toEqual(['weapon']);
     const t0 = w.time;
     w.frame(dt, input(w, { moveZ: 1 }));
     expect(w.time).toBe(t0);
@@ -237,5 +237,17 @@ describe('跨層保留與存檔', () => {
     const bad = JSON.parse(serializeRun(next));
     bad.carry.items = [{ id: 'potion:nuke', count: 1, level: 0 }];
     expect(parseRun(JSON.stringify(bad))).toBeNull();
+  });
+});
+
+describe('停用盾牌後的強化邊界', () => {
+  it('沒有可強化裝備時保留卷軸，也不建立空選擇而凍住世界', () => {
+    const w = makeWorld(); w.player.weapon.level = 5;
+    addItem(w, 'scroll:upgrade'); queueUse(w, 0, 'use');
+    w.frame(dt, input(w));
+    expect(w.player.items[0]?.id).toBe('scroll:upgrade');
+    expect(w.player.action).toBeNull(); expect(w.pendingChoice).toBeNull();
+    readScroll(w, 'upgrade'); expect(w.pendingChoice).toBeNull();
+    const before=w.time; w.frame(dt,input(w)); expect(w.time).toBeGreaterThan(before);
   });
 });

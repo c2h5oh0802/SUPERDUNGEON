@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, CLASSES, ENEMIES, WEAPONS, PLAYER, PROJECTILES, SHIELD, TIPS, classInfo, type PlayerClass } from '../src/config';
+import { ACTIONS, CLASSES, ENEMIES, WEAPONS, PLAYER, PROJECTILES, SHIELD, SHOVE, TIPS, classInfo, type PlayerClass } from '../src/config';
 import { yawFromDir } from '../src/core/math';
 import { generateLevel } from '../src/gen/validate';
 import { AIM_EYE_Y } from '../src/sim/aim';
@@ -423,35 +423,32 @@ describe('戰士：擊開弩矢', () => {
 });
 
 
-describe('戰士：臂盾・盾推', () => {
-  it('盾衛舉劍中被推：推退 2 m、攻擊被打斷，戰士不受傷；空地上不會失衡', () => {
+describe('戰士：位置推擊', () => {
+  it('推擊位移 1 m，保留已鎖定的攻擊與時間軸', () => {
     const w = alertGuardAhead('warrior');
     const g = w.enemies[0]!;
-    idleUntil(w, () => g.phase === 'windup');
-    expect(w.cue.push).toBe(g.id);
+    g.z = w.player.z - 1.4;
+    g.phase = 'windup'; g.phaseT = 0.4; g.locked = true; g.lockedYaw = Math.PI;
     const z0 = g.z;
-    // 記錄滑行中最遠的位置（滑完之後它會再走回來）
+    w.frame(0.06, input(w, { shield: true }));
+    expect(g.phase).toBe('windup'); expect(g.locked).toBe(true); expect(g.phaseT).toBeGreaterThan(0.4);
     let minZ = g.z;
-    w.frame(dt, input(w, { shield: true }));
     for (let k = 0; k < 600 && (w.player.action || g.push); k++) {
-      w.frame(dt, input(w));
-      minZ = Math.min(minZ, g.z);
+      w.frame(dt, input(w)); minZ = Math.min(minZ, g.z);
     }
+    expect(z0 - minZ).toBeCloseTo(SHOVE.pushDist, 1);
     expect(w.lastAction?.spent).toBeCloseTo(total(ACTIONS.shield), 2);
-    expect(z0 - minZ).toBeCloseTo(SHIELD.pushDist, 1);
-    expect(g.phase).not.toBe('windup');
-    expect(g.phase).not.toBe('stagger');
-    expect(w.stats.pushes).toBe(1);
-    expect(w.player.hp).toBe(PLAYER.maxHp);
+    expect(w.events.some(e => e.type === 'enemyStrike')).toBe(true);
+    expect(w.stats.blocks).toBe(0);
   });
 
   it('背後是牆：撞牆失衡 1 秒、盾牌放下（投擲石正面打身體也打得到）', () => {
     const rows = OPEN_ROOM.map((r, j) => (j === 10 ? '#' + '#'.repeat(18) + '#' : r));
-    const w = makeWorld(rows, [{ kind: 'guard', x: 9.5, z: 12.2, yaw: Math.PI, state: 'idle' }], 'warrior');
+    const w = makeWorld(rows, [{ kind: 'guard', x: 9.5, z: 11.9, yaw: Math.PI, state: 'idle' }], 'warrior');
     const g = w.enemies[0]!;
     g.state = 'alert';
     g.awareness = 1;
-    w.player.z = 13.9;
+    w.player.z = 13.3;
     w.player.yaw = 0;
     push(w);
     expect(g.phase).toBe('stagger');
@@ -469,8 +466,8 @@ describe('戰士：臂盾・盾推', () => {
     const w = makeWorld(
       OPEN_ROOM,
       [
-        { kind: 'guard', x: 9.5, z: 12.7, yaw: Math.PI, state: 'idle' },
-        { kind: 'guard', x: 9.5, z: 10.4, yaw: Math.PI, state: 'idle' },
+        { kind: 'guard', x: 9.5, z: 13.1, yaw: Math.PI, state: 'idle' },
+        { kind: 'guard', x: 9.5, z: 11.6, yaw: Math.PI, state: 'idle' },
       ],
       'warrior',
     );
@@ -485,10 +482,11 @@ describe('戰士：臂盾・盾推', () => {
 
   it('推上陷阱：陷阱觸發；背後有牆時撞牆失衡、留在踏板上被尖刺打中（注入：在推退路線上放一塊尖刺踏板）', () => {
     const rows = OPEN_ROOM.map((r, j) => (j === 9 ? '#' + '#'.repeat(18) + '#' : r));
-    const w = makeWorld(rows, [{ kind: 'guard', x: 9.5, z: 12.4, yaw: Math.PI, state: 'idle' }], 'warrior');
+    const w = makeWorld(rows, [{ kind: 'guard', x: 9.5, z: 11.4, yaw: Math.PI, state: 'idle' }], 'warrior');
     const g = w.enemies[0]!;
     g.state = 'alert';
     g.awareness = 1;
+    w.player.z = 12.8;
     w.traps.push({ id: 0, i: 9, j: 10, state: 'idle', t: 0, hitSet: new Set() });
     w.player.yaw = 0;
     push(w);
@@ -515,28 +513,28 @@ describe('戰士：臂盾・盾推', () => {
     expect(w.player.hp).toBe(PLAYER.maxHp);
   });
 
-  it('衝鋒中的突進者推不動：臂盾擋下衝撞（0 傷害），戰士被推退 1 m，突進者收招但不暈眩', () => {
+  it('衝鋒中的突進者推不動：推擊不能格擋，也沒有反擊的暈眩', () => {
     const w = alertChargerAhead('warrior', 7);
     const c = w.enemies[0]!;
     idleUntil(w, () => c.phase === 'charge' && Math.hypot(c.x - w.player.x, c.z - w.player.z) < 1.9);
     expect(w.cue.push).toBe(-1);
     const z0 = w.player.z;
     push(w);
-    expect(w.player.hp).toBe(PLAYER.maxHp);
-    expect(w.stats.blocks).toBe(1);
+    expect(w.player.hp).toBe(PLAYER.maxHp - ENEMIES.charger.damage);
+    expect(w.stats.blocks).toBe(0);
     expect(c.phase).not.toBe('stun');
-    expect(w.player.z - z0).toBeGreaterThan(SHIELD.chargeRecoil * 0.8);
+    expect(w.player.z).toBe(z0);
   });
 
-  it('擋弩矢：正面來的被擋下；背後來的照樣中箭（注入弩矢）', () => {
+  it('推擊不擋弩矢：正面與背後都會中箭（注入弩矢）', () => {
     const w = makeWorld(OPEN_ROOM, [], 'warrior');
     w.player.yaw = 0;
     injectBolt(w, { x: 9.5, y: 1.3, z: 12.0 });
     idleUntil(w, () => Math.hypot(w.projectiles[0]!.pos.z - w.player.z) < 1.6, 2000);
     push(w);
     settle(w);
-    expect(w.player.hp).toBe(PLAYER.maxHp);
-    expect(w.stats.blocks).toBe(1);
+    expect(w.player.hp).toBe(PLAYER.maxHp - PROJECTILES.bolt.damage);
+    expect(w.stats.blocks).toBe(0);
     const b = makeWorld(OPEN_ROOM, [], 'warrior');
     b.player.yaw = Math.PI;
     injectBolt(b, { x: 9.5, y: 1.3, z: 12.0 });
@@ -762,9 +760,9 @@ describe('獵手：獵人之眼（只給資訊，不改彈道；只看空中的�
 describe('職業說明', () => {
   it('說明文字由數值生成，與效果一致', () => {
     const wi = classInfo('warrior');
-    expect(wi.loadout.map((l) => l.name)).toEqual(['長劍', '臂盾', '投擲石']);
+    expect(wi.loadout.map((l) => l.name)).toEqual(['長劍', '推擊', '投擲石']);
     expect(wi.loadout[0]!.text).toContain(`${WEAPONS.longsword.damage} 傷害`);
-    expect(wi.loadout[1]!.text).toContain(`推退 ${SHIELD.pushDist} m`);
+    expect(wi.loadout[1]!.text).toContain(`推退 ${SHOVE.pushDist} m`);
     expect(wi.loadout[2]!.text).toContain(`${CLASSES.warrior.start.stones} 顆`);
     expect(wi.abilities.map((a) => a.name)).toContain('反擊斬');
     const hi = classInfo('huntress');

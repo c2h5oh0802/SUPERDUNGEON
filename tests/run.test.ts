@@ -73,6 +73,8 @@ describe('跨層保留與存檔', () => {
     const run = newRun('SAVE1', 'warrior');
     const w = createFloorWorld(run);
     w.player.stones = 1;
+    w.player.shieldLevel = 3;
+    w.player.talents = ['heavyShield', 'bulwark'];
     const next = nextFloor(run, w);
     const back = parseRun(serializeRun(next))!;
     expect(back).toEqual(next);
@@ -80,6 +82,8 @@ describe('跨層保留與存檔', () => {
     const b = createFloorWorld(back);
     expect(levelSignature(a.level)).toBe(levelSignature(b.level));
     expect(b.player.stones).toBe(1);
+    expect(b.player.shieldLevel).toBe(3);
+    expect(b.player.talents).toEqual(['heavyShield', 'bulwark']);
   });
 
   it('壞掉或被竄改的存檔不會被接受', () => {

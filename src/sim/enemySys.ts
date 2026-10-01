@@ -1,4 +1,5 @@
 import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, RUNES, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2 } from '../core/math';
 import type { EnemySpawn } from '../gen/generator';
@@ -108,7 +109,7 @@ function updatePush(w: World, e: Enemy, dt: number): void {
   const nx = e.x + pu.dx * step;
   const nz = e.z + pu.dz * step;
   if (w.grid.circleBlocked(nx, nz, e.radius)) {
-    staggerEnemy(e, SHIELD.wallStagger + (hasTalent(w.player, 'heavyShield') ? TALENT_FX.heavyShieldStagger : 0));
+    staggerEnemy(e, SHIELD.wallStagger + (SHIELD.enabled && hasTalent(w.player, 'heavyShield') ? TALENT_FX.heavyShieldStagger : 0));
     w.stats.wallSlams++;
     w.emit({ type: 'bump', id: e.id, kind: 'wall', x: e.x + pu.dx * e.radius, y: 1.0, z: e.z + pu.dz * e.radius });
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
@@ -131,8 +132,6 @@ function updatePush(w: World, e: Enemy, dt: number): void {
   pu.left -= step;
   if (pu.left <= 1e-6) {
     e.push = null;
-    e.phase = 'none';
-    e.phaseT = 0;
   }
 }
 
@@ -389,6 +388,7 @@ function separate(w: World, e: Enemy, x: number, z: number): { x: number; z: num
 
 /** 沿導航路徑移動；回傳是否已抵達目標。 */
 function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveDist = 0.5, faceMove = true): boolean {
+  if (e.push) { e.moving = false; return false; }
   if (e.perched) return true;
   const dGoal = Math.hypot(goal.x - e.x, goal.z - e.z);
   if (dGoal <= arriveDist) {
@@ -574,6 +574,13 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       } else e.moving = false;
       return;
     case 'aim': {
+      // Recheck even on the tick crossing lockAt; after lock the aim point is immutable.
+      if (!e.locked && (!e.seesPlayer || !archerLineClear(w, e))) {
+        e.phase = 'none';
+        e.phaseT = 0;
+        e.aimPoint = null;
+        return;
+      }
       e.phaseT += dt;
       e.moving = false;
       const lockAt = s.aim - s.lockBefore;
@@ -588,7 +595,8 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       } else if (!e.locked) {
         e.locked = true;
         e.lockedYaw = e.yaw;
-        e.aimPoint = e.aimPoint ?? { x: p.x, y: 1.2, z: p.z };
+        e.aimPoint = { x: p.x, y: 1.2, z: p.z };
+        w.emit({ type: 'enemyLock', id: e.id, kind: e.kind, x: e.x, y: e.y + 1.45, z: e.z });
       }
       if (e.phaseT >= s.aim) fireBolt(w, e);
       return;
@@ -598,7 +606,17 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
   }
 }
 
+/** Current muzzle-to-player path, checked only before commitment. */
+export function archerLineClear(w: World, e: Enemy): boolean {
+  const f = forwardFromYaw(e.yaw);
+  const from = { x: e.x + f.x * 0.5, y: e.y + 1.45, z: e.z + f.z * 0.5 };
+  const to = { x: w.player.x, y: 1.2, z: w.player.z };
+  if (w.grid.segmentHit(from, to, false, PROJECTILES.bolt.radius)) return false;
+  return !w.enemies.some((o) => o !== e && o.alive && segmentEnemy(from, to, o, PROJECTILES.bolt.radius));
+}
+
 function startAim(w: World, e: Enemy): void {
+  if (!archerLineClear(w, e)) { e.moving = false; return; }
   e.phase = 'aim';
   e.phaseT = 0;
   e.locked = false;
@@ -810,7 +828,7 @@ export function updateEnemies(w: World, dt: number): void {
     // 被盾推是外力：麻痺中也照樣滑出去
     if (e.push) {
       updatePush(w, e, dt);
-      continue;
+      // Continue the current phase, even while sliding. Physical impacts may stagger.
     }
     // 藥劑箭：麻痺＝時間軸暫停（感知、行為、計時全部定格）；冰寒＝時間軸變慢
     if (e.paralyzeT > 0) {

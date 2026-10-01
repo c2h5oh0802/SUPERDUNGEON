@@ -1,5 +1,6 @@
-import { CLASSES, ENEMIES, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS, UPGRADE } from '../config';
+import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS, UPGRADE } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
+import { segmentCylinder, segmentEnemy } from './characterHit';
 import { shieldBlocks } from './classSys';
 import { shatterPotion } from './items';
 import { hasTalent } from './progress';
@@ -20,39 +21,23 @@ interface Hit {
 
 const lerp3 = (a: V3, b: V3, t: number): V3 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
 
-function enemyHeadY(e: Enemy): number {
-  return e.y + ENEMIES[e.kind].headY;
-}
-
-/** 以 ≤ 8 cm 取樣檢查投射物與角色（頭部球、身體圓柱）。 */
+/** Earliest physical contact, independent of enemy array order or frame length. */
 function charHit(w: World, p: Projectile, a: V3, b: V3): Hit | null {
-  const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-  const N = Math.max(1, Math.ceil(L / 0.08));
-  for (let k = 0; k <= N; k++) {
-    const t = k / N;
-    const q = lerp3(a, b, t);
-    if (p.owner === 'player') {
-      for (const e of w.enemies) {
-        if (!e.alive || p.hitSet.has(e.id)) continue;
-        const spec = ENEMIES[e.kind];
-        const hy = enemyHeadY(e);
-        const hdx = q.x - e.x;
-        const hdy = q.y - hy;
-        const hdz = q.z - e.z;
-        const hr = spec.headR + p.radius;
-        if (hdx * hdx + hdy * hdy + hdz * hdz <= hr * hr) return { t, type: 'enemy', enemy: e, head: true };
-        const hd = Math.hypot(hdx, hdz);
-        if (hd <= e.radius + p.radius && q.y >= e.y + 0.05 && q.y <= hy - spec.headR * 0.6)
-          return { t, type: 'enemy', enemy: e, head: false };
-      }
-    } else if (p.kind === 'bolt') {
-      const pl = w.player;
-      if (pl.dead) return null;
-      const d = Math.hypot(q.x - pl.x, q.z - pl.z);
-      if (d <= PLAYER.radius + p.radius && q.y >= 0 && q.y <= PLAYER.height + 0.1) return { t, type: 'player' };
+  let best: Hit | null = null;
+  if (p.owner === 'player' || p.kind === 'bolt') {
+    for (const e of w.enemies) {
+      if (!e.alive || e.id === p.owner || p.hitSet.has(e.id)) continue;
+      const hit = segmentEnemy(a, b, e, p.radius);
+      if (hit && (!best || hit.t < best.t || (hit.t === best.t && e.id < best.enemy!.id)))
+        best = { ...hit, type: 'enemy', enemy: e };
     }
   }
-  return null;
+  if (p.owner !== 'player' && p.kind === 'bolt' && !w.player.dead) {
+    const pl = w.player;
+    const t = segmentCylinder(a, b, pl.x, pl.z, PLAYER.radius + p.radius, 0, PLAYER.height + 0.1);
+    if (t >= 0 && (!best || t < best.t)) best = { t, type: 'player' };
+  }
+  return best;
 }
 
 function findHit(w: World, p: Projectile, a: V3, b: V3, dt: number, tStart: number): Hit | null {
@@ -224,6 +209,15 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
 
 /** 回傳 true 表示投射物穿透後繼續飛行。 */
 function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): boolean {
+  // Hostile bolts have the same base damage against either body. They never pierce,
+  // generate recoverable ammo, count as player shots or apply player upgrades.
+  if (p.kind === 'bolt' && p.owner !== 'player') {
+    p.alive = false;
+    p.hitSet.add(e.id);
+    damageEnemy(w, e, PROJECTILES.bolt.damage, { source: 'friendlyBolt', sneak: false, head: false, x: at.x, y: at.y, z: at.z });
+    w.emitNoise(at.x, at.y, at.z, NOISE.combatHit, 'combat');
+    return false;
+  }
   const sp = Math.hypot(p.vel.x, p.vel.z) || 1;
   const hx = p.vel.x / sp;
   const hz = p.vel.z / sp;

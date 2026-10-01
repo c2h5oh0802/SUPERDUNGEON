@@ -70,15 +70,20 @@ export interface WeaponSpec {
   perLevel: number;
   /** 命中沒倒下的敵人：失衡秒數（打斷它的出手）。 */
   stagger: number;
+  /** 行動各階段的移速上限倍率（真實時間）；不改世界時間規則。 */
+  move: { windup: number; active: number; recovery: number };
+  /** 一次行動最多命中幾名敵人；次要目標只有列出的傷害倍率。 */
+  maxTargets: number;
+  secondaryDamage: number;
   /** 一句話特色。 */
   note: string;
 }
 
 export const WEAPONS: Record<WeaponId, WeaponSpec> = {
-  longsword: { name: '長劍', damage: 4, sneakMultiplier: 3, reach: 2.0, arcDeg: 100, windup: 0.15, active: 0.12, recovery: 0.33, perLevel: 1, stagger: 0, note: '均衡' },
-  knife: { name: '獵刀', damage: 3, sneakMultiplier: 3, reach: 1.6, arcDeg: 90, windup: 0.08, active: 0.1, recovery: 0.22, perLevel: 1, stagger: 0, note: '快、短' },
-  axe: { name: '重斧', damage: 7, sneakMultiplier: 2, reach: 2.1, arcDeg: 110, windup: 0.35, active: 0.14, recovery: 0.51, perLevel: 2, stagger: 0.6, note: '慢，但命中會讓敵人失衡' },
-  spear: { name: '長矛', damage: 4, sneakMultiplier: 2, reach: 2.8, arcDeg: 40, windup: 0.18, active: 0.12, recovery: 0.4, perLevel: 1, stagger: 0, note: '遠、窄' },
+  longsword: { name: '長劍', damage: 4, sneakMultiplier: 3, reach: 2.0, arcDeg: 100, windup: 0.15, active: 0.12, recovery: 0.33, perLevel: 1, stagger: 0, move: { windup: 0.65, active: 0.55, recovery: 0.8 }, maxTargets: 1, secondaryDamage: 0, note: '單體、均衡；揮擊時移速降低' },
+  knife: { name: '獵刀', damage: 3, sneakMultiplier: 3, reach: 1.6, arcDeg: 90, windup: 0.08, active: 0.1, recovery: 0.22, perLevel: 1, stagger: 0, move: { windup: 0.85, active: 0.8, recovery: 0.95 }, maxTargets: 1, secondaryDamage: 0, note: '單體、快、短；最靈活' },
+  axe: { name: '重斧', damage: 7, sneakMultiplier: 2, reach: 2.1, arcDeg: 110, windup: 0.35, active: 0.14, recovery: 0.51, perLevel: 2, stagger: 0.6, move: { windup: 0.35, active: 0.2, recovery: 0.45 }, maxTargets: 2, secondaryDamage: 0.5, note: '高承諾；最多兩敵，次敵半傷、普通失衡減半' },
+  spear: { name: '長矛', damage: 4, sneakMultiplier: 2, reach: 2.8, arcDeg: 40, windup: 0.18, active: 0.12, recovery: 0.4, perLevel: 1, stagger: 0, move: { windup: 0.4, active: 0.25, recovery: 0.65 }, maxTargets: 1, secondaryDamage: 0, note: '最遠、窄；首個身體擋下刺擊，出手時減速' },
 };
 
 export const ALL_WEAPONS: WeaponId[] = ['longsword', 'knife', 'axe', 'spear'];
@@ -125,6 +130,8 @@ export const TIP_NAMES: Record<TipKind, string> = { paralysis: '麻痺箭', chil
 
 /** 戰士的臂盾：盾推。 */
 export const SHIELD = {
+  /** Legacy save fields remain readable; no fixed player shield in v1. */
+  enabled: false,
   /** 作用期間擋下這個角度內（正面）的攻擊與飛行物。 */
   arcDeg: 120,
   /** 推得到的距離：玩家與敵人身體之間的空隙。 */
@@ -138,6 +145,14 @@ export const SHIELD = {
   bumpStumble: 0.5,
   /** 擋下衝鋒中的突進者時，戰士被推退的距離。 */
   chargeRecoil: 1.0,
+} as const;
+
+/** Position-only shove: short range and displacement, no automatic defense/interrupt. */
+export const SHOVE = {
+  arcDeg: 90,
+  pushReach: 0.8,
+  pushDist: 1.0,
+  moveMul: 0.6,
 } as const;
 
 export const PROJECTILES = {
@@ -378,7 +393,7 @@ export interface Loadout {
 
 export const CLASSES = {
   warrior: {
-    /** 數字鍵 1、2 對應的工具；臂盾是右鍵或 F。 */
+    /** 數字鍵 1、2 對應的工具；位置推擊是右鍵或 F。 */
     slots: ['melee', 'stone'] as readonly Tool[],
     weapon: 'longsword' as WeaponId,
     start: { arrows: 0, stones: 3, paralysis: 0, chill: 0, bottles: 1, potions: 1 } as Loadout,
@@ -447,7 +462,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       id,
       name: '戰士',
       promise: '敵人已經出手了，我走進他的攻擊節奏裡。',
-      summary: '近戰職業。讀懂敵人的出手時機，用長劍打斷，用臂盾推開。',
+      summary: '近戰職業。讀懂敵人的出手時機，用近戰反擊、擊開弩矢；推擊只改變位置。',
       loadout: [
         {
           key: '1',
@@ -456,8 +471,8 @@ export function classInfo(id: PlayerClass): ClassInfo {
         },
         {
           key: '右鍵／F',
-          name: '臂盾',
-          text: `盾推 ${fmt(total(sh))} 秒：作用的 ${fmt(sh.active)} 秒內擋下正面 ${SHIELD.arcDeg}° 的攻擊與弩矢，並把身前 ${SHIELD.pushReach} m 內的一名敵人推退 ${SHIELD.pushDist} m。`,
+          name: '推擊',
+          text: `推擊 ${fmt(total(sh))} 秒：身體間距 ${SHOVE.pushReach} m 內，正面 ${SHOVE.arcDeg}° 的一名敵人推退 ${SHOVE.pushDist} m。不格擋、不自動打斷攻擊；行動中移速 ${Math.round(SHOVE.moveMul * 100)}%。`,
         },
         {
           key: '2',
@@ -480,15 +495,15 @@ export function classInfo(id: PlayerClass): ClassInfo {
           text: `反擊或擊開成功時，這一劍不用收招（一般揮劍 ${fmt(weaponTotal('longsword'))} 秒，其中收招 ${fmt(sw.recovery)} 秒）。`,
         },
         {
-          name: '盾推的結果',
-          text: `撞牆：失衡 ${fmt(SHIELD.wallStagger)} 秒、盾牌放下。撞到同伴：兩個都踉蹌 ${fmt(SHIELD.bumpStumble)} 秒。推上陷阱會觸發；推進突進者的衝鋒線會被撞。衝鋒中的突進者推不動：擋下衝撞、你被推退 ${fmt(SHIELD.chargeRecoil)} m，它不會暈眩（暈眩只給反擊斬）。`,
+          name: '推擊的結果',
+          text: `撞牆：失衡 ${fmt(SHIELD.wallStagger)} 秒、盾牌放下。撞到同伴：兩個都踉蹌 ${fmt(SHIELD.bumpStumble)} 秒。推上陷阱會觸發；推進突進者的衝鋒線會被撞。衝鋒中的突進者推不動，也不能用推擊格擋。`,
         },
       ],
       strengths: '擅長：盾衛、突進者等近戰敵人；敵人背後有牆的時候。',
       weaknesses: '弱點：沒有遠程主武器，投擲石很少；對付遠處的弩手要靠擊開或逼近。',
       moments: [
         '盾衛舉劍鎖定 → 走進去反擊斬，它失衡、盾牌放下 → 再補一劍。',
-        '盾衛背後就是牆 → 盾推，它撞牆失衡。',
+        '近身敵人背後就是牆 → 推擊，它撞牆失衡；空地推擊不會取消出手。',
         '弩矢飛到眼前 → 揮劍，把它打回弩手身上。',
       ],
       talents: TALENT_POOLS.warrior.map((t) => TALENTS[t]),
@@ -621,8 +636,8 @@ export type TalentId = 'combo' | 'heavyShield' | 'bulwark' | 'slinger' | 'toughn
 
 export const TALENTS: Record<TalentId, { name: string; text: string }> = {
   combo: { name: '連擊', text: '反擊或擊開成功後 3 秒內，下一次近戰傷害 ×2' },
-  heavyShield: { name: '重盾', text: '盾推多推 1 m，撞牆失衡多 0.5 秒' },
-  bulwark: { name: '鐵壁', text: '盾推的格擋時間 0.15 → 0.3 秒' },
+  heavyShield: { name: '重盾（停用）', text: '舊版盾牌天賦停用；存檔資料保留' },
+  bulwark: { name: '鐵壁（停用）', text: '舊版盾牌天賦停用；存檔資料保留' },
   slinger: { name: '投石手', text: '投擲石上限 +3，頭部傷害 +1' },
   toughness: { name: '堅韌', text: '最大生命 +4，並回復 4' },
   mark: { name: '狙擊標記', text: '箭命中敵人後 2 秒內，下一次拉弓只要 0.4 秒' },
@@ -632,7 +647,7 @@ export const TALENTS: Record<TalentId, { name: string; text: string }> = {
 };
 
 export const TALENT_POOLS: Record<PlayerClass, TalentId[]> = {
-  warrior: ['combo', 'heavyShield', 'bulwark', 'slinger', 'toughness'],
+  warrior: ['combo', 'slinger', 'toughness'],
   huntress: ['mark', 'apothecary', 'senses', 'lightstep', 'toughness'],
 };
 

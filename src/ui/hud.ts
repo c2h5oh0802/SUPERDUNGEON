@@ -291,7 +291,7 @@ export class Hud {
       for (const el of this.toolEls) {
         const span = el.querySelector('span')!;
         if (el.dataset.tool === 'melee') span.textContent = `${WEAPONS[p.weapon.id].name}${p.weapon.level ? ` +${p.weapon.level}` : ''}`;
-        if (el.dataset.tool === 'shield') span.textContent = `臂盾${p.shieldLevel ? ` +${p.shieldLevel}` : ''}`;
+        if (el.dataset.tool === 'shield') span.textContent = '推擊';
       }
       this.armorEl.textContent = p.armor.id === 'cloth' ? '' : `${ARMORS[p.armor.id].name}${p.armor.level ? ` +${p.armor.level}` : ''}`;
     });
@@ -380,12 +380,12 @@ export class Hud {
     this.updateTargets(w, r);
   }
 
-  /** 依職業建立工具列：數字鍵對應的武器（與模擬層的 slots 相同），戰士另有臂盾。 */
+  /** 依職業建立工具列：數字鍵對應的武器（與模擬層的 slots 相同），戰士另有推擊。 */
   private buildTools(p: Player): void {
     const cells = p.slots.map(
       (t, k) => `<div class="tool" data-tool="${t}"><kbd>${k + 1}</kbd><span>${TOOL_NAMES[t]}</span>${t === 'melee' ? '' : '<em></em>'}</div>`,
     );
-    if (p.cls === 'warrior') cells.push('<div class="tool shield" data-tool="shield"><kbd>右鍵/F</kbd><span>臂盾</span></div>');
+    if (p.cls === 'warrior') cells.push('<div class="tool shield" data-tool="shield"><kbd>右鍵/F</kbd><span>推擊</span></div>');
     this.toolsEl.innerHTML = cells.join('');
     this.toolEls = Array.from(this.toolsEl.querySelectorAll<HTMLElement>('.tool'));
     delete this.last.tool;
@@ -408,8 +408,8 @@ export class Hud {
         text = '1 換劍：反擊';
       } else if (p.cls === 'warrior' && w.cue.push >= 0) {
         cls = 'push';
-        text = '盾推';
-        this.hint('cls-warrior-push', '戰士：敵人就在身前時出現「盾推」——右鍵或 F 把它推退 2 m：撞牆會失衡、撞到同伴會一起踉蹌。', 7);
+        text = '推擊';
+        this.hint('cls-warrior-push', '戰士：敵人就在身前時出現「推擊」——右鍵或 F 近身推退 1 m，不格擋、不自動打斷：撞牆會失衡、撞到同伴會一起踉蹌。', 7);
       } else if (p.cls === 'huntress' && this.onLead(w)) {
         cls = 'quick';
         text = '放箭';

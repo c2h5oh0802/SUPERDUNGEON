@@ -144,6 +144,10 @@ export function queueUse(w: World, index: number, mode: 'use' | 'throw'): void {
 
 /** 行動開始時從背包拿出來（避免排隊期間背包變動）。 */
 export function takeForAction(w: World, index: number): ItemId | null {
+  if (w.player.items[index]?.id === 'scroll:upgrade' && upgradeTargets(w).length === 0) {
+    w.emit({ type: 'fullInventory', text: '目前沒有可強化的裝備，卷軸已保留' });
+    return null;
+  }
   const it = takeOne(w, index);
   return it ? it.id : null;
 }
@@ -239,6 +243,7 @@ export function stunPlayer(w: World, dur: number): void {
 // ---------- 卷軸 ----------
 
 export function readScroll(w: World, id: ScrollId | 'upgrade'): void {
+  if (id === 'upgrade' && upgradeTargets(w).length === 0) return;
   w.stats.itemsUsed++;
   const p = w.player;
   if (id !== 'upgrade') identify(w, `scroll:${id}`);
@@ -317,7 +322,7 @@ export function upgradeTargets(w: World): UpgradeTarget[] {
   if (p.weapon.level < UPGRADE.maxLevel) out.push('weapon');
   if (p.armor.id !== 'cloth' && p.armor.level < UPGRADE.maxLevel) out.push('armor');
   if (p.cls === 'huntress' && p.bowLevel < UPGRADE.maxLevel) out.push('bow');
-  if (p.cls === 'warrior' && p.shieldLevel < UPGRADE.maxLevel) out.push('shield');
+  // Historical shieldLevel remains in saves, but shield upgrades are no longer offered.
   return out;
 }
 
@@ -338,12 +343,13 @@ export function upgradeLabel(w: World, t: UpgradeTarget): { name: string; text: 
 }
 
 export function applyUpgrade(w: World, t: UpgradeTarget): void {
+  if (t === 'shield') return; // Disabled legacy target: never consume a new investment.
   const p = w.player;
   const label = upgradeLabel(w, t).name;
   if (t === 'weapon') p.weapon.level++;
   else if (t === 'armor') p.armor.level++;
   else if (t === 'bow') p.bowLevel++;
-  else p.shieldLevel++;
+
   w.emit({ type: 'equip', kind: t, text: `強化：${label}` });
 }
 

@@ -1,8 +1,9 @@
-import { ACTIONS, CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SHIELD, TALENT_FX, UPGRADE, WEAPONS } from '../config';
+import { ACTIONS, CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SHIELD, SHOVE, TALENT_FX, UPGRADE, WEAPONS } from '../config';
+import { meleeCandidates } from './meleeTargets';
 import { hasTalent } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, aimPoint, crosshairPoint } from './aim';
-import { becomeAlert, interruptEnemy } from './enemySys';
+import { becomeAlert } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
@@ -49,8 +50,11 @@ export function counterThreat(w: World): CounterThreat | null {
   if (p.cls !== 'warrior' || p.dead) return null;
   const c = CLASSES.warrior;
   const cs = c.counterSwing;
+  const hittable = new Set(meleeCandidates(w, p.weapon.id, p.yaw, Math.max(meleeReach(w) + c.counterLunge, c.counterRange))
+    .slice(0, WEAPONS[p.weapon.id].maxTargets).map(e => e.id));
   for (const e of w.enemies) {
     if (!attackCommitted(e)) continue;
+    if (!hittable.has(e.id)) continue;
     const dx = e.x - p.x;
     const dz = e.z - p.z;
     const d = Math.hypot(dx, dz);
@@ -165,7 +169,7 @@ const SHIELD_HALF_ARC = ((SHIELD.arcDeg / 2) * Math.PI) / 180;
 export function shieldActive(w: World): boolean {
   const p = w.player;
   const a = p.action;
-  if (p.cls !== 'warrior' || p.dead || !a || a.kind !== 'shield') return false;
+  if (!SHIELD.enabled || p.cls !== 'warrior' || p.dead || !a || a.kind !== 'shield') return false;
   const extra = UPGRADE.shieldActive * p.shieldLevel + (hasTalent(p, 'bulwark') ? TALENT_FX.bulwarkActive : 0);
   return a.t >= a.windup - 1e-9 && a.t <= a.windup + a.active + extra + 1e-9;
 }
@@ -180,7 +184,7 @@ export function shieldBlocks(w: World, x: number, z: number): boolean {
   return Math.abs(angleDiff(yawFromDir(dx, dz), p.action!.lockedYaw)) <= SHIELD_HALF_ARC;
 }
 
-/** 現在盾推會推到的敵人：身前、推得到、沒有被牆隔開；衝鋒中的突進者推不動（只能擋）。 */
+/** 現在盾推會推到的敵人：身前、推得到、沒有被牆隔開；衝鋒中的突進者推不動，也不能擋。 */
 export function pushTarget(w: World, yaw = w.player.yaw): Enemy | null {
   const p = w.player;
   if (p.cls !== 'warrior' || p.dead) return null;
@@ -192,8 +196,8 @@ export function pushTarget(w: World, yaw = w.player.yaw): Enemy | null {
     const dx = e.x - p.x;
     const dz = e.z - p.z;
     const gap = Math.hypot(dx, dz) - PLAYER.radius - e.radius;
-    if (gap > SHIELD.pushReach || gap >= bestGap) continue;
-    if (Math.abs(angleDiff(yawFromDir(dx, dz), yaw)) > SHIELD_HALF_ARC) continue;
+    if (gap > SHOVE.pushReach || gap >= bestGap) continue;
+    if (Math.abs(angleDiff(yawFromDir(dx, dz), yaw)) > ((SHOVE.arcDeg / 2) * Math.PI) / 180) continue;
     const hit = w.grid.segmentHit({ x: p.x, y: 1.0, z: p.z }, { x: e.x, y: 1.0, z: e.z });
     if (hit && hit.t < 0.95) continue;
     best = e;
@@ -202,7 +206,7 @@ export function pushTarget(w: World, yaw = w.player.yaw): Enemy | null {
   return best;
 }
 
-/** 盾推出手：鎖定盾的方向，把身前一名敵人推退（打斷它目前的出手）。 */
+/** 推擊出手：鎖定方向，只位移身前一名敵人；撞牆或同伴才失衡。 */
 export function shieldPush(w: World): void {
   const p = w.player;
   const a = p.action!;
@@ -215,10 +219,8 @@ export function shieldPush(w: World): void {
   const dx = e.x - p.x;
   const dz = e.z - p.z;
   const d = Math.hypot(dx, dz) || 1;
-  interruptEnemy(e);
-  e.phase = 'pushed';
-  const extra = UPGRADE.shieldPush * p.shieldLevel + (hasTalent(p, 'heavyShield') ? TALENT_FX.heavyShieldPush : 0);
-  e.push = { dx: dx / d, dz: dz / d, left: SHIELD.pushDist + extra };
+  // Displacement does not cancel or pause the enemy's current attack/reload.
+  e.push = { dx: dx / d, dz: dz / d, left: SHOVE.pushDist };
   if (e.state !== 'alert') becomeAlert(w, e);
   w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'shield');
 }

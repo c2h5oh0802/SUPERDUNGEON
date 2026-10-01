@@ -308,6 +308,10 @@ export class Sfx {
         case 'enemyStrike':
           this.noise(0.14, 0.3, 'bandpass', 1500, 500, 2, pos);
           break;
+        case 'enemyLock':
+          this.tone('square', 950, 650, 0.07, 0.18, pos);
+          this.noise(0.045, 0.13, 'highpass', 3200, 1800, 2, pos);
+          break;
         case 'enemyFire':
           this.noise(0.08, 0.3, 'lowpass', 700, 200, 1, pos);
           this.tone('triangle', 200, 120, 0.18, 0.18, pos);

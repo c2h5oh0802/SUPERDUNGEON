@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SHIELD } from '../config';
 import { clamp, lerp, smoothstep } from '../core/math';
 import type { Player } from '../sim/types';
 import { createCharMaterial, createLightRig, createOutlineMaterial, paint, type LightRig, type SharedUniforms } from './materials';
@@ -180,7 +181,7 @@ export class Viewmodel {
     this.spear.visible = melee && wid === 'spear';
     this.bow.visible = bowTool;
     this.stone.visible = tool === 'stone';
-    this.shield.visible = p.cls === 'warrior';
+    this.shield.visible = SHIELD.enabled && p.cls === 'warrior';
     this.bob += realDt * moveSpeed * 2.2;
     const bobAmt = clamp(moveSpeed / 4.5, 0, 1);
     const bx = Math.sin(this.bob) * 0.012 * bobAmt;

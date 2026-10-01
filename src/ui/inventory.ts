@@ -14,9 +14,10 @@ export function renderInventory(w: World, onAction: (index: number, mode: 'use' 
   const gear = [
     `<span>武器：<b>${esc(wp.name)}${p.weapon.level ? ` +${p.weapon.level}` : ''}</b></span>`,
     `<span>護甲：<b>${esc(ARMORS[p.armor.id].name)}${p.armor.level ? ` +${p.armor.level}` : ''}</b></span>`,
-    p.cls === 'huntress' ? `<span>獵弓：<b>+${p.bowLevel}</b></span>` : `<span>臂盾：<b>+${p.shieldLevel}</b></span>`,
+    p.cls === 'huntress' ? `<span>獵弓：<b>+${p.bowLevel}</b></span>` : '',
     `<span>等級：<b>${p.level}</b></span>`,
   ];
+  if (p.shieldLevel > 0 || p.talents.some((t) => t === 'heavyShield' || t === 'bulwark')) gear.push('<span>舊版臂盾強化與盾牌天賦已停用；存檔資料保留。</span>');
   $('inv-gear').innerHTML = gear.join('');
   $('inv-count').textContent = `${p.items.length} / 10 格`;
   const list = $('inv-list');

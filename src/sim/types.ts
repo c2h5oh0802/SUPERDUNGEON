@@ -300,6 +300,7 @@ export type GameEventType =
   | 'wakeUp'
   | 'enemyWindup'
   | 'enemyStrike'
+  | 'enemyLock'
   | 'enemyFire'
   | 'stun'
   | 'noise'

@@ -335,7 +335,7 @@ export class App {
         }
         const clsHint =
           this.cls === 'warrior'
-            ? '戰士（1 長劍、2 投擲石、右鍵/F 臂盾）：敵人的攻擊鎖定、就在眼前時準星下出現「反擊」；敵人貼身時出現「盾推」。'
+            ? '戰士（1 長劍、2 投擲石、右鍵/F 推擊）：敵人的攻擊鎖定、就在眼前時準星下出現「反擊」；敵人貼身時出現「推擊」。'
             : '獵手（1 獵刀、2 獵弓、3 藥劑箭）：麻痺箭讓敵人的時間軸暫停，冰寒箭讓它變慢；再按一次 3 切換。暫停選單有完整職業說明。';
         const hint = practice
           ? '練習場：左邊有睡著與巡邏的盾衛，右邊房間有高台弩手與突進者，補給台（E）可補滿物資。'
@@ -557,7 +557,7 @@ export class App {
       ...(w.player.cls === 'warrior'
         ? ([
             ['反擊／擊開', `${s.counters} / ${s.deflects}`],
-            ['盾推／撞牆／格擋', `${s.pushes} / ${s.wallSlams} / ${s.blocks}`],
+            ['推擊／撞牆', `${s.pushes} / ${s.wallSlams}`],
           ] as Array<[string, string]>)
         : ([['藥劑箭命中', String(s.tipHits)]] as Array<[string, string]>)),
       ['空中擊破瓶子', String(s.airbursts)],

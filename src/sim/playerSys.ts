@@ -1,4 +1,5 @@
-import { ACTIONS, ALL_TIPS, CLASSES, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, RUNES, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, RUNES, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { meleeCandidates } from './meleeTargets';
 import { categoryOf, drinkPotion, equipFromBag, readScroll, takeForAction } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
@@ -172,6 +173,15 @@ export function startActions(w: World, input: FrameInput): void {
   }
 }
 
+/** 使用開始時捕捉的武器，不可用切換工具規避承諾。 */
+export function actionMoveMultiplier(w: World): number {
+  const a = w.player.action;
+  if (a?.kind === 'shield') return SHOVE.moveMul;
+  if (!a || a.kind !== 'melee') return 1;
+  const m = WEAPONS[a.weapon].move;
+  return a.t < a.windup ? m.windup : a.t < a.windup + a.active ? m.active : m.recovery;
+}
+
 /** 玩家以真實時間移動；回傳碰撞後的實際水平路程。 */
 export function movePlayer(w: World, input: FrameInput, realDt: number): number {
   const p = w.player;
@@ -186,7 +196,7 @@ export function movePlayer(w: World, input: FrameInput, realDt: number): number 
     ix /= len;
     iz /= len;
   }
-  const speed = PLAYER.moveSpeed * (p.sneaking ? w.sneakSpeedMul() : 1);
+  const speed = PLAYER.moveSpeed * (p.sneaking ? w.sneakSpeedMul() : 1) * actionMoveMultiplier(w);
   const tx = (rx * ix + fwd.x * iz) * speed;
   const tz = (rz * ix + fwd.z * iz) * speed;
   const maxDv = PLAYER.accel * realDt;
@@ -201,7 +211,7 @@ export function movePlayer(w: World, input: FrameInput, realDt: number): number 
   p.vz += dvz;
   // 速度上限（斜向不加速）
   const sp = Math.hypot(p.vx, p.vz);
-  if (sp > speed && len > 0) {
+  if (sp > speed) {
     p.vx *= speed / sp;
     p.vz *= speed / sp;
   }
@@ -343,23 +353,14 @@ function meleeHits(w: World): void {
   const p = w.player;
   const a = p.action!;
   const spec = WEAPONS[a.weapon];
-  const half = ((spec.arcDeg / 2) * Math.PI) / 180;
   const backHalf = ((STEALTH.backArcDeg / 2) * Math.PI) / 180;
   // 戰士的反擊斬往前踏半步
   const reach = spec.reach + (a.counter ? CLASSES.warrior.counterLunge : 0);
-  for (const e of w.enemies) {
-    if (!e.alive || a.hitSet.has(e.id)) continue;
-    const dx = e.x - p.x;
-    const dz = e.z - p.z;
-    const d = Math.hypot(dx, dz);
-    if (d > reach + e.radius) continue;
-    const ang = yawFromDir(dx, dz);
-    if (Math.abs(angleDiff(ang, a.lockedYaw)) > half && d > e.radius + 0.25) continue;
-    if (e.y > 2.0) continue;
-    const from = { x: p.x, y: 1.4, z: p.z };
-    const to = { x: e.x, y: e.y + 1.1, z: e.z };
-    const block = w.grid.segmentHit(from, to);
-    if (block && block.t < 0.95) continue;
+  const candidates = meleeCandidates(w, a.weapon, a.lockedYaw, reach);
+  for (const e of candidates) {
+    if (a.hitSet.size >= spec.maxTargets) break;
+    if (a.hitSet.has(e.id)) continue;
+    const hitMul = a.hitSet.size === 0 ? 1 : spec.secondaryDamage;
     a.hitSet.add(e.id);
     // 背刺：睡著的敵人任何方向都算；閒置、巡邏中的敵人要從背後出手；搜索中、已發現你的敵人都不算
     const fromBehind = Math.abs(angleDiff(yawFromDir(p.x - e.x, p.z - e.z), e.yaw)) >= Math.PI - backHalf;
@@ -372,12 +373,13 @@ function meleeHits(w: World): void {
       dmg *= 2;
       p.comboT = 0;
     }
+    dmg *= hitMul;
     if (sneak) w.stats.backstabs++;
     // 戰士：命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
     if (applyCounter(w, e)) a.countered = true;
     damageEnemy(w, e, dmg, { source: 'melee', sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
     // 重武器：命中沒倒下的敵人會失衡（打斷它的出手）
-    if (spec.stagger > 0 && e.alive && e.phase !== 'stun' && e.phase !== 'stagger') staggerEnemy(e, spec.stagger);
+    if (spec.stagger > 0 && e.alive && e.phase !== 'stun' && e.phase !== 'stagger') staggerEnemy(e, spec.stagger * hitMul);
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'combat');
   }
 }
