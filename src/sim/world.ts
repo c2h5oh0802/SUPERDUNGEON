@@ -1,8 +1,9 @@
 import { recordSensesEvent, expireSenses, type SoundCue } from './senses';
-import { ARMORS, CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, RENDER, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
+import { CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
-import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
+import { armorFootstepRadius, armorReduction, armorSneakSpeedMul } from './equipment';
+import { applyUpgrade, refreshUpgradeChoice, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
 import { applyTalent, gainXp, killXp, talentOptions } from './progress';
 import { segSphere, type V2, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
@@ -355,7 +356,7 @@ export class World {
 
   /** 潛行步的速度倍率（鎖甲更慢、輕步更快）。 */
   sneakSpeedMul(): number {
-    return STEALTH.sneakSpeedMul * ARMORS[this.player.armor.id].sneakSpeedMul * lightstep(this).speed;
+    return armorSneakSpeedMul(this.player.armor.id, lightstep(this).speed);
   }
 
   /** 正常走動：每走一段距離發出腳步聲；潛行步不出聲。 */
@@ -368,13 +369,13 @@ export class World {
     this.stepAcc += dist;
     if (this.stepAcc < STEALTH.footstepEvery) return;
     this.stepAcc -= STEALTH.footstepEvery;
-    this.emitNoise(p.x, 0.1, p.z, STEALTH.footstepRadius * ARMORS[p.armor.id].stepMul, 'step');
+    this.emitNoise(p.x, 0.1, p.z, armorFootstepRadius(p.armor.id), 'step');
   }
 
   /** 護甲減傷（至少受 1）。 */
   armorReduce(): number {
     const a = this.player.armor;
-    return Math.min(UPGRADE.armorMaxReduce, ARMORS[a.id].reduce + (a.id === 'cloth' ? 0 : UPGRADE.armorPerLevel * a.level));
+    return armorReduction(a.id, a.level);
   }
 
   updateCue(): void {
@@ -528,8 +529,9 @@ export class World {
       applyTalent(this, t);
     } else {
       const t = c.options[index];
-      if (!t) return;
-      applyUpgrade(this, t);
+      if (!t || !applyUpgrade(this, t)) {
+        if (refreshUpgradeChoice(this, c)) return;
+      } else c.reservedScroll = false; // the reserved investment is now on the item
     }
     this.pendingChoice = null;
     while (this.choiceQueue.length) {
@@ -539,7 +541,7 @@ export class World {
         // Re-evaluate at display time, preserving that level's deterministic shuffle.
         next.options = talentOptions(this.level.seed, this.player, next.level ?? this.player.level);
         if (!next.options.length) continue;
-      }
+      } else if (!refreshUpgradeChoice(this, next)) continue;
       this.pendingChoice = next;
       break;
     }

@@ -81,7 +81,7 @@ describe('Legacy Rune saves are accepted without active progression', () => {
 describe('Retained growth and generated rooms', () => {
   it.each(['weapon', 'armor', 'bow'] as const)('upgrade pickup → bag → %s choice → maximum level → floor/save roundtrip remains intact', (target: UpgradeTarget) => {
     const w = makeWorld(undefined, [], 'huntress');
-    w.player.armor = { id: 'mail', level: UPGRADE.maxLevel - 1 };
+    w.player.armor = { id: 'mail', level: 0 }; // effective reduction cap at +1
     w.player.weapon.level = UPGRADE.maxLevel - 1;
     w.player.bowLevel = UPGRADE.maxLevel - 1;
     w.player.hunger = HUNGER.starvingAt; w.player.starvationT = 2;
@@ -107,7 +107,7 @@ describe('Retained growth and generated rooms', () => {
     expect(saved).toEqual(next);
     const resumed = createFloorWorld(saved);
     expect([resumed.player.weapon, resumed.player.armor, resumed.player.bowLevel]).toEqual([w.player.weapon, w.player.armor, w.player.bowLevel]);
-    expect(target === 'weapon' ? resumed.player.weapon.level : target === 'armor' ? resumed.player.armor.level : resumed.player.bowLevel).toBe(UPGRADE.maxLevel);
+    expect(target === 'weapon' ? resumed.player.weapon.level : target === 'armor' ? resumed.player.armor.level : resumed.player.bowLevel).toBe(target === 'armor' ? 1 : UPGRADE.maxLevel);
   });
 
   it('XP/level HP, queued talents and upgrade choices keep pausing the same Hunger clock', () => {

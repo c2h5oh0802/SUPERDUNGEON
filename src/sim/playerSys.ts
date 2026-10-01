@@ -1,4 +1,6 @@
-import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, HEALING_POTION, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, HEALING_POTION, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId } from '../config';
+import { weaponDamage } from './equipment';
+export { weaponDamage } from './equipment';
 import { eatRation } from './hunger';
 import { consumeHuntingMark } from './huntingMark';
 import { meleeCandidates } from './meleeTargets';
@@ -24,11 +26,6 @@ function timingOf(w: World, kind: ActionKind): Timing {
 export function actionTotal(w: World, kind: ActionKind): number {
   const d = timingOf(w, kind);
   return d.windup + d.active + d.recovery;
-}
-
-/** 武器傷害（含強化）。 */
-export function weaponDamage(id: WeaponId, level: number): number {
-  return WEAPONS[id].damage + WEAPONS[id].perLevel * level;
 }
 
 function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = timingOf(w, kind)): void {
@@ -315,7 +312,7 @@ export function updatePlayerAction(w: World, dt: number): void {
     case 'read':
       if (!a.fired && done && a.item) {
         a.fired = true;
-        readScroll(w, a.item.split(':')[1] as ScrollId | 'upgrade');
+        readScroll(w, a.item.split(':')[1] as ScrollId | 'upgrade', a.item === 'scroll:upgrade');
       }
       break;
     case 'convert':

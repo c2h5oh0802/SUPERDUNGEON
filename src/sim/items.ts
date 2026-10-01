@@ -1,3 +1,4 @@
+import { armorReduction, armorUpgradeLimit, bowDamage, weaponDamage } from './equipment';
 import { observesPoint } from './observation';
 import {
   ALL_POTIONS,
@@ -25,7 +26,7 @@ import { Rng } from '../core/rng';
 import { rollConsumable, rollItem } from '../gen/loot';
 import { Nav } from './nav';
 import { hasTalent, maxTipped, queueChoice } from './progress';
-import type { Area, Enemy, InvItem, PendingUse, UpgradeTarget } from './types';
+import type { Area, Enemy, InvItem, PendingChoice, PendingUse, UpgradeTarget } from './types';
 import type { World } from './world';
 
 // 物品：未鑑定的藥水與卷軸（每一局外觀不同）、背包、喝／讀／丟／裝備，以及效果。
@@ -92,15 +93,18 @@ export function itemName(w: World, id: ItemId, level = 0): string {
   return SCROLLS[keyOf(id) as ScrollId | 'upgrade'].name;
 }
 
-export function itemDesc(w: World, id: ItemId): string {
+export function itemDesc(w: World, id: ItemId, level = 0): string {
   const c = categoryOf(id);
   const k = keyOf(id);
   if (c === 'food') return `吃下：減少 ${HUNGER.foodRestore} 世界秒的飢餓。吃完才生效；正常行動要花時間，已飽食時保留。`;
   if (c === 'weapon') {
     const s = WEAPONS[k as keyof typeof WEAPONS];
-    return `${s.damage} 傷害（每級 +${s.perLevel}）、${Math.round((s.windup + s.active + s.recovery) * 100) / 100} 秒、範圍 ${s.reach} m、背刺 ×${s.sneakMultiplier}；${s.note}`;
+    return `${weaponDamage(k as keyof typeof WEAPONS, level)} 基礎傷害（每級 +${s.perLevel}）、${Math.round((s.windup + s.active + s.recovery) * 100) / 100} 秒、範圍 ${s.reach} m、背刺 ×${s.sneakMultiplier}；${s.note}`;
   }
-  if (c === 'armor') return ARMORS[k as keyof typeof ARMORS].note;
+  if (c === 'armor') {
+    const id = k as keyof typeof ARMORS;
+    return `每次減傷 ${armorReduction(id, level)}（至少受 1；減傷上限 ${UPGRADE.armorMaxReduce}）；${ARMORS[id].stepMul > 1 ? '腳步聲較大、潛行步較慢' : '不增加腳步聲、不降低潛行步速'}`;
+  }
   if (!isKnown(w, id)) return c === 'potion' ? '未知的藥水：喝下可試出效果；投擲只有親眼看到明顯效果才會辨識，單純碎瓶不會。' : '未知的卷軸：讀了才知道效果。';
   if (c === 'potion') {
     const p = POTIONS[k as PotionId];
@@ -332,14 +336,17 @@ export function stunPlayer(w: World, dur: number): void {
 
 // ---------- 卷軸 ----------
 
-export function readScroll(w: World, id: ScrollId | 'upgrade'): void {
-  if (id === 'upgrade' && upgradeTargets(w).length === 0) return;
+export function readScroll(w: World, id: ScrollId | 'upgrade', reservedScroll = false): void {
+  if (id === 'upgrade' && upgradeTargets(w).length === 0) {
+    if (reservedScroll) returnUpgradeScroll(w);
+    return;
+  }
   w.stats.itemsUsed++;
   if (id !== 'upgrade') identify(w, `scroll:${id}`);
   w.emit({ type: 'read', kind: id });
   switch (id) {
     case 'upgrade':
-      queueChoice(w, { kind: 'upgrade', options: upgradeTargets(w) });
+      queueChoice(w, { kind: 'upgrade', options: upgradeTargets(w), reservedScroll });
       return;
     case 'teleport':
       teleport(w);
@@ -408,41 +415,76 @@ export function equipFromBag(w: World, id: ItemId, level: number): void {
   w.emit({ type: 'equip', kind: id, text: `裝備：${itemName(w, id, level)}` });
 }
 
+/** Only a real positive benefit below the global level cap can be purchased. */
 export function upgradeTargets(w: World): UpgradeTarget[] {
   const p = w.player;
   const out: UpgradeTarget[] = [];
-  if (p.weapon.level < UPGRADE.maxLevel) out.push('weapon');
-  if (p.armor.id !== 'cloth' && p.armor.level < UPGRADE.maxLevel) out.push('armor');
-  if (p.cls === 'huntress' && p.bowLevel < UPGRADE.maxLevel) out.push('bow');
+  if (p.weapon.level < UPGRADE.maxLevel && weaponDamage(p.weapon.id, p.weapon.level + 1) > weaponDamage(p.weapon.id, p.weapon.level)) out.push('weapon');
+  if (p.armor.level < UPGRADE.maxLevel && armorReduction(p.armor.id, p.armor.level + 1) > armorReduction(p.armor.id, p.armor.level)) out.push('armor');
+  if (p.cls === 'huntress' && p.bowLevel < UPGRADE.maxLevel && (bowDamage(p.bowLevel + 1, false) > bowDamage(p.bowLevel, false) || bowDamage(p.bowLevel + 1, true) > bowDamage(p.bowLevel, true))) out.push('bow');
   // Historical shieldLevel remains in saves, but shield upgrades are no longer offered.
   return out;
 }
 
 export function upgradeLabel(w: World, t: UpgradeTarget): { name: string; text: string } {
   const p = w.player;
+  const allowed = upgradeTargets(w).includes(t);
+  const name = (title: string, level: number) => `${title} +${level}${allowed ? ` → +${level + 1}` : '（無可用強化）'}`;
+  const cap = `上限 +${UPGRADE.maxLevel}`;
   switch (t) {
     case 'weapon': {
       const s = WEAPONS[p.weapon.id];
-      return { name: `${s.name} +${p.weapon.level} → +${p.weapon.level + 1}`, text: `傷害 ${s.damage + s.perLevel * p.weapon.level} → ${s.damage + s.perLevel * (p.weapon.level + 1)}` };
+      const before = weaponDamage(p.weapon.id, p.weapon.level), after = weaponDamage(p.weapon.id, p.weapon.level + 1);
+      let text = allowed ? `基礎傷害 ${before} → ${after}` : `基礎傷害 ${before}；已達強化上限`;
+      if (allowed && s.sneakMultiplier > 1) text += `；奇襲 ${before * s.sneakMultiplier} → ${after * s.sneakMultiplier}`;
+      if (allowed && s.maxTargets > 1) text += `；次敵 ${before * s.secondaryDamage} → ${after * s.secondaryDamage}`;
+      return { name: name(s.name, p.weapon.level), text: `${text}。${cap}；射程、出手時間與移速承諾不變。` };
     }
-    case 'armor':
-      return { name: `${ARMORS[p.armor.id].name} +${p.armor.level} → +${p.armor.level + 1}`, text: `每次受傷多減 ${UPGRADE.armorPerLevel}（總減傷最多 ${UPGRADE.armorMaxReduce}）` };
-    case 'bow':
-      return { name: `獵弓 +${p.bowLevel} → +${p.bowLevel + 1}`, text: `身體 +${UPGRADE.bowBody}、頭部 +${UPGRADE.bowHead} 傷害` };
+    case 'armor': {
+      const a = p.armor, before = armorReduction(a.id, a.level), after = armorReduction(a.id, a.level + 1);
+      const text = allowed ? `每次減傷 ${before} → ${after}` : `每次減傷 ${before}；${a.id === 'cloth' ? '布衣不能強化' : '減傷已封頂'}`;
+      return { name: name(ARMORS[a.id].name, a.level), text: `${text}（至少受 1）。減傷上限 ${UPGRADE.armorMaxReduce}${a.id === 'cloth' ? '' : `，本件 +${armorUpgradeLimit(a.id)} 封頂`}；腳步聲與潛行速度不變。` };
+    }
+    case 'bow': {
+      const before = p.bowLevel, after = before + 1;
+      const text = allowed ? `基礎身體傷害 ${bowDamage(before, false)} → ${bowDamage(after, false)}；頭部 ${bowDamage(before, true)} → ${bowDamage(after, true)}`
+        : `基礎身體傷害 ${bowDamage(before, false)}、頭部 ${bowDamage(before, true)}；${p.cls === 'huntress' ? '已達強化上限' : '此職業無獵弓強化'}`;
+      return { name: name('獵弓', before), text: `${text}。${cap}；拉弓時間、箭速與藥劑效果不變。` };
+    }
     case 'shield':
-      return { name: `臂盾 +${p.shieldLevel} → +${p.shieldLevel + 1}`, text: `盾推多推 ${UPGRADE.shieldPush} m、格擋時間 +${UPGRADE.shieldActive} 秒` };
+      return { name: '臂盾（舊版強化停用）', text: '舊版等級保留，不能投入強化卷軸。' };
   }
 }
 
-export function applyUpgrade(w: World, t: UpgradeTarget): void {
-  if (t === 'shield') return; // Disabled legacy target: never consume a new investment.
+export function applyUpgrade(w: World, t: UpgradeTarget): boolean {
+  if (!upgradeTargets(w).includes(t)) return false;
   const p = w.player;
   const label = upgradeLabel(w, t).name;
   if (t === 'weapon') p.weapon.level++;
   else if (t === 'armor') p.armor.level++;
   else if (t === 'bow') p.bowLevel++;
-
   w.emit({ type: 'equip', kind: t, text: `強化：${label}` });
+  return true;
+}
+
+/** Reservation normally stays spent once reading starts, including interruption.
+ * Only a completed scroll with no useful choice is returned, never old upgrades. */
+function returnUpgradeScroll(w: World): void {
+  const returned = addItem(w, 'scroll:upgrade');
+  if (!returned) w.addPickup('item', 1, w.player.x, 0.15, w.player.z, null, 'scroll:upgrade', 0);
+  w.emit({ type: 'fullInventory', text: returned ? '目前沒有可強化的裝備，卷軸已保留' : '目前沒有可強化的裝備；背包滿了，卷軸留在腳邊' });
+}
+
+/** Refresh a delayed or stale offer without silently applying a different target. */
+export function refreshUpgradeChoice(w: World, choice: Extract<PendingChoice, { kind: 'upgrade' }>): boolean {
+  choice.options = upgradeTargets(w);
+  if (choice.options.length) return true;
+  if (choice.reservedScroll) {
+    choice.reservedScroll = false; // at most one return, even if called again
+    returnUpgradeScroll(w);
+    w.stats.itemsUsed = Math.max(0, w.stats.itemsUsed - 1);
+  }
+  return false;
 }
 
 // ---------- 掉落 ----------

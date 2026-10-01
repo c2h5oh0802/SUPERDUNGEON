@@ -1,5 +1,6 @@
+import { bowDamage } from './equipment';
 import { applyHuntingMark } from './huntingMark';
-import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS, UPGRADE } from '../config';
+import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
 import { segmentCylinder, segmentEnemy } from './characterHit';
 import { shieldBlocks } from './classSys';
@@ -251,7 +252,7 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
         : PROJECTILES.stone;
   let dmg: number = head ? spec.head : spec.body;
   // 獵弓強化；投石手天賦
-  if (p.kind === 'arrow' && !p.deflected) dmg += (head ? UPGRADE.bowHead : UPGRADE.bowBody) * w.player.bowLevel;
+  if (p.kind === 'arrow' && !p.deflected) dmg = bowDamage(w.player.bowLevel, head);
   if (p.kind === 'stone' && head && hasTalent(w.player, 'slinger')) dmg += TALENT_FX.slingerHead;
   if (e.kind === 'charger' && e.phase === 'charge' && fromFront) dmg = Math.ceil(dmg * ENEMIES.charger.frontArmorMul);
   if (e.kind === 'charger' && e.phase === 'stun') dmg *= ENEMIES.charger.stunDamageMul;

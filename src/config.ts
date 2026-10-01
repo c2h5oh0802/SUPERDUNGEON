@@ -580,7 +580,7 @@ export const POTIONS: Record<PotionId, { name: string; drink: string; thrown: st
 };
 
 export const SCROLLS: Record<ScrollId | 'upgrade', { name: string; text: string }> = {
-  upgrade: { name: '強化卷軸', text: '選一件裝備強化一級' },
+  upgrade: { name: '強化卷軸', text: `選一件仍有收益的裝備強化一級；武器與獵弓最高 +${UPGRADE.maxLevel}，護甲減傷達 ${UPGRADE.armorMaxReduce} 後封頂，沒有可用目標時保留卷軸` },
   teleport: { name: '傳送卷軸', text: '傳送到這一層遠離敵人的地方' },
   mapping: { name: '地圖卷軸', text: '顯示整層地圖與往下的路' },
   sleep: { name: '沉睡卷軸', text: '令附近 6 公尺內的普通敵人入睡；已鎖定的攻擊先完成，首領免疫；聲音、靠近與受擊仍會喚醒' },

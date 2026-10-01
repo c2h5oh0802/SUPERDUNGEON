@@ -1008,15 +1008,16 @@ button.ghost {
 /* 背包 */
 .inv-panel {
   width: min(760px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .inv-gear {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
+  display: grid;
+  gap: 6px;
   font-size: 13px;
   color: #d8cfbf;
-  margin-bottom: 10px;
 }
 
 .inv-gear b {
@@ -1027,15 +1028,13 @@ button.ghost {
 .inv-list {
   display: grid;
   gap: 6px;
-  max-height: 52vh;
-  overflow-y: auto;
-  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .inv-row {
   display: grid;
-  grid-template-columns: 14px 1fr auto;
-  align-items: center;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: start;
   gap: 10px;
   padding: 7px 10px;
   border: 1px solid var(--panel-edge);
@@ -1047,6 +1046,12 @@ button.ghost {
   width: 12px;
   height: 12px;
   border-radius: 50%;
+  margin-top: 5px;
+}
+
+.inv-item-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .inv-row .nm {
@@ -1061,7 +1066,10 @@ button.ghost {
 
 .inv-row .acts {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
+  max-width: 180px;
 }
 
 .inv-row .acts button {
@@ -1073,6 +1081,85 @@ button.ghost {
 .inv-empty {
   color: var(--muted);
   font-size: 13px;
+}
+
+.inv-equipment-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.equipped-item {
+  border-left: 2px solid var(--panel-edge);
+  padding-left: 8px;
+}
+
+.equipment-stats,
+.equipment-compare,
+.equipment-details,
+.equipment-baseline {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.equipment-compare {
+  color: #d8cfbf;
+  margin-top: 3px;
+}
+
+.equipment-details,
+.equipment-baseline {
+  color: var(--muted);
+}
+
+.equipment-details summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 2px 0;
+}
+
+.equipment-details summary:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.equipment-details[open] summary {
+  color: var(--ink);
+}
+
+.equipment-baseline {
+  border-top: 1px solid var(--panel-edge);
+  padding-top: 5px;
+}
+
+.inv-row .equipment-blocked {
+  color: #ffc28a;
+}
+
+#btn-inv-close {
+  position: sticky;
+  bottom: 0;
+  flex-shrink: 0;
+  background: #29223e;
+}
+
+@media (max-width: 600px) {
+  .inv-panel {
+    padding: 14px;
+  }
+
+  .inv-row {
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .inv-row .acts {
+    grid-column: 2;
+    justify-content: flex-start;
+    max-width: none;
+  }
 }
 
 /* 等級、增益、潛行 */

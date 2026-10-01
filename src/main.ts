@@ -447,7 +447,7 @@ export class App {
         ? c.options.map((t) => ({ name: TALENTS[t].name, text: TALENTS[t].text }))
         : c.options.map((t) => upgradeLabel(w, t));
     $('choice-title').textContent = c.kind === 'talent' ? `升到第 ${w.player.level} 級：選一個天賦` : '強化卷軸：選一件裝備強化';
-    $('choice-sub').textContent = c.kind === 'talent' ? '天賦本局有效。按數字鍵或直接點選。' : '強化本局有效，會帶到下一層。按數字鍵或直接點選。';
+    $('choice-sub').textContent = c.kind === 'talent' ? '天賦本局有效。按數字鍵或直接點選。' : '只列出仍有實際收益的裝備；封頂後不再消耗卷軸。強化跟著裝備保留並跨層。按數字鍵或直接點選。';
     const box = $('choice-cards');
     box.innerHTML = cards
       .map((_, k) => `<button class="choice-card" data-idx="${k}"><kbd>${k + 1}</kbd><h3></h3><p></p></button>`)

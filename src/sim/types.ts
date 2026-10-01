@@ -43,7 +43,7 @@ export interface PendingUse {
 
 /** 選擇畫面：升級選天賦、強化卷軸選裝備。 */
 export type UpgradeTarget = 'weapon' | 'armor' | 'bow' | 'shield';
-export type PendingChoice = { kind: 'talent'; options: TalentId[]; level?: number } | { kind: 'upgrade'; options: UpgradeTarget[] };
+export type PendingChoice = { kind: 'talent'; options: TalentId[]; level?: number } | { kind: 'upgrade'; options: UpgradeTarget[]; reservedScroll?: boolean };
 
 /** 丟出的藥水碎開後留在地上的區域。 */
 export interface Area {
