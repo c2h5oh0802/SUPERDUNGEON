@@ -3,14 +3,15 @@ import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferG
 import { ENEMIES } from '../config';
 import { clamp, lerp, smoothstep } from '../core/math';
 import type { Enemy } from '../sim/types';
+import { wardenCrownClosed } from '../sim/enemySys';
 import { createCharMaterial, createLightRig, createOutlineMaterial, paint, type LightRig, type SharedUniforms } from './materials';
 
-// 三種敵人的程序角色：不同輪廓、武器與姿勢；動畫直接由模擬狀態（世界時間）計算，
+// 敵人的程序角色：不同輪廓、武器與姿勢；動畫直接由模擬狀態（世界時間）計算，
 // 讓畫面與命中判定使用同一個時序。
 // 為了效能，每個關節上的零件合併成一個網格（頂點色＋發光遮罩），同種敵人共用合併後的幾何。
 
 type JointName = 'hips' | 'torso' | 'head' | 'armL' | 'elbowL' | 'armR' | 'elbowR' | 'legL' | 'kneeL' | 'legR' | 'kneeR';
-type GroupKey = JointName | 'crossbow' | 'cloak' | 'shield';
+type GroupKey = JointName | 'crossbow' | 'cloak' | 'shield' | 'crownL' | 'crownR';
 
 interface Pose {
   hipsY: number;
@@ -128,6 +129,8 @@ export class EnemyVisual {
   crossbow: THREE.Group | null = null;
   /** 盾衛的圓盾：舉盾前進時抬到頭前。 */
   shield: THREE.Group | null = null;
+  /** 開合直接使用模擬層冠甲判定，不另設視覺時鐘。 */
+  crown: THREE.Group[] = [];
   bolt: THREE.Mesh | null = null;
   cloak: THREE.Group | null = null;
   private parts = new Map<GroupKey, PartSpec[]>();
@@ -143,8 +146,8 @@ export class EnemyVisual {
   ) {
     this.kind = enemy.kind;
     this.mat = createCharMaterial(shared, this.rig, 0xffffff, { glow: 0xff6a1a });
-    this.outlineMat = createOutlineMaterial(shared, enemy.kind === 'charger' ? 1.3 : 1.0);
-    const hipsY = enemy.kind === 'charger' ? 0.92 : enemy.kind === 'archer' ? 0.95 : 0.98;
+    this.outlineMat = createOutlineMaterial(shared, enemy.kind === 'charger' || enemy.kind === 'warden' ? 1.3 : 1.0);
+    const hipsY = enemy.kind === 'warden' ? 1.05 : enemy.kind === 'charger' ? 0.92 : enemy.kind === 'archer' ? 0.95 : 0.98;
     this.pose = zeroPose(hipsY);
     this.target = zeroPose(hipsY);
     this.base = zeroPose(hipsY);
@@ -162,6 +165,7 @@ export class EnemyVisual {
     const torso = J('torso', hips, 0, 0.08, 0);
     if (enemy.kind === 'guard') this.buildGuard(J, hips, torso);
     else if (enemy.kind === 'archer') this.buildArcher(J, hips, torso);
+    else if (enemy.kind === 'warden') this.buildWarden(J, hips, torso);
     else this.buildCharger(J, hips, torso);
     for (const [key, list] of this.parts) {
       const cacheKey = `${enemy.kind}:${key}`;
@@ -313,6 +317,61 @@ export class EnemyVisual {
     this.base.j.elbowR = [0.9, 0, 0];
     this.base.j.armL = [0.8, 0, 0.1];
     this.base.j.elbowL = [0.7, 0, 0];
+  }
+
+  private buildWarden(J: JointFn, hips: THREE.Group, torso: THREE.Group): void {
+    const bronze = 0xb28a4f;
+    const dark = 0x34353c;
+    const trim = 0xe2bc75;
+    const cloth = 0x483644;
+    const steel = 0xa6b7b9;
+    this.part(cyl(0.31, 0.4, 0.32, 8), dark, 'hips', 0, -0.06, 0);
+    this.part(box(0.76, 0.57, 0.42), bronze, 'torso', 0, 0.3, 0);
+    this.part(box(0.22, 0.78, 0.045), cloth, 'torso', 0, 0.04, -0.235);
+    this.part(box(0.08, 0.36, 0.035), trim, 'torso', 0, 0.4, -0.26, 0, 0, 0, { glow: 0.35 });
+    // Squared pauldrons and a tall, asymmetric polearm separate this silhouette from the charger.
+    for (const side of [-1, 1]) {
+      this.part(box(0.38, 0.2, 0.48), bronze, 'torso', side * 0.47, 0.51, 0, 0, 0, side * -0.12);
+      this.part(box(0.4, 0.055, 0.51), trim, 'torso', side * 0.47, 0.59, 0, 0, 0, side * -0.12);
+    }
+    const head = J('head', torso, 0, 0.61, 0);
+    this.part(sph(0.2, 1), dark, 'head', 0, 0.12, 0, 0, 0, 0, { scale: [0.9, 1, 0.9] });
+    this.part(cyl(0.23, 0.23, 0.08, 8), bronze, 'head', 0, 0.25, 0);
+    for (const side of [-1, 1] as const) {
+      const key = side < 0 ? 'crownL' : 'crownR';
+      const panel = new THREE.Group();
+      panel.position.set(side * 0.22, 0.22, -0.02);
+      head.add(panel);
+      this.groups.set(key, panel);
+      this.crown.push(panel);
+      this.part(box(0.18, 0.24, 0.08), bronze, key, side * -0.115, -0.1, -0.19);
+      this.part(box(0.15, 0.035, 0.02), trim, key, side * -0.115, -0.045, -0.235, 0, 0, 0, { glow: 0.5 });
+      this.part(cone(0.07, 0.22, 4), trim, key, side * -0.09, 0.075, -0.12);
+      this.part(cone(0.06, 0.17, 4), bronze, key, side * 0.015, 0.06, 0.08);
+    }
+    this.eyes = new THREE.Mesh(box(0.18, 0.04, 0.025), this.eyeMat);
+    this.eyes.position.set(0, 0.08, -0.21);
+    head.add(this.eyes);
+    for (const side of [-1, 1] as const) {
+      const arm = side < 0 ? 'armL' : 'armR';
+      const elbow = side < 0 ? 'elbowL' : 'elbowR';
+      const a = J(arm, torso, side * 0.47, 0.46, 0);
+      this.part(cyl(0.105, 0.085, 0.33, 8), dark, arm, 0, -0.165, 0);
+      J(elbow, a, 0, -0.33, 0);
+      this.part(cyl(0.105, 0.08, 0.32, 8), bronze, elbow, 0, -0.16, 0);
+      this.part(box(0.16, 0.15, 0.16), dark, elbow, 0, -0.3, 0);
+    }
+    const pole = this.at('elbowR', 0, -0.3, -0.06);
+    this.part(cyl(0.025, 0.03, 1.75, 6), dark, pole, 0, 0.16, 0);
+    this.part(cyl(0.045, 0.045, 0.25, 8), bronze, pole, 0, 0.02, 0);
+    this.part(cone(0.1, 0.36, 4), steel, pole, 0, 1.19, 0, 0, 0, 0, { glow: 1 });
+    this.part(box(0.32, 0.34, 0.045), bronze, pole, -0.13, 0.85, 0, 0, 0, -0.25);
+    this.part(box(0.065, 0.4, 0.05), steel, pole, -0.27, 0.88, 0, 0, 0, -0.25, { glow: 1 });
+    this.legs(J, hips, 0.2, 0.115, 0.49, dark, bronze);
+    this.base.j.armR = [0.18, 0, -0.15];
+    this.base.j.elbowR = [0.35, 0, 0];
+    this.base.j.armL = [0.4, 0, 0.18];
+    this.base.j.elbowL = [0.65, 0, 0];
   }
 
   private buildCharger(J: JointFn, hips: THREE.Group, torso: THREE.Group): void {
@@ -475,6 +534,62 @@ export class EnemyVisual {
       }
       if (this.bolt) this.bolt.visible = e.phase !== 'reload';
       if (this.cloak) this.cloak.rotation.x = walk ? 0.2 + Math.abs(s) * 0.15 : 0.08;
+    } else if (e.kind === 'warden') {
+      const b = ENEMIES.warden;
+      const attack = e.warden?.attack;
+      if (e.phase === 'windup' || e.phase === 'aim') {
+        snap = true;
+        const duration = attack === 'cleave' ? b.cleaveWindup : attack === 'lance' ? b.lanceAim : b.rushWindup;
+        const k = smoothstep(0, duration, p);
+        if (attack === 'cleave') {
+          t.j.torso = [0, lerp(0, -0.65, k), 0];
+          t.j.armR = [lerp(0.18, 0.75, k), 0, lerp(-0.15, -0.6, k)];
+          t.j.elbowR = [lerp(0.35, -0.2, k), 0, 0];
+          t.j.armL = [lerp(0.4, 1.35, k), 0, 0.35];
+        } else if (attack === 'lance') {
+          t.j.armR = [lerp(0.18, -0.85, k), 0, -0.1];
+          t.j.elbowR = [lerp(0.35, -0.65, k), 0, 0];
+          t.j.armL = [lerp(0.4, 1.4, k), 0, 0.35];
+          t.j.torso = [-0.08, -0.15 * k, 0];
+        } else {
+          t.hipsY -= 0.12 * k;
+          t.j.torso = [-0.3 * k, 0, 0];
+          t.j.head = [0.22 * k, 0, 0];
+          t.j.armR = [-0.8 * k, 0, -0.1];
+          t.j.elbowR = [-0.6 * k, 0, 0];
+          t.j.legL = [0.4 * k, 0, 0];
+          t.j.legR = [-0.5 * k, 0, 0];
+        }
+        glow = 0.3 + 0.9 * k;
+      } else if (e.phase === 'active') {
+        snap = true;
+        const k = clamp(p / b.cleaveActive, 0, 1);
+        t.j.torso = [-0.12, lerp(-0.65, 0.65, k), 0];
+        t.j.armR = [lerp(0.75, -1, k), 0, lerp(-0.6, 0.5, k)];
+        t.j.elbowR = [lerp(-0.2, -0.6, k), 0, 0];
+        t.j.armL = [1.3, 0, 0.35];
+        glow = 1.2;
+      } else if (e.phase === 'charge') {
+        snap = true;
+        t.j.torso = [-0.3, 0, 0];
+        t.j.head = [0.22, 0, 0];
+        t.j.armR = [-0.8, 0, -0.1];
+        t.j.elbowR = [-0.6, 0, 0];
+        glow = 1.1;
+      } else if (e.phase === 'recovery') {
+        snap = true;
+        const duration = attack === 'cleave' ? b.cleaveRecovery : attack === 'lance' ? b.lanceRecovery : b.rushRecovery;
+        const k = smoothstep(0, duration, p);
+        t.j.torso = [lerp(-0.16, 0, k), lerp(attack === 'cleave' ? 0.65 : 0, 0, k), 0];
+        t.j.armR = [lerp(0.6, 0.18, k), 0, lerp(0.45, -0.15, k)];
+        t.j.head = [0.05, 0, 0];
+      } else if (e.phase === 'stagger') {
+        snap = true;
+        t.j.torso = [0.22, Math.sin(p * 9) * 0.08, 0];
+        t.j.head = [0.08, 0, 0.1];
+        t.j.armR = [0.3, 0, 0.65];
+        t.j.armL = [0.1, 0, -0.8];
+      }
     } else {
       const c = ENEMIES.charger;
       if (e.phase === 'windup') {
@@ -521,6 +636,11 @@ export class EnemyVisual {
     this.root.position.set(e.x, e.y, e.z);
     this.root.rotation.y = e.yaw;
     const u = this.mat.uniforms;
+    const crownClosed = e.kind === 'warden' && wardenCrownClosed(e);
+    for (const [i, panel] of this.crown.entries()) {
+      // Immediate open/close is intentional: visible protection never lags its hit rule.
+      panel.rotation.set(crownClosed ? 0 : -0.3, 0, crownClosed ? 0 : i === 0 ? -1.1 : 1.1);
+    }
     if (!e.alive) {
       // 死亡：向後倒下（世界時間）
       const k = smoothstep(0, 0.6, e.deathT);
@@ -543,13 +663,13 @@ export class EnemyVisual {
     u.uGlowAmt!.value = e.paralyzeT > 0 ? 0 : glow;
     (u.uGlow!.value as THREE.Color).setRGB(1.0, lerp(0.45, 0.12, clamp(glow - 0.2, 0, 1)), 0.05);
     // 麻痺紫、冰寒藍；老兵平常帶一點金色（頭盔）
-    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : e.veteran ? 0.22 : 0;
-    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : 0xf2c14e);
+    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : e.warden?.phaseTwo ? 0.18 : e.veteran ? 0.22 : 0;
+    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : e.warden?.phaseTwo ? 0xff7840 : 0xf2c14e);
     this.rig.uFlash.value = e.hurtT > 0 ? (e.hurtT / 0.3) * 0.75 : 0;
     this.rig.uDim.value = 1;
     this.eyes.visible = e.state !== 'sleep';
     const ec = e.state === 'alert' ? 0xff5a1e : e.state === 'search' || e.state === 'investigate' ? 0xffc040 : 0xb08a50;
-    this.eyeMat.color.setHex(ec);
+    this.eyeMat.color.setHex(e.kind === 'warden' ? crownClosed ? 0xff852e : 0x9bf7e8 : ec);
   }
 
   private applyPose(p: Pose): void {

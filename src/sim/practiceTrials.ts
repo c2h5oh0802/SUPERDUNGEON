@@ -11,6 +11,9 @@ export function createTrialWorld(id: PracticeTrialId, cls: PlayerClass): World {
   const validation = validateLevel(level);
   if (!validation.ok) throw new Error(`Invalid practice trial: ${validation.errors.join(', ')}`);
   const w = new World(level, { cls });
+  // The final exam uses only the ordinary class starting kit. Other authored
+  // trials retain their deliberate control-item/talent demonstration loadout.
+  if (id === 'heart-warden') { w.drainEvents(); return w; }
   // Explicit trial kit: one known AoE bottle of each kind, or paid conversion.
   for (const item of ['potion:frost', 'potion:gas'] as const) {
     addItem(w, item);

@@ -69,7 +69,7 @@ export function validateLevel(l: LevelData): ValidationResult {
     if (upgrades.length !== (l.encounter ? 0 : 1)) errors.push('強化卷軸預算錯誤');
     for (const p of food) need('乾糧', p.x, p.z, PLAYER.pickupRadius);
     if (l.encounter && (l.pickups.length || l.chests.length || l.traps.length)) errors.push('首領層混入探索物資或陷阱');
-    if (l.encounter && !l.enemies.some((e) => e.boss)) errors.push('首領層缺少守心者');
+    if (l.encounter && (l.enemies.length !== 1 || l.enemies[0]?.kind !== 'warden' || !l.enemies[0]?.boss)) errors.push('首領層必須有一名守心者');
     if (l.floor <= RUN.explorationFloors && l.goal !== 'descend') errors.push('探索層不可直接通關');
     const optional = l.rooms.filter((r) => r.optional);
     const inOptional = (x: number, z: number) => optional.some((r) => x >= r.x0 && x <= r.x0 + r.w && z >= r.z0 && z <= r.z0 + r.h);

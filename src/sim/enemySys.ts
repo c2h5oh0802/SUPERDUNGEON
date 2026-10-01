@@ -25,7 +25,7 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
   const spec = ENEMIES[s.kind];
   const patrol = s.perched || s.boss ? [] : [...w.roamPoints, ...s.patrol].map((p) => ({ ...p }));
   // 越深越硬；老兵再 ×1.5
-  const hp = Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
+  const hp = s.kind === 'warden' ? ENEMIES.warden.hp : Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
   return {
     id: w.nextId++,
     kind: s.kind,
@@ -89,12 +89,14 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     corpseFound: false,
     pendingSleep: false,
     boss: !!s.boss,
+    warden: s.kind === 'warden' ? { attack: null, phaseTwo: false, rangedCount: 0 } : null,
   };
 }
 
 /** 打斷敵人目前的出手（盾推、踉蹌）。 */
 export function interruptEnemy(e: Enemy): void {
   stopArcherMove(e);
+  if (e.warden) e.warden.attack = null;
   e.locked = false;
   e.aimPoint = null;
   e.hitDone = true;
@@ -186,6 +188,9 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     e.alive = false;
     stopArcherMove(e);
     e.deathT = 0;
+    if (e.warden) e.warden.attack = null;
+    e.aimPoint = null;
+    e.locked = false;
     e.phase = 'none';
     e.moving = false;
     w.stats.kills++;
@@ -861,6 +866,147 @@ function fireBolt(w: World, e: Enemy): void {
   w.emitNoise(origin.x, origin.y, origin.z, NOISE.combatHit, 'combat', e.id);
 }
 
+/** A visible crown protects only frontal headshots; body/flank shots remain valid. */
+export function wardenCrownClosed(e: Enemy): boolean {
+  return e.kind === 'warden' && e.alive && e.state === 'alert' &&
+    ['none', 'windup', 'aim', 'active', 'charge'].includes(e.phase);
+}
+
+function wardenRecovery(e: Enemy): void {
+  e.phase = 'recovery'; e.phaseT = 0; e.locked = false; e.aimPoint = null; e.moving = false;
+}
+
+function wardenLanceClear(w: World, e: Enemy, target: V3): boolean {
+  const s = ENEMIES.warden, f = forwardFromYaw(e.yaw);
+  const body = { x: e.x, y: e.y + s.lanceHeight, z: e.z };
+  const muzzle = { x: e.x + f.x * s.lanceMuzzle, y: body.y, z: e.z + f.z * s.lanceMuzzle };
+  return !w.grid.segmentHit(body, muzzle, false, s.lanceRadius) &&
+    !w.grid.segmentHit(muzzle, target, false, s.lanceRadius);
+}
+
+function fireWardenLance(w: World, e: Enemy): void {
+  const s = ENEMIES.warden, f = forwardFromYaw(e.lockedYaw);
+  const pos = { x: e.x + f.x * s.lanceMuzzle, y: e.y + s.lanceHeight, z: e.z + f.z * s.lanceMuzzle };
+  const target = e.aimPoint!;
+  const dx = target.x - pos.x, dy = target.y - pos.y, dz = target.z - pos.z;
+  const scale = s.lanceSpeed / (Math.hypot(dx, dy, dz) || 1);
+  w.projectiles.push({ id: w.nextId++, kind: 'bolt', owner: e.id, pos,
+    vel: { x: dx * scale, y: dy * scale, z: dz * scale }, radius: s.lanceRadius,
+    gravity: 0, age: 0, alive: true, hitSet: new Set(), next: { ...pos },
+    avgVel: { x: 0, y: 0, z: 0 }, deflected: false, tip: null, payload: 'smoke',
+    damage: s.damage, source: '守心者的心槍', lifetime: s.lanceRange / s.lanceSpeed });
+  w.emit({ type: 'enemyFire', id: e.id, kind: e.kind, source: 'lance', x: pos.x, y: pos.y, z: pos.z });
+  w.emitNoise(e.x, pos.y, e.z, NOISE.combatHit, 'combat', e.id);
+  wardenRecovery(e);
+}
+
+/** One selected, committed attack at a time. No phase transition can cut recovery. */
+function wardenAlert(w: World, e: Enemy, dt: number): void {
+  const s = ENEMIES.warden, b = e.warden!, p = w.player;
+  const visible = archerSeesNow(w, e);
+  if (!visible) e.seesPlayer = false;
+  e.moving = false;
+  switch (e.phase) {
+    case 'none': {
+      if (!b.phaseTwo && e.hp <= e.maxHp * s.phaseThreshold) {
+        b.phaseTwo = true; b.rangedCount = 0;
+        w.emit({ type: 'buff', kind: 'encounter', text: '守心者裂冠：遠距出手開始交替直線衝刺；閃開光帶後反擊' });
+      }
+      if (!visible || p.dead) { chase(w, e, dt, s.speed, s.cleaveRange * .85); return; }
+      const d = Math.hypot(p.x - e.x, p.z - e.z);
+      // Selecting a move may face visible information, never a hidden player.
+      facePlayer(w, e, 6, dt);
+      if (d > s.lanceRange) { chase(w, e, dt, s.speed, s.cleaveRange * .85); return; }
+      e.yaw = yawFromDir(p.x - e.x, p.z - e.z);
+      const target = { x: p.x, y: 1.2, z: p.z };
+      if (d <= s.cleaveRange) b.attack = 'cleave';
+      else {
+        if (!wardenLanceClear(w, e, target)) { chase(w, e, dt, s.speed, s.cleaveRange * .85); return; }
+        b.attack = b.phaseTwo && b.rangedCount % 2 === 0 && d <= s.rushTriggerDist &&
+          w.enav.lineWalkable(e.x, e.z, p.x, p.z) ? 'rush' : 'lance';
+        b.rangedCount++;
+      }
+      e.phase = b.attack === 'lance' ? 'aim' : 'windup';
+      e.phaseT = 0; e.locked = false; e.hitDone = false; e.chargeDist = 0;
+      e.aimPoint = b.attack === 'lance' ? target : null;
+      w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, source: b.attack, x: e.x, y: e.y, z: e.z });
+      return;
+    }
+    case 'windup':
+    case 'aim': {
+      const duration = b.attack === 'cleave' ? s.cleaveWindup : b.attack === 'rush' ? s.rushWindup : s.lanceAim;
+      const lockBefore = b.attack === 'cleave' ? s.cleaveLockBefore : b.attack === 'rush' ? s.rushLockBefore : s.lanceLockBefore;
+      if (!e.locked) {
+        if (!visible || (b.attack === 'lance' && !wardenLanceClear(w, e, { x: p.x, y: 1.2, z: p.z }))) {
+          // Abandoning an uncommitted attack pays recovery too, not instant retargeting.
+          wardenRecovery(e); return;
+        }
+        facePlayer(w, e, 5, dt);
+        if (b.attack === 'lance') e.aimPoint = { x: p.x, y: 1.2, z: p.z };
+      }
+      e.phaseT += dt;
+      if (!e.locked && e.phaseT >= duration - lockBefore) {
+        e.locked = true; e.lockedYaw = e.yaw;
+        w.emit({ type: 'enemyLock', id: e.id, kind: e.kind, source: b.attack ?? undefined, x: e.x, y: e.y + 1.5, z: e.z });
+      }
+      if (e.phaseT >= duration) {
+        if (b.attack === 'lance') fireWardenLance(w, e);
+        else {
+          e.phase = b.attack === 'rush' ? 'charge' : 'active'; e.phaseT = 0;
+          w.emit({ type: 'enemyStrike', id: e.id, kind: e.kind, source: b.attack ?? undefined, x: e.x, y: e.y, z: e.z });
+          w.emitNoise(e.x, e.y + 1, e.z, NOISE.combatHit, 'combat', e.id);
+        }
+      }
+      return;
+    }
+    case 'active': {
+      e.phaseT += dt;
+      const dx = p.x - e.x, dz = p.z - e.z;
+      const d = Math.hypot(dx, dz);
+      const angle = Math.abs(angleDiff(yawFromDir(dx, dz), e.lockedYaw));
+      // Same solid wedge shown by presentation; no hidden inner-circle hit.
+      if (!e.hitDone && !p.dead && d <= s.cleaveReach + PLAYER.radius &&
+          angle <= s.cleaveArcDeg * Math.PI / 360 &&
+          !w.grid.segmentHit({ x: e.x, y: 1.2, z: e.z }, { x: p.x, y: 1.2, z: p.z })) {
+        e.hitDone = true; w.damagePlayer(s.damage, '守心者的橫斬', e.x, e.z);
+      }
+      if (e.phaseT >= s.cleaveActive) wardenRecovery(e);
+      return;
+    }
+    case 'charge': {
+      e.yaw = e.lockedYaw;
+      const f = forwardFromYaw(e.lockedYaw);
+      const step = Math.min(s.rushSpeed * dt, s.rushDist - e.chargeDist);
+      const nx = e.x + f.x * step, nz = e.z + f.z * step;
+      if (w.grid.circleBlocked(nx, nz, e.radius)) {
+        staggerEnemy(e, s.wallStagger);
+        w.emit({ type: 'stun', id: e.id, x: e.x, y: 1, z: e.z });
+        return;
+      }
+      if (!p.dead && Math.hypot(p.x - nx, p.z - nz) <= e.radius + PLAYER.radius) {
+        if (!e.hitDone) { e.hitDone = true; w.damagePlayer(s.damage, '守心者的衝刺', e.x, e.z); }
+        wardenRecovery(e); return;
+      }
+      // Although the encounter is solo, retained world fixtures cannot be phased through.
+      if (w.enemies.some(o => o !== e && o.alive && !o.perched && Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius)) {
+        wardenRecovery(e); return;
+      }
+      e.x = nx; e.z = nz; e.moving = step > 0; e.walkPhase += step * 1.5;
+      enemyFootsteps(w, e, step); e.chargeDist += step;
+      if (e.chargeDist >= s.rushDist - 1e-8) wardenRecovery(e);
+      return;
+    }
+    case 'recovery': {
+      e.phaseT += dt;
+      const duration = b.attack === 'lance' ? s.lanceRecovery : b.attack === 'rush' ? s.rushRecovery : s.cleaveRecovery;
+      if (e.phaseT >= duration) { e.phase = 'none'; e.phaseT = 0; b.attack = null; }
+      return;
+    }
+    default:
+      e.phase = 'none'; e.phaseT = 0; b.attack = null;
+  }
+}
+
 function chargerAlert(w: World, e: Enemy, dt: number): void {
   const s = ENEMIES.charger;
   const p = w.player;
@@ -1124,7 +1270,7 @@ export function updateEnemies(w: World, dt: number): void {
     }
     if (e.state === 'alert') {
       const attacking = e.phase !== 'none' && e.phase !== 'reload';
-      if (!e.seesPlayer && !attacking) {
+      if (!e.boss && !e.seesPlayer && !attacking) {
         e.loseT += edt;
         if (e.loseT >= PERCEPTION.loseTime) {
           e.target = e.lastKnown ? { ...e.lastKnown } : { x: e.x, z: e.z };
@@ -1142,6 +1288,7 @@ export function updateEnemies(w: World, dt: number): void {
       }
       if (e.kind === 'guard') guardAlert(w, e, edt);
       else if (e.kind === 'archer') archerAlert(w, e, edt);
+      else if (e.kind === 'warden') wardenAlert(w, e, edt);
       else chargerAlert(w, e, edt);
     } else {
       stopArcherMove(e);

@@ -126,11 +126,9 @@ describe('campaign archer ground placement', () => {
 const UNTOUCHED: Array<{ seed: string; opts: GenerateOptions; digest: string }> = [
   { seed: 'ARCHER-GEN-0', opts: { practice: true }, digest: 'fc288be4b968dfab0207bb60cdbce8f96f27bb4490b88633ac87dd43a69dc531' },
   { seed: 'ARCHER-GEN-1', opts: { practice: true }, digest: '7c180e9afef5e6717a52caea1299182715749f9074121af74da109a97e7d25cb' },
-  { seed: 'ARCHER-GEN-0', opts: { floor: 5 }, digest: '7e51c714a5beda71f30abd29c10c4b3f919b66b8bd38ad6aabd4a7527613985c' },
-  { seed: 'ARCHER-GEN-1', opts: { floor: 5 }, digest: '0185071bd3b596ec922f1440d012037160cde1fb392f4d1754c6a73542104d58' },
 ];
 
-describe('authored practice and final arena stay unchanged', () => {
+describe('authored practice stays unchanged', () => {
   it.each(UNTOUCHED)('$seed $opts keeps exact authored generation and RNG results', async ({ seed, opts, digest }) => {
     const rng = vi.spyOn(Rng.prototype, 'next');
     try {
@@ -151,5 +149,28 @@ describe('authored practice and final arena stay unchanged', () => {
     const level = createTrialLevel(id);
     expect(await hash(fingerprint(level))).toBe(digest);
     expect(level.enemies.filter((e) => e.kind === 'archer').every((e) => e.perched)).toBe(true);
+  });
+});
+
+// Explicit new arena baseline: the only replaced hashes are floor 5, where the
+// two placeholder guardians intentionally become a single Warden. Exploration,
+// ordinary practice and all three existing trial fingerprints remain historical.
+describe('single-Warden final arena baseline', () => {
+  it.each([
+    { seed: 'ARCHER-GEN-0', digest: 'bbf8e9a5ceb1da362f10bfdb653e2bc1285a6bcda20777f99be5a3d740c82a45' },
+    { seed: 'ARCHER-GEN-1', digest: '8d986cba2d4ed5b87587be767dcdf27a2c92465cc0fede2f876cd49383e89732' },
+  ])('$seed preserves the authored arena and complete RNG stream', async ({ seed, digest }) => {
+    const rng = vi.spyOn(Rng.prototype, 'next');
+    try {
+      const level = generateLevel(seed, { floor: 5 });
+      expect(level.enemies).toHaveLength(1);
+      expect(level.enemies[0]).toMatchObject({ kind: 'warden', boss: true });
+      expect(level.pickups).toEqual([]); expect(level.chests).toEqual([]);
+      const draws = rng.mock.results.map((result) => result.value as number);
+      expect(draws).toHaveLength(29);
+      expect(await hash({ level: fingerprint(level), draws })).toBe(digest);
+    } finally {
+      rng.mockRestore();
+    }
   });
 });

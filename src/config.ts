@@ -320,6 +320,16 @@ export const ENEMIES = {
     allyDamage: 4,
     allyStumble: 0.5,
   },
+  /** Chapter-one final exam. Fixed HP; all timings use enemy AI/world time. */
+  warden: {
+    hp: 32, radius: 0.5, height: 2.1, headY: 1.86, headR: 0.22, speed: 2.7,
+    cleaveRange: 2.6, cleaveReach: 2.35, cleaveArcDeg: 90,
+    cleaveWindup: 0.8, cleaveLockBefore: 0.35, cleaveActive: 0.15, cleaveRecovery: 1.1,
+    lanceRange: 16, lanceAim: 1, lanceLockBefore: 0.4, lanceSpeed: 18, lanceRecovery: 1.15,
+    lanceHeight: 1.55, lanceMuzzle: 0.6, lanceRadius: 0.1,
+    rushTriggerDist: 8, rushWindup: 1, rushLockBefore: 0.45, rushSpeed: 8, rushDist: 6, rushRecovery: 1.2,
+    wallStagger: 1.5, damage: 4, stagger: 1.1, phaseThreshold: 0.5,
+  },
   patrolSpeed: 1.4,
   roamWait: 1.5,
   roamLegTime: 60,
@@ -618,7 +628,7 @@ export const ITEM_FX = {
 // ---------- 經驗、等級、天賦 ----------
 
 export const XP = {
-  kill: { guard: 4, archer: 3, charger: 5 } as Record<'guard' | 'archer' | 'charger', number>,
+  kill: { guard: 4, archer: 3, charger: 5, warden: 9 } as Record<'guard' | 'archer' | 'charger' | 'warden', number>,
   veteranMul: 2,
   /** 升到第 n 級所需的累積經驗（索引 0 ＝第 1 級）。 */
   levels: [0, 10, 25, 45, 70, 100, 135, 175, 220, 270],

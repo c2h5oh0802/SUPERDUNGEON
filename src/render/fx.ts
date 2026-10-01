@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { itemColor } from '../sim/items';
 import { ENEMIES, PLAYER, SMOKE } from '../config';
 import { clamp, forwardFromYaw, smoothstep } from '../core/math';
-import type { GameEvent, Projectile } from '../sim/types';
+import type { Enemy, GameEvent, Projectile } from '../sim/types';
 import type { World } from '../sim/world';
 import { makeSmokeTexture } from './materials';
 
@@ -58,6 +58,7 @@ export class FxVisual {
   private aimLines = new Map<number, THREE.Mesh>();
   private streaks = new Map<number, THREE.Mesh>();
   private wedges = new Map<number, THREE.Mesh>();
+  private wardenLanes = new Map<number, THREE.Mesh>();
   /** 藥水碎開後的區域：火（橘）、冰（藍）、麻痺氣體（紫綠）。 */
   private areaVis = new Map<number, THREE.Mesh>();
   private areaGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2);
@@ -71,6 +72,8 @@ export class FxVisual {
   private landGeo = new THREE.RingGeometry(0.45, 0.6, 28).rotateX(-Math.PI / 2);
   private landMat = new THREE.MeshBasicMaterial({ color: 0xc6b6ff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
   private wedgeGeo: THREE.BufferGeometry;
+  private wardenWedgeGeo: THREE.BufferGeometry;
+  private laneGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   private wedgeMat = new THREE.MeshBasicMaterial({ color: 0xff6a20, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
   private matDeflected = new THREE.MeshBasicMaterial({ color: 0xffe08a });
   private swordArc: THREE.Mesh;
@@ -79,10 +82,12 @@ export class FxVisual {
   private mats: THREE.Material[] = [];
   private arrowGeo: THREE.BufferGeometry;
   private boltGeo: THREE.BufferGeometry;
+  private lanceGeo: THREE.BufferGeometry;
   private stoneGeo: THREE.BufferGeometry;
   private bottleGeo: THREE.BufferGeometry;
   private matArrow = new THREE.MeshBasicMaterial({ color: 0xd9c08a });
   private matBolt = new THREE.MeshBasicMaterial({ color: 0xff5a24 });
+  private matLance = new THREE.MeshBasicMaterial({ color: 0xffc674 });
   private matStone = new THREE.MeshBasicMaterial({ color: 0xb8b0a4 });
   private matBottle = new THREE.MeshBasicMaterial({ color: 0xc6b6ff });
   private aimMat = new THREE.MeshBasicMaterial({ color: 0xff4a20, transparent: true, opacity: 0.6, depthWrite: false });
@@ -109,16 +114,20 @@ export class FxVisual {
 
     this.arrowGeo = new THREE.CylinderGeometry(0.014, 0.014, 0.72, 5).rotateX(Math.PI / 2);
     this.boltGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.55, 5).rotateX(Math.PI / 2);
+    this.lanceGeo = new THREE.CylinderGeometry(0.045, 0.025, 1.05, 6).rotateX(Math.PI / 2);
     this.stoneGeo = new THREE.IcosahedronGeometry(0.07, 0);
     this.bottleGeo = new THREE.SphereGeometry(0.15, 10, 8);
-    this.geos.push(this.arrowGeo, this.boltGeo, this.stoneGeo, this.bottleGeo);
-    this.mats.push(this.matArrow, this.matBolt, this.matStone, this.matBottle, this.aimMat, this.streakMat, this.wedgeMat, this.matDeflected, this.landMat);
+    this.geos.push(this.arrowGeo, this.boltGeo, this.lanceGeo, this.stoneGeo, this.bottleGeo, this.laneGeo);
+    this.mats.push(this.matArrow, this.matBolt, this.matLance, this.matStone, this.matBottle, this.aimMat, this.streakMat, this.wedgeMat, this.matDeflected, this.landMat);
     this.geos.push(this.landGeo, this.areaGeo);
     this.mats.push(this.areaMats.fire, this.areaMats.frost, this.areaMats.gas);
     // 盾衛鎖定後的揮擊範圍：地上的扇形（朝 -z 為正前方，與角色 yaw 慣例一致）
     const half = ((ENEMIES.guard.arcDeg / 2) * Math.PI) / 180;
     this.wedgeGeo = new THREE.RingGeometry(0.5, ENEMIES.guard.reach + PLAYER.radius, 20, 1, Math.PI / 2 - half, half * 2).rotateX(-Math.PI / 2).translate(0, 0.04, 0);
     this.geos.push(this.wedgeGeo);
+    const bossHalf = ENEMIES.warden.cleaveArcDeg * Math.PI / 360;
+    this.wardenWedgeGeo = new THREE.RingGeometry(0, ENEMIES.warden.cleaveReach + PLAYER.radius, 32, 1, Math.PI / 2 - bossHalf, bossHalf * 2).rotateX(-Math.PI / 2);
+    this.geos.push(this.wardenWedgeGeo);
 
     // 劍的揮擊弧：鎖定方向上的一道扇形尾跡（僅視覺，不是碰撞體）
     const arcG = new THREE.RingGeometry(0.9, 2.0, 24, 1, -Math.PI * 0.28, Math.PI * 0.56);
@@ -189,7 +198,7 @@ export class FxVisual {
           break;
         }
         case 'helmet':
-          this.burst(x, y, z, 10, [0.9, 0.9, 0.8], 3, 0.25);
+          this.burst(x, y, z, e.kind === 'warden' ? 18 : 10, e.kind === 'warden' ? [1, 0.75, 0.35] : [0.9, 0.9, 0.8], 3, 0.25);
           break;
         default:
       }
@@ -230,8 +239,9 @@ export class FxVisual {
         break;
       }
       case 'bolt': {
-        obj.add(new THREE.Mesh(this.boltGeo, this.matBolt));
-        color = new THREE.Color(0xff4a1a);
+        const lance = p.radius === ENEMIES.warden.lanceRadius;
+        obj.add(new THREE.Mesh(lance ? this.lanceGeo : this.boltGeo, lance ? this.matLance : this.matBolt));
+        color = new THREE.Color(lance ? 0xffc674 : 0xff4a1a);
         break;
       }
       case 'stone':
@@ -413,13 +423,104 @@ export class FxVisual {
     }
   }
 
+  /** All warden warnings use the same configured reach/radius and frozen target as simulation. */
+  private updateWardenTelegraph(e: Enemy, realTime: number, aim: Set<number>, wedge: Set<number>, lane: Set<number>): void {
+    const b = ENEMIES.warden;
+    const attack = e.warden?.attack;
+    const preparing = e.phase === 'windup' || e.phase === 'aim';
+    const live = e.phase === 'active' || e.phase === 'charge';
+    if (!preparing && !live) return;
+    const yaw = e.locked ? e.lockedYaw : e.yaw;
+    const locked = e.locked || live;
+    const opacity = live ? 0.42 : locked ? 0.3 + 0.12 * Math.abs(Math.sin(realTime * 16)) : 0.14;
+    if (attack === 'cleave') {
+      wedge.add(e.id);
+      let m = this.wedges.get(e.id);
+      if (!m) {
+        const mat = this.wedgeMat.clone();
+        this.mats.push(mat);
+        m = new THREE.Mesh(this.wardenWedgeGeo, mat);
+        this.group.add(m);
+        this.wedges.set(e.id, m);
+      }
+      m.position.set(e.x, e.y + 0.045, e.z);
+      m.rotation.y = yaw;
+      const mat = m.material as THREE.MeshBasicMaterial;
+      mat.opacity = opacity;
+      mat.color.setHex(locked ? 0xff612f : 0xeec77d);
+      m.visible = true;
+      return;
+    }
+    if (attack !== 'lance' && attack !== 'rush') return;
+    const f = forwardFromYaw(yaw);
+    let ox = e.x;
+    let oz = e.z;
+    let dx = f.x;
+    let dz = f.z;
+    let length: number = Math.max(0, b.rushDist - (e.phase === 'charge' ? e.chargeDist : 0));
+    let radius: number = e.radius + PLAYER.radius;
+    if (attack === 'lance') {
+      if (!e.aimPoint) return;
+      ox += f.x * b.lanceMuzzle;
+      oz += f.z * b.lanceMuzzle;
+      const oy = e.y + b.lanceHeight;
+      const target = e.aimPoint;
+      const horizontal = Math.hypot(target.x - ox, target.z - oz);
+      if (horizontal > 0.001) {
+        dx = (target.x - ox) / horizontal;
+        dz = (target.z - oz) / horizontal;
+      }
+      length = b.lanceRange;
+      radius = b.lanceRadius + PLAYER.radius;
+      aim.add(e.id);
+      let m = this.aimLines.get(e.id);
+      if (!m) {
+        const geo = new THREE.CylinderGeometry(0.018, 0.018, 1, 4).rotateX(Math.PI / 2).translate(0, 0, -0.5);
+        const mat = this.aimMat.clone();
+        this.geos.push(geo);
+        this.mats.push(mat);
+        m = new THREE.Mesh(geo, mat);
+        this.group.add(m);
+        this.aimLines.set(e.id, m);
+      }
+      m.position.set(ox, oy, oz);
+      m.lookAt(target.x, target.y, target.z);
+      m.rotateY(Math.PI);
+      m.scale.set(locked ? 1.8 : 1, locked ? 1.8 : 1, Math.hypot(target.x - ox, target.y - oy, target.z - oz));
+      const mat = m.material as THREE.MeshBasicMaterial;
+      mat.color.setHex(locked ? 0xff4425 : 0xffc674);
+      mat.opacity = locked ? 0.85 : 0.25 + 0.3 * clamp(e.phaseT / b.lanceAim, 0, 1);
+      m.visible = true;
+    }
+    lane.add(e.id);
+    let m = this.wardenLanes.get(e.id);
+    if (!m) {
+      const mat = this.streakMat.clone();
+      this.mats.push(mat);
+      m = new THREE.Mesh(this.laneGeo, mat);
+      this.group.add(m);
+      this.wardenLanes.set(e.id, m);
+    }
+    // Include the player's collision radius and both end caps. The box conservatively
+    // contains the swept capsule, rather than implying its centreline is the safe edge.
+    m.position.set(ox + dx * length / 2, e.y + 0.04, oz + dz * length / 2);
+    m.rotation.y = Math.atan2(-dx, -dz);
+    m.scale.set(radius * 2, 1, length + radius * 2);
+    const mat = m.material as THREE.MeshBasicMaterial;
+    mat.color.setHex(attack === 'lance' ? locked ? 0xff4425 : 0xffc674 : locked ? 0xff8b35 : 0xf0cf8f);
+    mat.opacity = attack === 'lance' ? opacity * 0.65 : opacity;
+    m.visible = true;
+  }
+
   private updateTelegraphs(realTime: number): void {
     const w = this.world;
     const seenAim = new Set<number>();
     const seenStreak = new Set<number>();
     const seenWedge = new Set<number>();
+    const seenWardenLane = new Set<number>();
     for (const e of w.enemies) {
       if (!e.alive) continue;
+      if (e.kind === 'warden') this.updateWardenTelegraph(e, realTime, seenAim, seenWedge, seenWardenLane);
       if (e.kind === 'archer' && e.phase === 'aim' && e.aimPoint) {
         seenAim.add(e.id);
         let m = this.aimLines.get(e.id);
@@ -481,6 +582,7 @@ export class FxVisual {
     for (const [id, m] of this.aimLines) if (!seenAim.has(id)) m.visible = false;
     for (const [id, m] of this.streaks) if (!seenStreak.has(id)) m.visible = false;
     for (const [id, m] of this.wedges) if (!seenWedge.has(id)) m.visible = false;
+    for (const [id, m] of this.wardenLanes) if (!seenWardenLane.has(id)) m.visible = false;
     this.wedgeMat.opacity = 0.22 + 0.16 * Math.abs(Math.sin(realTime * 14));
     const seenLand = new Set<number>();
     for (const eye of this.world.cue.eye) {

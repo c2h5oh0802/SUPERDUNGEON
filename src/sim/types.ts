@@ -188,6 +188,8 @@ export interface Enemy {
   /** A committed attack resolves before Sleep is applied. */
   pendingSleep: boolean;
   boss: boolean;
+  /** Disposable encounter runtime. Saves remain floor-start snapshots. */
+  warden: { attack: 'cleave' | 'lance' | 'rush' | null; phaseTwo: boolean; rangedCount: number } | null;
 }
 
 export type ProjectileKind = 'arrow' | 'stone' | 'bottle' | 'bolt';
@@ -196,6 +198,10 @@ export interface Projectile {
   id: number;
   kind: ProjectileKind;
   owner: 'player' | number;
+  /** Hostile bolt overrides travel with the projectile even after its owner dies. */
+  damage?: number;
+  source?: string;
+  lifetime?: number;
   pos: V3;
   vel: V3;
   radius: number;

@@ -1,0 +1,582 @@
+{
+  "baseCommit": "d78aa71e931c0414203783514ebfae02d47388a6",
+  "method": "Actual generated arena; controlled entry 6m from Boss, then ordinary frame inputs only. Base weapons/HP. Consumables removed; knife has zero ammo. Perfect aim, policy-controlled reads. No healing, invulnerability or damage injection. Not human balance/visual evidence.",
+  "results": [
+    {
+      "policy": "headspam",
+      "fps": 60,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": false,
+      "dead": true,
+      "damage": 12,
+      "worldTime": 6.017,
+      "bossHp": 5,
+      "arrowsUsed": 8,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 3,
+      "locks": 3,
+      "hits": 5,
+      "blockedHeads": 3,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        29.5,
+        12.5
+      ],
+      "bossPosition": [
+        29.5,
+        11.63
+      ],
+      "phase": "recovery",
+      "attack": "rush"
+    },
+    {
+      "policy": "read-bow",
+      "fps": 60,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 12.901,
+      "bossHp": 0,
+      "arrowsUsed": 6,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 6,
+      "locks": 6,
+      "hits": 6,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        21.35,
+        5.52
+      ],
+      "bossPosition": [
+        24.69,
+        10.08
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "counter-sword",
+      "fps": 60,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 7.808,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 4,
+      "deflects": 1,
+      "windups": 5,
+      "locks": 5,
+      "hits": 9,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.65,
+        8.48
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "recovery-knife",
+      "fps": 60,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 22.08,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 11,
+      "locks": 11,
+      "hits": 11,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.45,
+        7.88
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "read-bow",
+      "fps": 30,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 12.92,
+      "bossHp": 0,
+      "arrowsUsed": 6,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 6,
+      "locks": 6,
+      "hits": 6,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        21.35,
+        5.67
+      ],
+      "bossPosition": [
+        24.8,
+        10.22
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "counter-sword",
+      "fps": 30,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 7.889,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 4,
+      "deflects": 1,
+      "windups": 5,
+      "locks": 5,
+      "hits": 9,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.62,
+        8.28
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "recovery-knife",
+      "fps": 30,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 22.119,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 11,
+      "locks": 11,
+      "hits": 11,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.44,
+        7.83
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "read-bow",
+      "fps": 120,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 12.919,
+      "bossHp": 0,
+      "arrowsUsed": 6,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 6,
+      "locks": 6,
+      "hits": 6,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        21.35,
+        5.32
+      ],
+      "bossPosition": [
+        24.64,
+        10.01
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "counter-sword",
+      "fps": 120,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 7.788,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 4,
+      "deflects": 1,
+      "windups": 5,
+      "locks": 5,
+      "hits": 9,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.65,
+        8.49
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "recovery-knife",
+      "fps": 120,
+      "seed": "WARDEN-REVIEW",
+      "reaction": 0,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 22.15,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 11,
+      "locks": 11,
+      "hits": 11,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.48,
+        7.93
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "headspam",
+      "fps": 60,
+      "seed": "WARDEN-A",
+      "reaction": 0.12,
+      "cleared": false,
+      "dead": true,
+      "damage": 12,
+      "worldTime": 6.017,
+      "bossHp": 5,
+      "arrowsUsed": 8,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 3,
+      "locks": 3,
+      "hits": 5,
+      "blockedHeads": 3,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        8.5,
+        12.5
+      ],
+      "bossPosition": [
+        8.5,
+        11.63
+      ],
+      "phase": "recovery",
+      "attack": "rush"
+    },
+    {
+      "policy": "read-bow",
+      "fps": 60,
+      "seed": "WARDEN-A",
+      "reaction": 0.12,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 13.47,
+      "bossHp": 0,
+      "arrowsUsed": 6,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 6,
+      "locks": 6,
+      "hits": 6,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        6.17,
+        6.01
+      ],
+      "bossPosition": [
+        3.55,
+        10.03
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "counter-sword",
+      "fps": 60,
+      "seed": "WARDEN-A",
+      "reaction": 0.12,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 7.92,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 4,
+      "deflects": 0,
+      "windups": 5,
+      "locks": 5,
+      "hits": 8,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        7.37,
+        7.78
+      ],
+      "bossPosition": [
+        8.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "recovery-knife",
+      "fps": 60,
+      "seed": "WARDEN-A",
+      "reaction": 0.12,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 22.174,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 11,
+      "locks": 11,
+      "hits": 11,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        7.42,
+        7.73
+      ],
+      "bossPosition": [
+        8.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "headspam",
+      "fps": 60,
+      "seed": "WARDEN-B",
+      "reaction": 0.12,
+      "cleared": false,
+      "dead": true,
+      "damage": 12,
+      "worldTime": 6.017,
+      "bossHp": 5,
+      "arrowsUsed": 8,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 3,
+      "locks": 3,
+      "hits": 5,
+      "blockedHeads": 3,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        29.5,
+        12.5
+      ],
+      "bossPosition": [
+        29.5,
+        11.63
+      ],
+      "phase": "recovery",
+      "attack": "rush"
+    },
+    {
+      "policy": "read-bow",
+      "fps": 60,
+      "seed": "WARDEN-B",
+      "reaction": 0.12,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 13.635,
+      "bossHp": 0,
+      "arrowsUsed": 6,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 6,
+      "locks": 6,
+      "hits": 6,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "rush"
+      ],
+      "position": [
+        21.35,
+        9.48
+      ],
+      "bossPosition": [
+        22.43,
+        4.57
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "counter-sword",
+      "fps": 60,
+      "seed": "WARDEN-B",
+      "reaction": 0.12,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 7.92,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 4,
+      "deflects": 0,
+      "windups": 5,
+      "locks": 5,
+      "hits": 8,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.63,
+        7.78
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    },
+    {
+      "policy": "recovery-knife",
+      "fps": 60,
+      "seed": "WARDEN-B",
+      "reaction": 0.12,
+      "cleared": true,
+      "dead": false,
+      "damage": 0,
+      "worldTime": 22.174,
+      "bossHp": 0,
+      "arrowsUsed": 0,
+      "counters": 0,
+      "deflects": 0,
+      "windups": 11,
+      "locks": 11,
+      "hits": 11,
+      "blockedHeads": 0,
+      "attackKinds": [
+        "lance",
+        "cleave"
+      ],
+      "position": [
+        30.58,
+        7.73
+      ],
+      "bossPosition": [
+        29.5,
+        6.5
+      ],
+      "phase": "none",
+      "attack": null
+    }
+  ]
+}

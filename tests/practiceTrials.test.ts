@@ -12,7 +12,8 @@ import { Nav } from '../src/sim/nav';
 import { emptyInput } from '../src/sim/types';
 import { finishAction, run } from './helpers';
 
-for (const trial of PRACTICE_TRIALS) describe(trial.id, () => {
+// The Warden uses the actual campaign arena and starting kit, tested separately.
+for (const trial of PRACTICE_TRIALS.filter(t => t.id !== 'heart-warden')) describe(trial.id, () => {
   it('validates, has safe spawn and connected flanking space, uses base enemies', () => {
     const l = createTrialLevel(trial.id), w = createTrialWorld(trial.id, 'huntress');
     expect(validateLevel(l)).toEqual({ ok: true, errors: [] });

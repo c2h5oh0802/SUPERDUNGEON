@@ -6,7 +6,7 @@ import { segmentCylinder, segmentEnemy } from './characterHit';
 import { shieldBlocks } from './classSys';
 import { shatterPotion } from './items';
 import { hasTalent } from './progress';
-import { chargerHelmet, damageEnemy, enemyForward } from './enemySys';
+import { chargerHelmet, damageEnemy, enemyForward, wardenCrownClosed } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
@@ -103,11 +103,15 @@ export function updateProjectiles(w: World, dt: number): void {
   // 1) 規劃本子步的位移（所有投射物用同一時間區間）
   for (const p of w.projectiles) {
     if (!p.alive) continue;
+    // Only explicit (Warden) lifetimes clip the final collision segment. Ordinary
+    // projectiles retain their established full-step, post-collision expiry.
+    const flightDt = p.lifetime === undefined ? dt : Math.min(dt, Math.max(0, p.lifetime - p.age));
+    if (flightDt <= 0) { p.alive = false; continue; }
     p.age += dt;
     p.next = {
-      x: p.pos.x + p.vel.x * dt,
-      y: p.pos.y + p.vel.y * dt - 0.5 * p.gravity * dt * dt,
-      z: p.pos.z + p.vel.z * dt,
+      x: p.pos.x + p.vel.x * flightDt,
+      y: p.pos.y + p.vel.y * flightDt - 0.5 * p.gravity * flightDt * flightDt,
+      z: p.pos.z + p.vel.z * flightDt,
     };
     p.avgVel = { x: (p.next.x - p.pos.x) / dt, y: (p.next.y - p.pos.y) / dt, z: (p.next.z - p.pos.z) / dt };
   }
@@ -156,7 +160,7 @@ export function updateProjectiles(w: World, dt: number): void {
           break;
         }
         const src = typeof p.owner === 'number' ? w.enemies.find((e) => e.id === p.owner) : undefined;
-        w.damagePlayer(PROJECTILES.bolt.damage, '弩手的弩矢', src ? src.x : at.x - p.vel.x, src ? src.z : at.z - p.vel.z);
+        w.damagePlayer(p.damage ?? PROJECTILES.bolt.damage, p.source ?? '弩手的弩矢', src ? src.x : at.x - p.vel.x, src ? src.z : at.z - p.vel.z);
         break;
       }
       if (hit.type === 'enemy') {
@@ -173,7 +177,7 @@ export function updateProjectiles(w: World, dt: number): void {
       p.pos = p.next;
       p.vel = { x: p.vel.x, y: p.vel.y - p.gravity * dt, z: p.vel.z };
       const g = w.grid;
-      if (p.age > PROJECTILES.maxLife || p.pos.x < 0 || p.pos.z < 0 || p.pos.x > g.w || p.pos.z > g.h) p.alive = false;
+      if ((p.lifetime === undefined ? p.age > PROJECTILES.maxLife : p.age >= p.lifetime) || p.pos.x < 0 || p.pos.z < 0 || p.pos.x > g.w || p.pos.z > g.h) p.alive = false;
     }
   }
   // 3) 清除
@@ -220,7 +224,7 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
   if (p.kind === 'bolt' && p.owner !== 'player') {
     p.alive = false;
     p.hitSet.add(e.id);
-    damageEnemy(w, e, PROJECTILES.bolt.damage, { source: 'friendlyBolt', sneak: false, head: false, x: at.x, y: at.y, z: at.z });
+    damageEnemy(w, e, p.damage ?? PROJECTILES.bolt.damage, { source: 'friendlyBolt', sneak: false, head: false, x: at.x, y: at.y, z: at.z });
     w.emitNoise(at.x, at.y, at.z, NOISE.combatHit, 'combat');
     return;
   }
@@ -233,10 +237,10 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
   // 突進者：察覺玩家後低頭，角盔擋住正面的頭
   const guardBlocks =
     e.kind === 'guard' && fromFront && e.state !== 'sleep' && e.phase !== 'stun' && e.phase !== 'stagger' && e.phase !== 'pushed' && (!head || e.shieldUp);
-  const helmetBlocks = head && fromFront && chargerHelmet(e);
+  const helmetBlocks = head && fromFront && (chargerHelmet(e) || wardenCrownClosed(e));
   if (guardBlocks || helmetBlocks) {
     p.alive = false;
-    w.emit({ type: guardBlocks ? 'shield' : 'helmet', x: at.x, y: at.y, z: at.z, id: e.id });
+    w.emit({ type: guardBlocks ? 'shield' : 'helmet', x: at.x, y: at.y, z: at.z, id: e.id, kind: e.kind, source: p.kind, head });
     const dx = e.x + f.x * (e.radius + 0.4);
     const dz = e.z + f.z * (e.radius + 0.4);
     if (p.kind === 'arrow') w.addPickup('arrows', 1, dx, 0.05, dz, null);

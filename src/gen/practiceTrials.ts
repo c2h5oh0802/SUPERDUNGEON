@@ -1,6 +1,7 @@
 import { WORLD } from '../config';
 import { Grid, T, type TileId } from '../sim/grid';
 import type { EnemySpawn, LevelData } from './generator';
+import { generateLevel } from './validate';
 
 /** Authored practice fixtures only. Never selected by campaign generation. */
 export const PRACTICE_TRIALS = [
@@ -13,6 +14,9 @@ export const PRACTICE_TRIALS = [
   { id: 'cluster-bypass', seed: 'TRIAL-CLUSTER', name: '窄道與繞路',
     objective: '到北端開啟空寶箱（E）；左側長路可避開敵群，不必清場。',
     hint: '正前方是短窄道，左側是遮蔽長路。比較普通箭逐個處理、冰霜／氣體或藥劑箭控制，以及完全繞行的時間與受傷。' },
+  { id: 'heart-warden', seed: 'TRIAL-WARDEN', name: '守心者試煉',
+    objective: '以職業起始裝備擊倒守心者，再按 E 取走沉眠之心。',
+    hint: '近身看扇形橫斬、遠距看紅線槍矢；半血裂冠後留意直線衝撞。觀察鎖定方向，閃開後利用收招空檔反擊。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);
@@ -20,6 +24,11 @@ export const trialInfo = (id: PracticeTrialId) => PRACTICE_TRIALS.find(t => t.id
 
 export function createTrialLevel(id: PracticeTrialId): LevelData {
   const info = trialInfo(id);
+  if (id === 'heart-warden') {
+    // Use the actual final-floor arena, including its encounter and Heart gate.
+    // Practice is marked only after campaign generation and validation finish.
+    return { ...generateLevel(info.seed, { floor: 5 }), practice: true, practiceTrial: id, templateName: info.name };
+  }
   const grid = new Grid(26, 24);
   grid.tiles.fill(T.Wall);
   const rect = (x0: number, z0: number, x1: number, z1: number, tile: TileId = T.Floor) => {

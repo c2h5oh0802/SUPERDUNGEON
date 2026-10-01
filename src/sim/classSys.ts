@@ -1,4 +1,4 @@
-import { ACTIONS, CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SHIELD, SHOVE, TALENT_FX, UPGRADE, WEAPONS } from '../config';
+import { ACTIONS, CLASSES, ENEMIES, ITEM_FX, NOISE, PLAYER, PROJECTILES, SHIELD, SHOVE, TALENT_FX, TIME, TIPS, UPGRADE, WEAPONS } from '../config';
 import { meleeCandidates } from './meleeTargets';
 import { hasTalent } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
@@ -12,7 +12,7 @@ import type { Enemy, Projectile } from './types';
 // - 獵手：藥劑箭改變敵人的時間軸（見 projectileSys、enemySys）；獵人之眼只提供資訊，不修改彈道。
 
 export interface CounterThreat {
-  kind: 'guard' | 'charger' | 'archer' | 'bolt';
+  kind: 'guard' | 'charger' | 'archer' | 'warden' | 'bolt';
   id: number;
 }
 
@@ -30,6 +30,10 @@ export function attackCommitted(e: Enemy): boolean {
       return (e.phase === 'windup' && e.locked) || e.phase === 'charge';
     case 'archer':
       return e.phase === 'aim' && e.locked;
+    case 'warden':
+      return (e.phase === 'windup' && e.locked && (e.warden?.attack === 'cleave' || e.warden?.attack === 'rush')) ||
+        (e.phase === 'aim' && e.locked && e.warden?.attack === 'lance') ||
+        (e.phase === 'charge' && e.warden?.attack === 'rush');
   }
 }
 
@@ -39,6 +43,36 @@ function inFront(w: World, x: number, z: number, slack = 0): boolean {
   const dz = z - p.z;
   if (Math.hypot(dx, dz) < 0.3) return true;
   return Math.abs(angleDiff(yawFromDir(dx, dz), p.yaw)) <= meleeHalfArc(w) + slack;
+}
+
+/** A rush that ends or hits an obstacle before sword contact cannot be Countered. */
+function canCounterWardenRush(w: World, e: Enemy, along: number, perp: number, reach: number): boolean {
+  const s = ENEMIES.warden;
+  const timeMul = w.player.hasteT > 0 ? ITEM_FX.haste.timeMul : 1;
+  const windup = CLASSES.warrior.counterSwing.windup * timeMul;
+  // First entry into sword reach on the already locked straight path.
+  if (perp > reach) return false;
+  const enter = Math.max(0, along - Math.sqrt(reach * reach - perp * perp));
+  const enemyTime = enter / s.rushSpeed;
+  const slowedTime = e.slowT * TIPS.chill.timeScale;
+  const reachTime = enter === 0 ? 0 : e.paralyzeT + (enemyTime <= slowedTime
+    ? enemyTime / TIPS.chill.timeScale : e.slowT + enemyTime - slowedTime);
+  const contactTime = Math.max(windup, reachTime);
+  if (contactTime >= windup + WEAPONS[w.player.weapon.id].active * timeMul - 1e-9) return false;
+  const movingTime = Math.max(0, contactTime - e.paralyzeT);
+  const travel = s.rushSpeed * (movingTime - Math.min(movingTime, e.slowT) * (1 - TIPS.chill.timeScale));
+  if (s.rushDist - e.chargeDist <= travel + 1e-8) return false;
+  const f = forwardFromYaw(e.lockedYaw);
+  // Sweep the boss's actual body, including corner/pillar clips that a sight ray misses.
+  const steps = Math.max(1, Math.ceil(travel / .04));
+  for (let k = 1; k <= steps; k++) {
+    const x = e.x + f.x * travel * k / steps;
+    const z = e.z + f.z * travel * k / steps;
+    if (w.grid.circleBlocked(x, z, e.radius)) return false;
+    if (Math.hypot(w.player.x - x, w.player.z - z) <= e.radius + PLAYER.radius) return false;
+    if (w.enemies.some(o => o !== e && o.alive && !o.perched && Math.hypot(o.x - x, o.z - z) < o.radius + e.radius)) return false;
+  }
+  return true;
 }
 
 /**
@@ -60,7 +94,12 @@ export function counterThreat(w: World): CounterThreat | null {
     const d = Math.hypot(dx, dz);
     if (!inFront(w, e.x, e.z)) continue;
     const reach = meleeReach(w) + c.counterLunge + e.radius;
-    if (e.kind === 'guard') {
+    if (e.kind === 'warden' && e.phase !== 'charge') {
+      // Each fixed tell must leave enough time for the counter swing to connect.
+      const s = ENEMIES.warden;
+      const duration = e.warden?.attack === 'lance' ? s.lanceAim : e.warden?.attack === 'rush' ? s.rushWindup : s.cleaveWindup;
+      if (d <= reach && duration - e.phaseT >= cs.windup) return { kind: 'warden', id: e.id };
+    } else if (e.kind === 'guard') {
       // 反擊斬的作用要在盾衛揮下之前開始
       const remain = ENEMIES.guard.windup - e.phaseT;
       if (d <= reach && remain >= cs.windup - 0.01) return { kind: 'guard', id: e.id };
@@ -75,7 +114,8 @@ export function counterThreat(w: World): CounterThreat | null {
       const fz = -Math.cos(e.lockedYaw);
       const along = -dx * fx + -dz * fz;
       const perp = Math.abs(-dx * fz + dz * fx);
-      if (along > 0 && perp <= e.radius + PLAYER.radius + 0.25) return { kind: 'charger', id: e.id };
+      if (e.kind === 'warden' && !canCounterWardenRush(w, e, along, perp, reach)) continue;
+      if (along > 0 && perp <= e.radius + PLAYER.radius + 0.25) return { kind: e.kind === 'warden' ? 'warden' : 'charger', id: e.id };
     }
   }
   const chest = { x: p.x, y: 1.3, z: p.z };
@@ -91,6 +131,14 @@ export function counterThreat(w: World): CounterThreat | null {
     if (along <= 0) continue;
     const pass = Math.sqrt(Math.max(0, d * d - along * along));
     if (pass > c.boltPassDist) continue;
+    if (b.lifetime !== undefined) {
+      const radius = meleeReach(w) + c.deflectMargin;
+      if (pass > radius) continue;
+      const timeMul = p.hasteT > 0 ? ITEM_FX.haste.timeMul : 1;
+      const windup = cs.windup * timeMul;
+      const contact = Math.max(windup, (along - Math.sqrt(radius * radius - pass * pass)) / sp);
+      if (b.lifetime - b.age <= contact + TIME.maxSubstep + 1e-8 || contact >= windup + WEAPONS[p.weapon.id].active * timeMul) continue;
+    }
     if (!inFront(w, b.pos.x, b.pos.z, 0.15)) continue;
     return { kind: 'bolt', id: b.id };
   }
@@ -108,9 +156,10 @@ export function applyCounter(w: World, e: Enemy): boolean {
     w.emit({ type: 'stun', id: e.id, x: e.x, y: 1.0, z: e.z });
   } else {
     e.phase = 'stagger';
-    e.staggerDur = e.kind === 'guard' ? ENEMIES.guard.stagger : ENEMIES.archer.stagger;
+    e.staggerDur = e.kind === 'warden' ? ENEMIES.warden.stagger : e.kind === 'guard' ? ENEMIES.guard.stagger : ENEMIES.archer.stagger;
     e.aimPoint = null;
     e.hitDone = true;
+    if (e.warden) e.warden.attack = null;
   }
   w.stats.counters++;
   w.emit({ type: 'counter', id: e.id, kind: e.kind, x: e.x, y: e.y + 1.2, z: e.z });
@@ -151,6 +200,10 @@ export function deflectBolts(w: World): number {
     b.next = { ...b.pos };
     b.owner = 'player';
     b.deflected = true;
+    // The returned lance is an ordinary deflected bolt, not the boss's damage.
+    delete b.damage;
+    delete b.source;
+    delete b.lifetime;
     b.gravity = 0;
     b.age = 0;
     b.hitSet = new Set();
@@ -192,7 +245,7 @@ export function pushTarget(w: World, yaw = w.player.yaw): Enemy | null {
   let bestGap = Infinity;
   for (const e of w.enemies) {
     if (!e.alive || e.perched || e.y > 0.5 || e.push) continue;
-    if (e.kind === 'charger' && e.phase === 'charge') continue;
+    if ((e.kind === 'charger' || e.kind === 'warden') && e.phase === 'charge') continue;
     const dx = e.x - p.x;
     const dz = e.z - p.z;
     const gap = Math.hypot(dx, dz) - PLAYER.radius - e.radius;

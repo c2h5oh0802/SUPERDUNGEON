@@ -40,7 +40,7 @@ describe('Chapter 1: four exploration floors plus dedicated guardian arena', () 
       food += rations.length; upgrades += l.pickups.filter((p) => p.item === 'scroll:upgrade').length;
       if (f === 5) {
         expect(l.templateId).toBe('arena'); expect(l.rooms).toHaveLength(2);
-        expect(l.enemies).toHaveLength(2); expect(l.enemies.every((e) => e.boss)).toBe(true);
+        expect(l.enemies).toHaveLength(1); expect(l.enemies[0]).toMatchObject({ kind: 'warden', boss: true });
         expect(l.pickups).toEqual([]); expect(l.chests).toEqual([]); expect(l.specialRooms).toEqual([]);
       }
     }
@@ -48,7 +48,7 @@ describe('Chapter 1: four exploration floors plus dedicated guardian arena', () 
     expect([HUNGER.hungryAt, HUNGER.starvingAt, HUNGER.foodRestore, UPGRADE.maxLevel]).toEqual([120, 180, 60, 5]);
   });
 
-  it('Heart is disabled before every guardian is defeated; saved floor4 leads to5, then won world cannot tick', () => {
+  it('Heart is disabled before the Warden is defeated; saved floor4 leads to5, then won world cannot tick', () => {
     let state = newRun('CHAPTER-SAVE', 'warrior');
     for (let floor = 1; floor <= 4; floor++) {
       const w = createFloorWorld(state); expect(w.level.goal).toBe('descend');
@@ -60,7 +60,7 @@ describe('Chapter 1: four exploration floors plus dedicated guardian arena', () 
     expect(w.player.hunger).toBe(80); expect(w.player.items.find((i) => i.id === 'food:ration')?.count).toBe(4);
     faceHeart(w); w.updateEncounter();
     expect(findInteractTarget(w)?.enabled).toBe(false); w.takeHeart(); expect(w.heartTaken).toBe(false);
-    hit(w, 0); expect(w.heartAvailable).toBe(false); hit(w, 1); expect(w.heartAvailable).toBe(true);
+    hit(w, 0); expect(w.heartAvailable).toBe(true);
     expect(w.pickups.filter((p) => p.kind === 'item')).toEqual([]);
     faceHeart(w); w.frame(1 / 60, { ...emptyInput(w.player.yaw), interact: true }); finishAction(w);
     expect(w.outcome).toBe('win'); expect(w.heartTaken).toBe(true);
@@ -87,13 +87,15 @@ describe('Chapter 1: four exploration floors plus dedicated guardian arena', () 
     w.resolveChoice(0); expect(w.player.weapon.level).toBe(1);
   });
 
-  it('ranged initiation including lethal first strike activates freeze outside arena; guardians never sleep', () => {
+  it('ranged initiation including lethal first strike activates freeze outside arena; Warden never sleeps', () => {
     const w = arena(); w.player.hunger = 150;
     for (const e of w.enemies) lullEnemy(e);
     expect(w.enemies.every((e) => e.state !== 'sleep' && !e.pendingSleep)).toBe(true);
-    hit(w, 0); expect(w.encounterState).toBe('active');
-    w.enemies[1]!.paralyzeT = 30; w.advance(1); expect(w.player.hunger).toBe(150);
-    hit(w, 1); expect(w.encounterState).toBe('resolved'); w.advance(1); expect(w.player.hunger).toBe(150);
+    hit(w, 0, 1); expect(w.encounterState).toBe('active');
+    w.enemies[0]!.paralyzeT = 30; w.advance(1); expect(w.player.hunger).toBe(150);
+    hit(w, 0); expect(w.encounterState).toBe('resolved'); w.advance(1); expect(w.player.hunger).toBe(150);
+    const lethal = arena(); lethal.player.hunger = 150; hit(lethal, 0);
+    expect(lethal.encounterState).toBe('resolved'); lethal.advance(1); expect(lethal.player.hunger).toBe(150);
   });
 });
 

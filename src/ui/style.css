@@ -126,6 +126,44 @@ kbd {
   color: var(--heart);
 }
 
+/* The boss briefing is present on arena entry, before the first player shot. */
+#boss {
+  width: 410px;
+  max-width: 100%;
+  margin: 8px auto 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(226, 188, 117, 0.45);
+  border-radius: 5px;
+  background: rgba(17, 16, 23, 0.84);
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.boss-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: #f0d49b;
+  font-size: 14px;
+}
+#boss-health { font-variant-numeric: tabular-nums; }
+.boss-bar {
+  height: 5px;
+  margin: 5px 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.13);
+}
+#boss-fill { display: block; height: 100%; width: 100%; background: #d1a55b; }
+#boss.phase-two #boss-fill { background: #e98754; }
+#boss-state { color: #ffc79a; }
+#boss.exposed #boss-state { color: #a5edda; }
+#boss-guide { margin-top: 3px; color: #e1ddd3; }
+#hud.warden-present #lock-banner {
+  top: 184px;
+  max-width: calc(100vw - 32px);
+  white-space: normal;
+}
+
 #lock-banner {
   position: absolute;
   top: 48px;

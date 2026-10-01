@@ -21,6 +21,12 @@
       </div>
       <div class="hud-top-center">
         <div id="objective">目標：深入地城，取得沉眠之心</div>
+        <div id="boss" class="hidden" aria-label="守心者生命">
+          <div class="boss-title"><span id="boss-name">守心者</span><span id="boss-health"></span></div>
+          <div class="boss-bar"><i id="boss-fill"></i></div>
+          <div id="boss-state"></div>
+          <div id="boss-guide">冠甲只擋正面頭部；身體、側後方可打<br />扇形橫斬・紅線槍矢・直線衝撞；收招時露頭</div>
+        </div>
       </div>
       <div id="lock-banner" class="hidden">此環境無法鎖定滑鼠：按住<b>右鍵拖曳</b>或用<b>方向鍵</b>轉視角，左鍵仍是攻擊。</div>
       <div id="icons"></div>
@@ -61,7 +67,7 @@
       <div class="menu-card">
         <h1>沉眠之心</h1>
         <p class="sub">SUPERDUNGEON · 第一人稱慢動作地城潛入</p>
-        <p class="pitch">潛入一座沉睡的地城，用慢動作讀懂每一個危險；取走沉眠之心後整座地城甦醒，你得活著把它帶出去。</p>
+        <p class="pitch">潛入一座沉睡的地城，用慢動作讀懂每一個危險；深入四層探索區，在第五層擊倒守心者，取得沉眠之心。</p>
         <div class="class-picker" role="radiogroup" aria-label="選擇職業">
           <button class="class-card" data-cls="warrior" role="radio" aria-checked="true"><span class="cls-name"></span><span class="cls-promise"></span><span class="cls-abil"></span></button>
           <button class="class-card" data-cls="huntress" role="radio" aria-checked="false"><span class="cls-name"></span><span class="cls-promise"></span><span class="cls-abil"></span></button>
@@ -93,7 +99,7 @@
     <section id="screen-trials" class="screen hidden">
       <div class="panel wide">
         <h2>固定遭遇試玩</h2>
-        <p>沿用主選單所選職業。三個獨立測試場，尚未加入正式隨機樓層。</p>
+        <p>沿用主選單所選職業。前三個是獨立測試場；第四個直接試玩正式首領競技場。</p>
         <div class="menu-actions">
           <button id="btn-shield-crossfire">1 · 盾衛與弩手</button>
           <p class="muted">中央石牆與左右側路：比較繞位、控制前排、抓後排空檔。</p>
@@ -101,8 +107,10 @@
           <p class="muted">突進者加側面弩手：撞暈後，現在靠近拔刀安全嗎？</p>
           <button id="btn-cluster-bypass">3 · 窄道與繞路</button>
           <p class="muted">窄道敵群旁有遮蔽長路；到北端開啟空寶箱即可，不必清場。</p>
+          <button id="btn-heart-warden">4 · 守心者</button>
+          <p class="muted">正式首領場地與招式。沿用職業基礎工具包，不額外給藥瓶或天賦；擊倒守心者後解封沉眠之心。</p>
         </div>
-        <p>試玩工具包：基礎裝備與彈藥、已鑑定冰霜／氣體各一瓶。獵手試用現有狩獵標記＋藥劑師，兩種藥劑箭各一支；可保留瓶子或在 I 背包付費調製。</p>
+        <p>前三場試玩工具包：基礎裝備與彈藥、已鑑定冰霜／氣體各一瓶。獵手試用現有狩獵標記＋藥劑師，兩種藥劑箭各一支；可保留瓶子或在 I 背包付費調製。</p>
         <p class="muted">沒有場內補給台。獵手可用普通箭與刀，戰士可用長劍與投擲石；兩職業都可繞位；沒有指定道具解鎖。Esc → 重置練習可還原同一遭遇，倒下後自動重置。練習知識與物資不帶入正式局，也不覆蓋正式存檔。</p>
         <button class="back">返回主選單</button>
       </div>
@@ -144,6 +152,7 @@
               <li><b>盾衛</b>：舉劍後揮擊，鎖定方向時地上出現橘色扇形；正面盾牌擋箭。看到你拿著遠程武器會<b>舉盾前進</b>，連頭也擋，只有舉劍與收招時露出頭。</li>
               <li><b>弩手</b>：紅色瞄準線，鎖定後發射；任何命中都會打斷瞄準。</li>
               <li><b>突進者</b>：低頭蓄勢後直線衝撞；角盔擋住正面的頭。撞牆會暈眩、頭露出來，並受雙倍傷害。</li>
+              <li><b>守心者</b>：青銅冠甲只擋正面頭部，身體與側後方可打。扇形是橫斬、紅線是槍矢；半血後加入直線衝撞。攻擊變亮後鎖定方向，側移避開；收招、反擊失衡或衝撞撞牆時冠甲開啟，可射頭。戰士可反擊與擊開槍矢；推擊只改變位置，不能推停正在進行的衝撞。</li>
             </ul>
           </div>
         </div>

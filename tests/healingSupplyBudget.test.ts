@@ -16,17 +16,14 @@ const BEFORE = [
   ['FLOW1', 2, 128, '5d1a447fd765429305d0e49a4b7891ce4de617edc0287089d0d8b6002524dbed'],
   ['FLOW1', 3, 139, '98180247d7a944b69359ae95c8749c517bb3111fa2fc6c5b146ff47cb5ecfd3a'],
   ['FLOW1', 4, 142, '0afc183ed2f5431dc36aebbd5074625033dbd9d2f6793b9c2db164c8e32d54b1'],
-  ['FLOW1', 5, 29, '497556aa37c24f984430104145fc5201667fbe42f65bb911344e2357c701057a'],
   ['FLOW2', 1, 119, '21d547bfafb9d771b77e984deb1b73c352e216d14c36dbf59d19b81d0797b902'],
   ['FLOW2', 2, 123, '792e1c6f095c3ea8077bf95f450278af78fc6ef1d433df60e9a232f36edb2fd2'],
   ['FLOW2', 3, 137, '87c1e0e87ccc35e64d76d49a25604ebe5ff7f90d5e9333d6b85569e5757f6296'],
   ['FLOW2', 4, 143, '0412fd528f428a3a8bcc3ece53b6d73789a04cdd1ff7e20a0a84ae390a798c0b'],
-  ['FLOW2', 5, 29, 'db4d18245dfa008bfc300fe3d594f73a46a53044849799407aa4697bfa620bc5'],
   ['LIVING1', 1, 123, 'fb6b3f9be52f6f175db58929c4678803de270b89d9e639135b18045d8a107ffc'],
   ['LIVING1', 2, 127, 'aff35bed5c13634d591e5394a60b3afe6850f3d8bd68a40363c3650daf1b50bc'],
   ['LIVING1', 3, 139, '2af0a3afc579827f6302f1e29fa7c9be77d0f87b367ba21e50ec0ccedf06a347'],
   ['LIVING1', 4, 142, '485a0667c57ad3dd6c46b5ec83982b81df4f337b24ce58dba2b0cf38790c3456'],
-  ['LIVING1', 5, 29, 'd3ade2b4623d7da517c6e8879cad8018a10661c224df1fadca1db1f7a10209fa'],
   ['HEAL-BUDGET4', 2, 128, 'c1ffbd5bf77ea60f0d696f7e8a62bdefc7ab1e98687ff7891c12e1de7e140114'],
 ] as const;
 
@@ -61,6 +58,27 @@ describe('provisional chapter healing supply v2', () => {
         e.y = WORLD.platformHeight;
         e.perched = true;
       }
+      expect(await fingerprint(level)).toBe(hash);
+    } finally {
+      next.mockRestore();
+    }
+  });
+
+  // Only F5's former two-guardian fixture is replaced. Its supply budget is
+  // still empty and its RNG count stays 29; all F1–4 historical proofs above stay.
+  it.each([
+    ['FLOW1', '2b06438c85c8596b972df7af701b482b40c8812001374e6e29654b82f97c2656'],
+    ['FLOW2', '2e54c5fa10a073213824dfab35ace4e2aacba5d0432dc3ad26dcaf2a1c09a6b3'],
+    ['LIVING1', '359b4133118c4a010b5c243bb9e2408035a33f8aecf34cbe05f350e8400242f4'],
+  ])('%s F5 has the explicit single-Warden baseline and zero supplies', async (seed, hash) => {
+    const next = vi.spyOn(Rng.prototype, 'next');
+    try {
+      const level = generateLevel(seed, { floor: 5 });
+      expect(next).toHaveBeenCalledTimes(29);
+      expect(level.enemies).toHaveLength(1);
+      expect(level.enemies[0]).toMatchObject({ kind: 'warden', boss: true });
+      expect(level.pickups).toEqual([]); expect(level.chests).toEqual([]);
+      expect(totalHealing(level)).toBe(0);
       expect(await fingerprint(level)).toBe(hash);
     } finally {
       next.mockRestore();

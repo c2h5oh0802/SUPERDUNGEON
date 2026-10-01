@@ -1,7 +1,7 @@
 import { PLAYER, TALENTS, type TalentId, type ItemId } from '../config';
 import { hungerState } from '../sim/hunger';
 import { addItem } from '../sim/items';
-import { damageEnemy } from '../sim/enemySys';
+import { damageEnemy, wardenCrownClosed } from '../sim/enemySys';
 import { applyTalent, gainXp } from '../sim/progress';
 import { activeLoopCount } from '../core/loop';
 import { levelSignature } from '../gen/generator';
@@ -130,6 +130,9 @@ export function installDevApi(app: App): void {
           shieldUp: e.shieldUp,
           veteran: e.veteran,
           boss: e.boss,
+          warden: e.warden ? { ...e.warden } : null,
+          crownClosed: wardenCrownClosed(e),
+          aimPoint: e.aimPoint ? { ...e.aimPoint } : null,
           pendingSleep: e.pendingSleep,
           huntingMarkRemaining: e.alive ? Math.max(0, (e.huntingMarkUntil ?? 0) - w.time) : 0,
           paralyzeT: e.paralyzeT,

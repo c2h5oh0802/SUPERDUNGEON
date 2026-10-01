@@ -7,7 +7,7 @@
 //   R  補給台（練習） 1-9  敵人（見 enemies）          a-h  巡邏點
 
 export type Face = 'N' | 'S' | 'E' | 'W';
-export type EnemyKind = 'guard' | 'archer' | 'charger';
+export type EnemyKind = 'guard' | 'archer' | 'charger' | 'warden';
 export type Role = 'entrance' | 'combat' | 'treasure' | 'heart' | 'shortcut' | 'practice';
 
 export interface EnemyDef {
@@ -57,12 +57,11 @@ export const LAYOUTS: RoomLayout[] = [
     rows: [
       '################', '#..............#', '#..o........o..#', '#..............#',
       '#........1.....#', '#..............#', '#..............#', '#......H.......#',
-      '#..............#', '#..............#', '#.........2....#', '#..............#',
+      '#..............#', '#..............#', '#..............#', '#..............#',
       '#..o........o..#', '#..............#', '#..............#', '################',
     ],
     enemies: [
-      { m: '1', kind: 'guard', state: 'idle', face: 'W', tier: 0 },
-      { m: '2', kind: 'charger', state: 'idle', face: 'W', tier: 0 },
+      { m: '1', kind: 'warden', state: 'idle', face: 'W', tier: 0 },
     ],
   },
   {

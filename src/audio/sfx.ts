@@ -1,4 +1,5 @@
 import type { GameEvent } from '../sim/types';
+import { ENEMIES } from '../config';
 
 // 程序音效（WebAudio）：不需要外部音檔。單一 AudioContext 跨局重用，限制同時發聲數，
 // 有主音量、音效音量與限制器；關閉音訊不影響遊戲判定。
@@ -232,7 +233,8 @@ export class Sfx {
           this.noise(0.06, 0.2, 'highpass', 3000, 1800, 1, pos);
           break;
         case 'enemyDeath':
-          this.tone('sine', 150, 50, 0.45, 0.35, pos);
+          this.tone('sine', 150, 50, e.kind === 'warden' ? 1 : 0.45, 0.35, pos);
+          if (e.kind === 'warden') this.tone('triangle', 330, 110, 0.8, 0.16, pos);
           break;
         case 'playerHurt':
           if (hurtPlayed) break;
@@ -298,7 +300,18 @@ export class Sfx {
           this.tone('sine', 300, 420, 0.2, 0.08, pos);
           break;
         case 'enemyWindup':
-          if (e.kind === 'guard') this.noise(0.5, 0.22, 'bandpass', 1800, 4200, 6, pos);
+          if (e.kind === 'warden') {
+            if (e.source === 'lance') {
+              this.tone('triangle', 240, 620, ENEMIES.warden.lanceAim, 0.14, pos);
+              this.tone('sine', 480, 1240, ENEMIES.warden.lanceAim, 0.06, pos);
+            } else if (e.source === 'rush') {
+              this.tone('sawtooth', 95, 55, ENEMIES.warden.rushWindup, 0.14, pos);
+              this.noise(ENEMIES.warden.rushWindup, 0.18, 'lowpass', 380, 150, 1, pos);
+            } else {
+              this.noise(ENEMIES.warden.cleaveWindup, 0.25, 'bandpass', 1100, 3100, 4, pos);
+              this.tone('triangle', 165, 220, ENEMIES.warden.cleaveWindup, 0.12, pos);
+            }
+          } else if (e.kind === 'guard') this.noise(0.5, 0.22, 'bandpass', 1800, 4200, 6, pos);
           else if (e.kind === 'archer') this.tone('sawtooth', 140, 260, 0.8, 0.07, pos);
           else {
             this.tone('sawtooth', 70, 55, 0.8, 0.14, pos);
@@ -306,7 +319,8 @@ export class Sfx {
           }
           break;
         case 'enemyStrike':
-          this.noise(0.14, 0.3, 'bandpass', 1500, 500, 2, pos);
+          this.noise(e.kind === 'warden' ? 0.24 : 0.14, 0.3, 'bandpass', 1500, 500, 2, pos);
+          if (e.kind === 'warden') this.tone('sine', e.source === 'rush' ? 90 : 140, 45, 0.28, 0.25, pos);
           break;
         case 'enemyLock':
           this.tone('square', 950, 650, 0.07, 0.18, pos);
@@ -314,7 +328,7 @@ export class Sfx {
           break;
         case 'enemyFire':
           this.noise(0.08, 0.3, 'lowpass', 700, 200, 1, pos);
-          this.tone('triangle', 200, 120, 0.18, 0.18, pos);
+          this.tone('triangle', e.kind === 'warden' ? 420 : 200, 120, e.kind === 'warden' ? 0.3 : 0.18, 0.18, pos);
           break;
         case 'stun':
           this.tone('sine', 90, 40, 0.5, 0.6, pos);
@@ -366,6 +380,7 @@ export class Sfx {
           break;
         case 'helmet':
           this.tone('square', 700, 520, 0.18, 0.12, pos);
+          if (e.kind === 'warden') this.tone('triangle', 1450, 1320, 0.3, 0.13, pos);
           break;
         default:
       }

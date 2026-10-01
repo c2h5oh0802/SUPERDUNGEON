@@ -3,6 +3,7 @@ import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAP
 import { knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
+import { wardenCrownClosed } from '../sim/enemySys';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
 import type { GameEvent, Player } from '../sim/types';
@@ -38,6 +39,11 @@ export class Hud {
   private hungerLabel = $('hunger-label');
   private hungerFill = $('hunger-fill');
   private objective = $('objective');
+  private bossEl = $('boss');
+  private bossName = $('boss-name');
+  private bossHealth = $('boss-health');
+  private bossFill = $('boss-fill');
+  private bossState = $('boss-state');
   private flowFill = $('flow-fill');
   private flowLabel = $('flow-label');
   private ring = document.getElementById('action-ring') as unknown as SVGCircleElement;
@@ -98,6 +104,8 @@ export class Hud {
     this.last = {};
     this.vignT = 0;
     this.vignette.style.opacity = '0';
+    this.bossEl.classList.add('hidden');
+    this.root.classList.remove('warden-present');
   }
 
   private set(key: string, v: string | number | boolean, apply: () => void): void {
@@ -212,7 +220,7 @@ export class Hud {
           if (e.air) this.toast('空中擊破！', 'good', 1.4);
           break;
         case 'counter':
-          this.toast(e.kind === 'charger' ? '反擊！衝鋒被擋下' : e.kind === 'guard' ? '反擊！盾衛失衡' : '反擊！', 'good', 1.4);
+          this.toast(e.kind === 'charger' ? '反擊！衝鋒被擋下' : e.kind === 'guard' ? '反擊！盾衛失衡' : e.kind === 'warden' ? '反擊！守心者失衡，冠甲開啟' : '反擊！', 'good', 1.4);
           break;
         case 'deflect':
           this.toast('擊開！', 'good', 1.2);
@@ -233,8 +241,12 @@ export class Hud {
             this.hint('cls-huntress-shield', '盾衛看到你拿著弓就舉盾前進：等它舉劍或收招的那一刻射頭，或繞到側面。', 7);
           break;
         case 'helmet':
-          this.toast('角盔擋住了', '', 1.2);
-          this.hint('cls-helmet', '突進者的角盔擋住正面的頭：閃過衝鋒、讓它撞牆暈眩，頭就會露出來。', 7);
+          if (e.kind === 'warden') {
+            this.toast('冠甲擋住了：改打身體或繞側', '', 1.5);
+          } else {
+            this.toast('角盔擋住了', '', 1.2);
+            this.hint('cls-helmet', '突進者的角盔擋住正面的頭：閃過衝鋒、讓它撞牆暈眩，頭就會露出來。', 7);
+          }
           break;
         case 'toolSwitch':
           if (e.kind === 'tipped') {
@@ -248,6 +260,7 @@ export class Hud {
         case 'enemyWindup':
           if (e.kind === 'archer') this.hint('archer', '紅線是弩手的瞄準線：線變亮代表已鎖定方向，側移就能躲開弩矢。');
           if (e.kind === 'charger') this.hint('charger', '突進者低頭蓄勢後會沿地上的橘線直線衝撞：閃開，讓它撞牆會暈眩。');
+          if (e.kind === 'warden') this.hint('warden-lock', '守心者的攻擊變亮後鎖定方向：側移離開扇形或直線；收招與失衡時，冠甲會打開。', 7);
           if (e.kind === 'guard') this.hint('guard', '盾衛舉劍後，揮擊方向會鎖定：側移或後退就能躲開。');
           break;
         case 'hitEnemy':
@@ -266,6 +279,7 @@ export class Hud {
       this.badge.innerHTML = `${info.name}<small>${info.loadout.map((l) => l.name).join('・')}</small>`;
       this.buildTools(p);
     });
+    this.updateBoss(w);
     this.updateCue(w);
     // 生命
     this.set('hp', `${p.hp}/${p.maxHp}`, () => {
@@ -288,11 +302,13 @@ export class Hud {
     });
     // 目標
     const trial = w.level.practiceTrial ? trialInfo(w.level.practiceTrial) : null;
-    const trialDone = trial && (trial.id === 'cluster-bypass' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
+    const trialDone = trial && (trial.id === 'heart-warden' ? p.hasHeart : trial.id === 'cluster-bypass' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
+    const trialGoal = trial?.id === 'heart-warden' && w.encounterState === 'resolved' && !p.hasHeart
+      ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
     this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = trial
-        ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trial.objective + ' Esc 可重置。'}`
+        ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
         : w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
         : w.level.goal === 'descend'
@@ -402,6 +418,35 @@ export class Hud {
     this.updateIcons(w, r, realDt);
     this.updateSenses(w);
     this.updateTargets(w, r);
+  }
+
+  private updateBoss(w: World): void {
+    const boss = w.enemies.find(e => e.kind === 'warden' && e.alive);
+    this.set('boss-visible', !!boss, () => {
+      this.bossEl.classList.toggle('hidden', !boss);
+      this.root.classList.toggle('warden-present', !!boss);
+    });
+    if (!boss) return;
+    const phaseTwo = !!boss.warden?.phaseTwo;
+    const closed = wardenCrownClosed(boss);
+    const attack = boss.warden?.attack;
+    const action = boss.phase === 'stagger' ? '失衡' : boss.phase === 'recovery' ? '收招' :
+      boss.phase === 'charge' ? '衝撞中' : boss.phase === 'active' ? '斬擊中' :
+      boss.phase === 'windup' || boss.phase === 'aim'
+        ? `${attack === 'cleave' ? '橫斬' : attack === 'lance' ? '槍矢' : '衝撞'}・${boss.locked ? '方向已鎖定' : '準備中'}`
+        : w.encounterState === 'dormant' ? '尚未開戰' : '逼近中';
+    this.set('boss-hp', `${boss.hp}|${boss.maxHp}`, () => {
+      const hp = Math.max(0, boss.hp);
+      this.bossHealth.textContent = `${hp} / ${boss.maxHp}`;
+      this.bossFill.style.width = `${Math.min(100, 100 * hp / boss.maxHp)}%`;
+      this.bossEl.setAttribute('aria-label', `守心者，生命 ${hp} / ${boss.maxHp}`);
+    });
+    this.set('boss-state', `${action}|${closed}|${phaseTwo}`, () => {
+      this.bossName.textContent = phaseTwo ? '守心者 · 第二階段' : '守心者';
+      this.bossEl.classList.toggle('exposed', !closed);
+      this.bossEl.classList.toggle('phase-two', phaseTwo);
+      this.bossState.textContent = `${action} · ${closed ? '冠甲閉合' : '冠甲開啟，可射頭'}`;
+    });
   }
 
   /** 依職業建立工具列：數字鍵對應的武器（與模擬層的 slots 相同），戰士另有推擊。 */

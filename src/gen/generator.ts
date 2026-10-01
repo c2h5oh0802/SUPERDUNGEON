@@ -20,7 +20,7 @@ export interface EnemySpawn {
   roomKey: string;
   /** 老兵：戴頭盔，背刺只 ×2、生命 ×1.5、發現速度 ×1.3。 */
   veteran?: boolean;
-  /** Arena guardian; ordinary AI, but no Sleep or random loot. */
+  /** Arena boss; dedicated combat AI, no Sleep or random loot. */
   boss?: boolean;
 }
 

@@ -463,6 +463,10 @@ export class World {
   startEncounter(): void {
     if (this.encounterState !== 'dormant') return;
     this.encounterState = 'active';
+    for (const e of this.enemies) if (e.boss && e.alive) {
+      e.state = 'alert'; e.awareness = 1; e.percT = 0;
+      // Engagement is not sight: only perception may acquire a new player position.
+    }
     this.emit({ type: 'buff', kind: 'encounter', text: '守心者甦醒：本場戰鬥暫停飢餓消耗' });
   }
 

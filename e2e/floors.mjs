@@ -110,6 +110,7 @@ check('第 4 層仍是探索層', s.goal === 'descend');
 await page.screenshot({ path: `${OUT}floors-4.png` });
 await useGoal(); await waitFloor(5); s = await st();
 check('第 5 層是無隨機物資的守心者大廳', s.goal === 'heart' && s.encounterState === 'dormant' && s.pickups.length === 0);
+check('第五層只有一名完整守心者', s.enemies.length === 1 && s.enemies[0].kind === 'warden' && s.enemies[0].hp === 32 && s.enemies[0].boss);
 const pre = s.player.hunger;
 await bot.down('Space'); await page.waitForTimeout(300); await bot.up('Space');
 check('正式戰鬥前仍消耗飢餓', (await st()).player.hunger > pre);
