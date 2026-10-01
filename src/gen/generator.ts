@@ -1,4 +1,4 @@
-import { ALL_RUNES, HUNGER, RUN, WORLD, type ItemId, type RuneId } from '../config';
+import { HUNGER, RUN, WORLD, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
@@ -44,10 +44,6 @@ export interface PropSpawn {
 
 export interface ChestSpawn extends PropSpawn {
   contents: { ammo: number; bottles: number; potions: number; item: { id: ItemId; level: number } | null };
-}
-
-export interface AltarSpawn extends PropSpawn {
-  offer: [RuneId, RuneId];
 }
 
 export interface TorchSpawn {
@@ -98,7 +94,6 @@ export interface LevelData {
   enemies: EnemySpawn[];
   pickups: PickupSpawn[];
   chests: ChestSpawn[];
-  altars: AltarSpawn[];
   heart: PropSpawn | null;
   stairs: StairsSpawn | null;
   resupply: PropSpawn | null;
@@ -112,7 +107,6 @@ const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: M
 export const PILLAR_R = 0.42;
 export const PROP_SIZES = {
   chest: { r: 0.5, h: 0.9 },
-  altar: { r: 0.5, h: 1.1 },
   heart: { r: 0.55, h: 1.25 },
   resupply: { r: 0.5, h: 1.0 },
 } as const;
@@ -135,7 +129,6 @@ interface Draft {
   enemies: EnemySpawn[];
   pickupSpots: Array<{ x: number; z: number }>;
   chests: ChestSpawn[];
-  altars: AltarSpawn[];
   heart: PropSpawn | null;
   stairs: StairsSpawn | null;
   resupply: PropSpawn | null;
@@ -211,10 +204,6 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, 
             roomKey: tr.key,
             contents: { ammo: 3, bottles: 1, potions: 1, item: null },
           });
-          break;
-        case 'A':
-          d.pillars.push({ x: cx, z: cz, ...PROP_SIZES.altar, kind: 'prop' });
-          d.altars.push({ x: cx, z: cz, yaw: faceInward(li, lj, W, H), roomKey: tr.key, offer: ['pierce', 'vigor'] });
           break;
         case 'H':
           d.pillars.push({ x: cx, z: cz, ...PROP_SIZES.heart, kind: 'prop' });
@@ -411,10 +400,6 @@ function mirrorDraft(d: Draft): void {
     c.x = mx(c.x);
     c.yaw = -c.yaw;
   }
-  for (const a of d.altars) {
-    a.x = mx(a.x);
-    a.yaw = -a.yaw;
-  }
   if (d.heart) d.heart.x = mx(d.heart.x);
   if (d.resupply) {
     d.resupply.x = mx(d.resupply.x);
@@ -608,7 +593,6 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     enemies: [],
     pickupSpots: [],
     chests: [],
-    altars: [],
     heart: null,
     stairs: null,
     resupply: null,
@@ -635,14 +619,6 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   }
   fillWalls(d);
   for (const room of d.rooms) roomTorches(d, room, rng);
-
-  // 祭壇刻印配對：打亂四個刻印，依房間層級由淺到深分配兩組
-  const runes = rng.shuffle(ALL_RUNES.slice());
-  const tierOf = (key: string) => d.rooms.find((r) => r.key === key)!.tier;
-  d.altars.sort((p, q) => tierOf(p.roomKey) - tierOf(q.roomKey));
-  d.altars.forEach((a, k) => {
-    a.offer = [runes[(k * 2) % 4]!, runes[(k * 2 + 1) % 4]!];
-  });
 
   const pickups = opts.practice ? [] : placePickups(d, rng, floor);
   for (const c of d.chests) c.contents.item = rollItem(rng, floor);
@@ -694,7 +670,6 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     enemies: d.enemies,
     pickups,
     chests: d.chests,
-    altars: d.altars,
     heart: d.heart,
     stairs: d.stairs,
     resupply: d.resupply,
@@ -716,7 +691,6 @@ export function levelSignature(l: LevelData): string {
     pillars: l.grid.pillars.map((p) => [r(p.x), r(p.z)]),
     enemies: l.enemies.map((e) => [e.kind, r(e.x), r(e.z), r(e.yaw), e.state, !!e.veteran, e.patrol.length]),
     pickups: l.pickups.map((p) => [p.kind, p.amount, r(p.x), r(p.z)]),
-    altars: l.altars.map((a) => a.offer),
     rooms: l.rooms.map((x) => x.layoutId),
   });
 }

@@ -43,7 +43,6 @@ export function installDevApi(app: App): void {
         outcome: w.outcome,
         heartTaken: w.heartTaken,
         awakened: w.awakened,
-        pendingAltar: w.pendingAltar,
         fallback: app.input.fallback,
         locked: app.input.locked,
         player: {
@@ -97,7 +96,6 @@ export function installDevApi(app: App): void {
             : null,
           hasHeart: p.hasHeart,
           dead: p.dead,
-          runes: p.runes.slice(),
         },
         enemies: w.enemies.map((e) => ({
           id: e.id,
@@ -166,7 +164,7 @@ export function installDevApi(app: App): void {
       return {
         seed: l.seed,
         template: l.templateId,
-        /** 生成結果的完整簽章（地形、門、敵人初始位置、補給、祭壇），用來比對同種子重試。 */
+        /** 生成結果的完整簽章（地形、門、敵人初始位置、補給），用來比對同種子重試。 */
         signature: levelSignature(l),
         w: l.grid.w,
         h: l.grid.h,
@@ -174,7 +172,6 @@ export function installDevApi(app: App): void {
         heart: l.heart,
         stairs: l.stairs,
         rooms: l.rooms,
-        altars: l.altars.map((a) => ({ x: a.x, z: a.z, offer: a.offer })),
         chests: l.chests.map((c) => ({ x: c.x, z: c.z })),
       };
     },

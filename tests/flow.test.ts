@@ -90,23 +90,22 @@ describe('完整流程（模擬層，移除敵人以單獨驗證路線、門、�
     });
   }
 
-  it('刻印祭壇：互動後暫停等待選擇，選擇後生效且祭壇用掉', () => {
-    const l = generateLevel('FLOW1');
+  it.each(['A', 'B'] as const)('former choice-room slot in template %s remains reachable combat space without an interaction or pause', (template) => {
+    const l = generateLevel('FLOW1', { template });
     const w = new World(l);
     w.enemies.length = 0;
-    const a = l.altars[0]!;
-    expect(walkTo(w, a.x - Math.sin(a.yaw) * 1.3, a.z - Math.cos(a.yaw) * 1.3, 0.5)).toBe(true);
-    interactWith(w, a.x, a.z);
-    expect(w.pendingAltar).not.toBeNull();
-    // 暫停中世界不前進
+    const room = l.rooms.find((r) => r.key === (template === 'A' ? 'N0' : 'R2'))!;
+    expect(room.role).toBe('combat');
+    const nav = new Nav(l.grid, PLAYER.radius);
+    const cell = nav.nearestPassable(room.x0 + room.w / 2, room.z0 + room.h / 2);
+    const target = nav.center(cell);
+    expect(walkTo(w, target.x, target.z, 0.6)).toBe(true);
+    expect(w.interactables.every((it) => String(it.kind) !== 'altar')).toBe(true);
+    expect(w.level).not.toHaveProperty('altars');
     const t0 = w.time;
-    w.frame(dt, { ...emptyInput(), moveZ: 1 });
-    expect(w.time).toBe(t0);
-    w.chooseRune(a.offer[0]);
-    expect(w.player.runes).toContain(a.offer[0]);
-    expect(w.pendingAltar).toBeNull();
-    const it = w.interactables.find((i) => i.kind === 'altar' && i.ref === 0)!;
-    expect(it.used).toBe(true);
+    w.frame(dt, { ...emptyInput(), interact: true, wait: true });
+    expect(w.pendingChoice).toBeNull();
+    expect(w.time).toBeGreaterThan(t0);
   });
 
   it('死亡：生命歸零 → outcome 為 dead，世界停止', () => {

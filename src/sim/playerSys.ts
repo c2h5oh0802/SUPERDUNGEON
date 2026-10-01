@@ -1,4 +1,4 @@
-import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, RUNES, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
 import { eatRation } from './hunger';
 import { meleeCandidates } from './meleeTargets';
 import { addItem, categoryOf, drinkPotion, equipFromBag, readScroll, takeForAction } from './items';
@@ -22,8 +22,7 @@ function timingOf(w: World, kind: ActionKind): Timing {
 
 export function actionTotal(w: World, kind: ActionKind): number {
   const d = timingOf(w, kind);
-  const mul = kind === 'melee' && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
-  return (d.windup + d.active + d.recovery) * mul;
+  return d.windup + d.active + d.recovery;
 }
 
 /** 武器傷害（含強化）。 */
@@ -34,7 +33,7 @@ export function weaponDamage(id: WeaponId, level: number): number {
 function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = timingOf(w, kind)): void {
   const p = w.player;
   const d = timing;
-  let mul = kind === 'melee' && w.hasRune('swiftBlade') ? RUNES.swiftBlade.timeMul : 1;
+  let mul = 1;
   // 迅捷藥水：行動只花一半世界時間
   if (p.hasteT > 0) mul *= ITEM_FX.haste.timeMul;
   // 攻擊會現形
@@ -449,7 +448,7 @@ export function fireProjectile(w: World, kind: 'bow' | 'stone' | 'bottle'): Proj
     gravity: spec.gravity,
     age: 0,
     alive: true,
-    pierceLeft: kind !== 'bottle' && w.hasRune('pierce') ? RUNES.pierce.extra : 0,
+
     hitSet: new Set(),
     next: { ...origin },
     avgVel: { ...vel },
@@ -512,11 +511,6 @@ function performUse(w: World, it: Interactable): void {
       w.emit({ type: 'chest', id: it.id, x: it.x, z: it.z });
       return;
     }
-    case 'altar':
-      if (it.used) return;
-      w.pendingAltar = it.id;
-      w.emit({ type: 'altarOpen', id: it.id });
-      return;
     case 'heart':
       if (it.used) return;
       it.used = true;
@@ -606,9 +600,6 @@ export function findInteractTarget(w: World): InteractTarget | null {
       }
       case 'chest':
         label = 'E 打開寶箱';
-        break;
-      case 'altar':
-        label = 'E 觸碰刻印祭壇';
         break;
       case 'heart':
         label = w.level.goal === 'descend' ? `E 走下階梯（第 ${w.level.floor + 1} 層）` : 'E 取走沉眠之心';

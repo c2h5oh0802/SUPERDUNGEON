@@ -18,7 +18,7 @@ export interface Pillar {
   x: number;
   z: number;
   r: number;
-  /** 高度：石柱到天花板；寶箱、祭壇等較矮，可越過它們看見或射擊。 */
+  /** 高度：石柱到天花板；寶箱、台座等較矮，可越過它們看見或射擊。 */
   h: number;
   kind: 'pillar' | 'prop';
 }

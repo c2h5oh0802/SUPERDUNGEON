@@ -65,11 +65,10 @@ describe('地城生成', () => {
         const inside = en.x >= e.x0 && en.x < e.x0 + e.w && en.z >= e.z0 && en.z < e.z0 + e.h;
         expect(inside).toBe(false);
       }
-      expect(l.altars.length).toBe(2);
+      expect(l).not.toHaveProperty('altars');
+      expect(l.rooms).toHaveLength(9);
+      expect(l.rooms.every((r) => String(r.role) !== 'altar')).toBe(true);
       expect(l.chests.length).toBeGreaterThanOrEqual(1);
-      // 兩座祭壇的刻印互不重複，四個刻印都會出現
-      const offered = l.altars.flatMap((a) => a.offer);
-      expect(new Set(offered).size).toBe(4);
     }
   });
 

@@ -82,8 +82,11 @@ check('跨層存檔含飢餓與傷害餘數', typeof before.carry.hunger === 'nu
 check('續玩保留樓層開頭飢餓（另加短暫閒置時間）', s.player.hunger >= before.carry.hunger && s.player.hunger < before.carry.hunger + 2);
 check('續玩保留乾糧並拾取本層保底', s.player.items.find((it) => it.id === 'food:ration')?.count === (before.carry.items.find((it) => it.id === 'food:ration')?.count ?? 0) + 1);
 
-// Existing v2 fixture with optional Hunger fields/food absent must continue normally.
+// Legacy v2 fixture: removed Rune IDs and optional Hunger fields must remain loadable.
 await page.evaluate((save) => {
+  save.carry.runes = ['pierce', 'swiftBlade', 'shadow', 'vigor', 'obsolete'];
+  save.carry.maxHp += 4;
+  save.carry.hp = save.carry.maxHp;
   delete save.carry.hunger;
   delete save.carry.starvationT;
   save.carry.items = save.carry.items.filter((it) => it.id !== 'food:ration');
@@ -93,11 +96,13 @@ await page.reload();
 check('舊 v2 缺少飢餓欄位仍可繼續', await page.locator('#btn-continue').isVisible());
 await page.click('#btn-continue'); await waitFloor(2);
 s = await st();
+check('舊 Rune 存檔保留正常生命上限且無刻印狀態', s.player.maxHp === before.carry.maxHp && !Object.hasOwn(s.player, 'runes'));
 check('舊檔以正常飢餓與零傷害餘數載入', s.player.hunger < 2 && s.player.starvationT === 0);
 check('舊檔沒有乾糧庫存仍可拾取本層保底', s.player.items.find((it) => it.id === 'food:ration')?.count === 1);
 
 await useGoal();
 await waitFloor(3);
+check('重新存檔不再寫入 Rune', !Object.hasOwn((await saved()).carry, 'runes'));
 await useGoal();
 await waitFloor(4);
 s = await st();

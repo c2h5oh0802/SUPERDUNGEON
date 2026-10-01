@@ -36,7 +36,7 @@ export interface Template {
 
 /**
  * A「環形中庭」：入口 → 前廳分出南北兩條路，在沉眠之心處會合（可繞行的環）。
- *   [Al]-[N1]-[N2]
+ *   [N0]-[N1]-[N2]
  *         |    |
  *   [E ]-[R1] [H ]
  *         |    |
@@ -55,7 +55,7 @@ export const TEMPLATE_A: Template = {
     { key: 'S1', col: 1, row: 2, role: 'combat', tier: 2 },
     { key: 'S2', col: 2, row: 2, role: 'combat', tier: 3 },
     { key: 'H', col: 2, row: 1, role: 'heart', tier: 4 },
-    { key: 'Al', col: 0, row: 0, role: 'altar', tier: 2, optional: true },
+    { key: 'N0', col: 0, row: 0, role: 'combat', tier: 2, optional: true },
     { key: 'Ch', col: 3, row: 2, role: 'treasure', tier: 4, optional: true },
   ],
   edges: [
@@ -66,7 +66,7 @@ export const TEMPLATE_A: Template = {
     { a: 'R1', b: 'S1', type: 'door' },
     { a: 'S1', b: 'S2', type: 'open' },
     { a: 'S2', b: 'H', type: 'door' },
-    { a: 'N1', b: 'Al', type: 'door' },
+    { a: 'N1', b: 'N0', type: 'door' },
     { a: 'S2', b: 'Ch', type: 'door' },
   ],
 };
@@ -88,7 +88,7 @@ export const TEMPLATE_B: Template = {
   rooms: [
     { key: 'E', col: 0, row: 1, role: 'entrance', tier: 0 },
     { key: 'R1', col: 1, row: 1, role: 'combat', tier: 1 },
-    { key: 'R2', col: 2, row: 1, role: 'altar', tier: 2 },
+    { key: 'R2', col: 2, row: 1, role: 'combat', tier: 2 },
     { key: 'R3', col: 3, row: 1, role: 'combat', tier: 2 },
     { key: 'R4', col: 3, row: 2, role: 'combat', tier: 3 },
     { key: 'H', col: 2, row: 2, role: 'heart', tier: 4 },

@@ -5,7 +5,7 @@ import { emptyInput, type Projectile } from '../src/sim/types';
 import { makeWorld, finishAction } from './helpers';
 
 export const injectBolt = (w: ReturnType<typeof makeWorld>, z = 10, owner = 999): Projectile => {
-  const b: Projectile = { id: w.nextId++, kind: 'bolt', owner, pos: {x: 9.5, y: 1.2, z}, vel: {x: 0,y: 0,z: 18}, radius: PROJECTILES.bolt.radius, gravity: 0, age: 0, alive: true, pierceLeft: 0, hitSet: new Set(), next: {x:9.5,y:1.2,z}, avgVel: {x:0,y:0,z:18}, deflected:false, tip:null, payload:'smoke' };
+  const b: Projectile = { id: w.nextId++, kind: 'bolt', owner, pos: {x: 9.5, y: 1.2, z}, vel: {x: 0,y: 0,z: 18}, radius: PROJECTILES.bolt.radius, gravity: 0, age: 0, alive: true, hitSet: new Set(), next: {x:9.5,y:1.2,z}, avgVel: {x:0,y:0,z:18}, deflected:false, tip:null, payload:'smoke' };
   w.projectiles.push(b); return b;
 };
 

@@ -104,7 +104,7 @@ function injectBolt(w: World, from: { x: number; y: number; z: number }): Projec
     gravity: 0,
     age: 0,
     alive: true,
-    pierceLeft: 0,
+
     hitSet: new Set(),
     next: { ...from },
     avgVel: { ...vel },

@@ -263,9 +263,6 @@ export class Sfx {
           this.noise(0.35, 0.2, 'bandpass', 300, 600, 3, pos);
           this.tone('sine', 784, 784, 0.25, 0.1, null, 0.2);
           break;
-        case 'rune':
-          [523, 659, 784, 1046].forEach((f, k) => this.tone('sine', f, f, 0.5, 0.12, null, k * 0.08));
-          break;
         case 'resupply':
           [523, 784].forEach((f, k) => this.tone('triangle', f, f, 0.2, 0.12, null, k * 0.08));
           break;

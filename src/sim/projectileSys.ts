@@ -162,10 +162,8 @@ export function updateProjectiles(w: World, dt: number): void {
           breakBottle(w, p, at, false);
           break;
         }
-        const cont = onEnemy(w, p, e, at, !!hit.head);
-        if (!cont) break;
-        tStart = tAbs;
-        a = at;
+        onEnemy(w, p, e, at, !!hit.head);
+        break;
       }
     }
     if (p.alive) {
@@ -207,8 +205,8 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
   }
 }
 
-/** 回傳 true 表示投射物穿透後繼續飛行。 */
-function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): boolean {
+/** 第一個角色接觸即停止投射物；瓶子空爆的後續飛行另外處理。 */
+function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void {
   // Hostile bolts have the same base damage against either body. They never pierce,
   // generate recoverable ammo, count as player shots or apply player upgrades.
   if (p.kind === 'bolt' && p.owner !== 'player') {
@@ -216,7 +214,7 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
     p.hitSet.add(e.id);
     damageEnemy(w, e, PROJECTILES.bolt.damage, { source: 'friendlyBolt', sneak: false, head: false, x: at.x, y: at.y, z: at.z });
     w.emitNoise(at.x, at.y, at.z, NOISE.combatHit, 'combat');
-    return false;
+    return;
   }
   const sp = Math.hypot(p.vel.x, p.vel.z) || 1;
   const hx = p.vel.x / sp;
@@ -236,7 +234,7 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
     if (p.kind === 'arrow') w.addPickup('arrows', 1, dx, 0.05, dz, null);
     if (p.kind === 'stone') dropStone(w, dx, dz);
     w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 6, 'shield');
-    return false;
+    return;
   }
   const spec =
     p.kind === 'arrow'
@@ -266,15 +264,11 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): bool
     }
     p.tip = null;
   }
-  if (p.kind !== 'bolt' && p.pierceLeft > 0) {
-    p.pierceLeft--;
-    return true;
-  }
   p.alive = false;
   if (p.kind === 'arrow') {
     if (e.alive) e.lodged++;
     else w.addPickup('arrows', 1, e.x, 0.05, e.z, null);
   }
   if (p.kind === 'stone') dropStone(w, e.x - hx * (e.radius + 0.3), e.z - hz * (e.radius + 0.3));
-  return false;
+  return;
 }

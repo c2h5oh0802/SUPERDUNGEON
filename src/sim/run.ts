@@ -2,7 +2,6 @@ import {
   ALL_ARMORS,
   ALL_CLASSES,
   ALL_POTIONS,
-  ALL_RUNES,
   ALL_SCROLLS,
   ALL_WEAPONS,
   ITEM_FX,
@@ -10,12 +9,12 @@ import {
   PLAYER,
   RUN,
   TALENTS,
+  TALENT_FX,
   UPGRADE,
   XP,
   type ArmorId,
   type ItemId,
   type PlayerClass,
-  type RuneId,
   type TalentId,
   type WeaponId,
 } from '../config';
@@ -99,9 +98,7 @@ export function parseRun(text: string | null): RunState | null {
       !isNum(t.chill, 0, PLAYER.maxTipped + 1) ||
       (c.tipKind !== 'paralysis' && c.tipKind !== 'chill') ||
       !isNum(c.bottles, 0, PLAYER.maxBottles) ||
-      !isNum(c.potions, 0, PLAYER.maxPotions) ||
-      !Array.isArray(c.runes) ||
-      !c.runes.every((r) => ALL_RUNES.includes(r as RuneId))
+      !isNum(c.potions, 0, PLAYER.maxPotions)
     )
       return null;
     const wp = (c.weapon ?? {}) as Record<string, unknown>;
@@ -121,9 +118,17 @@ export function parseRun(text: string | null): RunState | null {
     const starvationT = c.starvationT === undefined ? 0 : c.starvationT;
     if (!isNum(hunger, 0, HUNGER.starvingAt) || !isNum(starvationT, 0, HUNGER.damageEvery)) return null;
     if (starvationT >= HUNGER.damageEvery || (hunger < HUNGER.starvingAt && starvationT !== 0)) return null;
+    // Legacy v2 stored Rune IDs alongside their effects. Ignore every ID (including
+    // unknown ones); only the identifiable vigor HP increment needs migration.
+    // Never subtract legitimate level/toughness growth or retroactively undo healing.
+    const progressionHp = PLAYER.maxHp + (c.level - 1) * XP.hpPerLevel +
+      (c.talents.includes('toughness') ? TALENT_FX.toughnessHp : 0);
+    const legacyVigorHp = Array.isArray(c.runes) && c.runes.includes('vigor')
+      ? Math.min(4, Math.max(0, (c.maxHp as number) - progressionHp)) : 0;
+    const maxHp = (c.maxHp as number) - legacyVigorHp;
     carry = {
-      hp: c.hp as number,
-      maxHp: c.maxHp as number,
+      hp: Math.min(c.hp as number, maxHp),
+      maxHp,
       hunger,
       starvationT,
       arrows: c.arrows as number,
@@ -132,7 +137,6 @@ export function parseRun(text: string | null): RunState | null {
       tipKind: c.tipKind,
       bottles: c.bottles as number,
       potions: c.potions as number,
-      runes: (c.runes as RuneId[]).slice(),
       weapon: { id: wp.id as WeaponId, level: wp.level as number },
       armor: { id: ar.id as ArmorId, level: ar.level as number },
       bowLevel: c.bowLevel as number,

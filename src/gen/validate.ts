@@ -46,7 +46,6 @@ export function validateLevel(l: LevelData): ValidationResult {
     else need('出口階梯', l.stairs.front.x, l.stairs.front.z, 0.9);
   }
   l.chests.forEach((c, k) => need(`寶箱 ${k}`, c.x, c.z));
-  l.altars.forEach((a, k) => need(`祭壇 ${k}`, a.x, a.z));
   if (l.resupply) need('補給台', l.resupply.x, l.resupply.z);
 
   // 不經過陷阱也能抵達沉眠之心

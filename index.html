@@ -45,7 +45,6 @@
         <div id="xp"><span id="xp-level"></span><div class="xpbar"><i id="xp-fill"></i></div></div>
         <div id="buffs"></div>
         <div id="heart-status" class="hidden">◆ 攜帶沉眠之心</div>
-        <div id="runes"></div>
       </div>
       <div class="hud-bottom-right">
         <div class="tools" id="tools"></div>
@@ -97,7 +96,7 @@
           <div>
             <h3>目標</h3>
             <p>地城共 <b>4 層</b>。每一層找到<b>往下的階梯</b>，在最底層取得<b>沉眠之心</b>就通關。不必殺光敵人。</p>
-            <p>越往下，敵人越多、醒著的越多；最底層的沉眠之心旁有守衛。生命、物資與刻印會帶到下一層，每層開頭自動存檔，可以從主選單「繼續」。</p>
+            <p>越往下，敵人越多、醒著的越多；最底層的沉眠之心旁有守衛。生命與物資會帶到下一層，每層開頭自動存檔，可以從主選單「繼續」。</p>
             <h3>時間</h3>
             <ul>
               <li>靜止、觀察、瞄準時，世界以 <b>0.1 倍</b>慢動作流動。</li>
@@ -172,22 +171,11 @@
       </div>
     </section>
 
-    <section id="screen-rune" class="screen hidden">
-      <div class="panel wide">
-        <h2>刻印祭壇</h2>
-        <p class="muted">選擇一個刻印（本局有效）。按 <kbd>1</kbd> 或 <kbd>2</kbd>，或直接點選。</p>
-        <div class="rune-cards">
-          <button class="rune-card" data-idx="0"><kbd>1</kbd><h3></h3><p></p></button>
-          <button class="rune-card" data-idx="1"><kbd>2</kbd><h3></h3><p></p></button>
-        </div>
-      </div>
-    </section>
-
     <section id="screen-choice" class="screen hidden">
       <div class="panel wide">
         <h2 id="choice-title">選擇</h2>
         <p class="muted" id="choice-sub"></p>
-        <div class="rune-cards" id="choice-cards"></div>
+        <div class="choice-cards" id="choice-cards"></div>
       </div>
     </section>
 
@@ -205,7 +193,7 @@
       <div class="panel wide map-panel">
         <h2 id="map-title">地圖</h2>
         <canvas id="map-canvas" width="900" height="640"></canvas>
-        <p class="muted small">只顯示你看過的區域。<b class="c-player">▲</b> 你　<b class="c-exit">▲</b> 來時的階梯　<b class="c-down">▲</b> 往下的階梯　<b class="c-heart">◆</b> 沉眠之心　<b class="c-chest">■</b> 寶箱　<b class="c-altar">◇</b> 祭壇　按 <kbd>Tab</kbd> 關閉（世界暫停中）</p>
+        <p class="muted small">只顯示你看過的區域。<b class="c-player">▲</b> 你　<b class="c-exit">▲</b> 來時的階梯　<b class="c-down">▲</b> 往下的階梯　<b class="c-heart">◆</b> 沉眠之心　<b class="c-chest">■</b> 寶箱　按 <kbd>Tab</kbd> 關閉（世界暫停中）</p>
       </div>
     </section>
 

@@ -10,7 +10,7 @@ import { sharedFlameTexture } from './levelMesh';
 import { LightSampler } from './lightSampler';
 import { createCharMaterial, createLightRig, createOutlineMaterial, paint, type LightRig, type SharedUniforms } from './materials';
 
-// 可互動物件與場景道具：門板、寶箱、刻印祭壇、沉眠之心、補給台、尖刺踏板、掉落物。
+// 可互動物件與場景道具：門板、寶箱、沉眠之心、補給台、尖刺踏板、掉落物。
 // 每個物件的零件合併成單一網格（頂點色），減少繪製呼叫。
 
 interface Piece {
@@ -68,13 +68,11 @@ export class PropsVisual {
   private doors: DoorVis[] = [];
   private traps: TrapVis[] = [];
   private chests: Array<{ id: number; lid: THREE.Group }> = [];
-  private altars: Array<{ id: number; rune: THREE.Mesh; runeMat: THREE.MeshBasicMaterial }> = [];
   private heart: { group: THREE.Group; gem: THREE.Mesh; glow: THREE.Sprite } | null = null;
   private pickups = new Map<number, { obj: THREE.Object3D; mat: THREE.ShaderMaterial }>();
   private mats: THREE.Material[] = [];
   private geos: THREE.BufferGeometry[] = [];
   private outline: THREE.ShaderMaterial;
-  private runeTex: THREE.CanvasTexture;
   private pickupGeo = new Map<string, { body: THREE.BufferGeometry; outline: THREE.BufferGeometry }>();
 
   constructor(
@@ -84,12 +82,10 @@ export class PropsVisual {
   ) {
     this.outline = createOutlineMaterial(shared, 0.9);
     this.mats.push(this.outline);
-    this.runeTex = makeRuneTexture();
     for (const d of world.grid.doors) if (!d.arch) this.doors.push(this.buildDoor(d));
     for (const t of world.traps) this.traps.push(this.buildTrap(t));
     for (const it of world.interactables) {
       if (it.kind === 'chest') this.buildChest(it.id, it.x, it.z, it.yaw);
-      else if (it.kind === 'altar') this.buildAltar(it.id, it.x, it.z, it.yaw);
       else if (it.kind === 'heart' && world.level.goal === 'descend') this.buildDescent(it.x, it.z);
       else if (it.kind === 'heart') this.buildHeart(it.x, it.z);
       else if (it.kind === 'resupply') this.buildResupply(it.x, it.z);
@@ -170,31 +166,6 @@ export class PropsVisual {
     this.add(merge([{ geo: T(lidG, 0, 0, -0.31), color: 0x7a5233 }, { geo: T(new THREE.BoxGeometry(0.14, 0.16, 0.06), 0, 0.02, -0.63), color: 0xd9a94a, glow: 1 }]), m, lid, true);
     this.group.add(g);
     this.chests.push({ id, lid });
-  }
-
-  private buildAltar(id: number, x: number, z: number, yaw: number): void {
-    const g = new THREE.Group();
-    g.position.set(x, 0, z);
-    g.rotation.y = yaw;
-    const m = this.mat(this.rigAt(x, 1.0, z));
-    this.add(
-      merge([
-        { geo: T(new THREE.BoxGeometry(0.95, 0.25, 0.75), 0, 0.125, 0), color: 0x5d544c },
-        { geo: T(new THREE.CylinderGeometry(0.32, 0.4, 0.7, 8), 0, 0.6, 0), color: 0x8e8272 },
-        { geo: T(new THREE.BoxGeometry(0.9, 0.14, 0.7), 0, 1.02, 0), color: 0x8e8272 },
-      ]),
-      m,
-      g,
-      true,
-    );
-    const runeMat = new THREE.MeshBasicMaterial({ map: this.runeTex, color: 0x6ff0d0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-    this.mats.push(runeMat);
-    const runeG = new THREE.PlaneGeometry(0.7, 0.7);
-    runeG.rotateX(-Math.PI / 2);
-    const rune = this.add(runeG, runeMat, g);
-    rune.position.y = 1.35;
-    this.group.add(g);
-    this.altars.push({ id, rune, runeMat });
   }
 
   private buildHeart(x: number, z: number): void {
@@ -387,12 +358,6 @@ export class PropsVisual {
       const target = it.used ? -1.9 : 0;
       c.lid.rotation.x += (target - c.lid.rotation.x) * 0.15;
     }
-    for (const a of this.altars) {
-      const it = w.interactables.find((i) => i.id === a.id)!;
-      a.rune.visible = !it.used;
-      a.rune.rotation.y = realTime * 0.4;
-      a.runeMat.opacity = 0.65 + 0.3 * Math.sin(realTime * 2.2);
-    }
     if (this.heart) {
       const taken = w.heartTaken;
       this.heart.gem.visible = !taken;
@@ -439,39 +404,6 @@ export class PropsVisual {
       g.body.dispose();
       g.outline.dispose();
     }
-    this.runeTex.dispose();
     this.group.clear();
   }
-}
-
-function makeRuneTexture(): THREE.CanvasTexture {
-  const size = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const g = c.getContext('2d')!;
-  g.strokeStyle = 'rgba(255,255,255,0.95)';
-  g.lineWidth = 4;
-  g.beginPath();
-  g.arc(64, 64, 52, 0, Math.PI * 2);
-  g.stroke();
-  g.lineWidth = 3;
-  g.beginPath();
-  g.arc(64, 64, 38, 0, Math.PI * 2);
-  g.stroke();
-  g.lineWidth = 5;
-  g.beginPath();
-  for (let k = 0; k < 3; k++) {
-    const a = (k / 3) * Math.PI * 2 - Math.PI / 2;
-    g.moveTo(64, 64);
-    g.lineTo(64 + Math.cos(a) * 34, 64 + Math.sin(a) * 34);
-  }
-  g.stroke();
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2;
-    g.fillStyle = 'rgba(255,255,255,0.9)';
-    g.fillRect(64 + Math.cos(a) * 45 - 3, 64 + Math.sin(a) * 45 - 3, 6, 6);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
 }

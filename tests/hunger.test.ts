@@ -52,10 +52,9 @@ describe('Hunger uses only actual world time', () => {
     expect(quiet.events.some((e) => e.type === 'noise' && e.source === 'step')).toBe(false);
   });
 
-  it.each(['altar', 'talent', 'upgrade'] as const)('%s choice freezes hunger and its damage remainder', (screen) => {
+  it.each(['talent', 'upgrade'] as const)('%s choice freezes hunger and its damage remainder', (screen) => {
     const w = makeWorld(); w.player.hunger = HUNGER.starvingAt; w.player.starvationT = 4;
-    if (screen === 'altar') w.pendingAltar = 1;
-    else w.pendingChoice = screen === 'talent' ? { kind: 'talent', options: ['combo'] } : { kind: 'upgrade', options: ['weapon'] };
+    w.pendingChoice = screen === 'talent' ? { kind: 'talent', options: ['combo'] } : { kind: 'upgrade', options: ['weapon'] };
     run(w, 600, { wait: true });
     expect(w.time).toBe(0); expect(w.player.hunger).toBe(HUNGER.starvingAt); expect(w.player.starvationT).toBe(4);
     expect(w.player.hp).toBe(PLAYER.maxHp);
@@ -270,7 +269,7 @@ describe('Shift remains standing height, with identical hostile bolt contacts', 
     const hit = (sneak: boolean) => {
       const w = makeWorld(); w.frame(dt, { ...emptyInput(), sneak });
       const pos = { x: w.player.x, y, z: w.player.z - 2 }, vel = { x: 0, y: 0, z: 18 };
-      const bolt: Projectile = { id: w.nextId++, kind: 'bolt', owner: 999, pos, vel, radius: PROJECTILES.bolt.radius, gravity: 0, age: 0, alive: true, pierceLeft: 0, hitSet: new Set(), next: { ...pos }, avgVel: { ...vel }, deflected: false, tip: null, payload: 'smoke' };
+      const bolt: Projectile = { id: w.nextId++, kind: 'bolt', owner: 999, pos, vel, radius: PROJECTILES.bolt.radius, gravity: 0, age: 0, alive: true, hitSet: new Set(), next: { ...pos }, avgVel: { ...vel }, deflected: false, tip: null, payload: 'smoke' };
       w.projectiles.push(bolt); updateProjectiles(w, .2);
       return w.player.hp;
     };

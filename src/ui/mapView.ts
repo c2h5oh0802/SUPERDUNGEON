@@ -75,16 +75,14 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
     ctx.fillStyle = '#b8603a';
     ctx.fillRect(ox + (t.i + 0.25) * s, oz + (t.j + 0.25) * s, s * 0.5, s * 0.5);
   }
-  const mark = (x: number, z: number, color: string, shape: 'sq' | 'dia' | 'tri' | 'ring', size = 0.45) => {
+  const mark = (x: number, z: number, color: string, shape: 'sq' | 'dia' | 'tri', size = 0.45) => {
     const cx = ox + x * s;
     const cy = oz + z * s;
     const r = Math.max(4, s * size);
     ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
     ctx.beginPath();
     if (shape === 'sq') ctx.rect(cx - r * 0.8, cy - r * 0.8, r * 1.6, r * 1.6);
-    else if (shape === 'dia' || shape === 'ring') {
+    else if (shape === 'dia') {
       ctx.moveTo(cx, cy - r);
       ctx.lineTo(cx + r, cy);
       ctx.lineTo(cx, cy + r);
@@ -96,13 +94,11 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
       ctx.lineTo(cx - r, cy + r);
       ctx.closePath();
     }
-    if (shape === 'ring') ctx.stroke();
-    else ctx.fill();
+    ctx.fill();
   };
   for (const it of w.interactables) {
     if (!w.isExplored(Math.floor(it.x), Math.floor(it.z))) continue;
     if (it.kind === 'chest') mark(it.x, it.z, it.used ? '#6b6275' : '#f2c14e', 'sq', 0.4);
-    else if (it.kind === 'altar') mark(it.x, it.z, it.used ? '#4b6a66' : '#3fe0c0', 'ring', 0.55);
     else if (it.kind === 'heart' && w.level.goal === 'descend') mark(it.x, it.z, '#3fe0c0', 'tri', 0.6);
     else if (it.kind === 'heart' && !w.heartTaken) mark(it.x, it.z, '#5aa8ff', 'dia', 0.6);
     else if (it.kind === 'stairs') mark(it.x, it.z, '#8ccaff', 'tri', 0.6);

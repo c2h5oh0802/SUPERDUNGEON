@@ -1,4 +1,4 @@
-import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, RUNES, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
@@ -364,7 +364,6 @@ function updateAwareness(w: World, e: Enemy, interval: number): void {
     }
     const d = Math.hypot(p.x - e.x, p.z - e.z);
     let fill = lerp(PERCEPTION.fillNear, PERCEPTION.fillFar, clamp((d - PERCEPTION.nearDist) / (PERCEPTION.range - PERCEPTION.nearDist), 0, 1));
-    if (w.hasRune('shadow')) fill *= RUNES.shadow.detectMul;
     if (e.awakened) fill *= PERCEPTION.awakenedFillMul;
     if (e.veteran) fill *= RUN.veteranFillMul;
     if (e.state === 'search' || e.state === 'investigate') fill *= STEALTH.searchFillMul;
@@ -709,7 +708,7 @@ function fireBolt(w: World, e: Enemy): void {
     gravity: s.gravity,
     age: 0,
     alive: true,
-    pierceLeft: 0,
+
     hitSet: new Set(),
     next: { ...origin },
     avgVel: { x: 0, y: 0, z: 0 },

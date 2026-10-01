@@ -249,12 +249,6 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
       await bot.releaseAll();
       return 'ended';
     }
-    if (s.mode === 'rune') {
-      await bot.releaseAll();
-      await bot.tap('Digit1');
-      await page.waitForTimeout(100);
-      continue;
-    }
     if (s.mode !== 'playing') {
       await bot.releaseAll();
       await page.waitForTimeout(100);

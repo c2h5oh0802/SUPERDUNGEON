@@ -60,7 +60,7 @@ describe('Archer commitment and physical first hit', () => {
   it('hostile friendly hit provokes investigation without magically revealing player position', () => {
     const {w, a, g}=corridor(false); g.state='sleep'; g.paralyzeT=0;
     const pos={x:9.5,y:1.2,z:8}; g.x=9.5;
-    const b: Projectile={id:w.nextId++,kind:'bolt',owner:a.id,pos,vel:{x:0,y:0,z:18},radius:.06,gravity:0,age:0,alive:true,pierceLeft:0,hitSet:new Set(),next:{...pos},avgVel:{x:0,y:0,z:18},deflected:false,tip:null,payload:'smoke'};
+    const b: Projectile={id:w.nextId++,kind:'bolt',owner:a.id,pos,vel:{x:0,y:0,z:18},radius:.06,gravity:0,age:0,alive:true,hitSet:new Set(),next:{...pos},avgVel:{x:0,y:0,z:18},deflected:false,tip:null,payload:'smoke'};
     w.projectiles.push(b); updateProjectiles(w,.3);
     expect(g.state).toBe('investigate'); expect(g.lastKnown).toBeNull(); expect(w.stats.shotHits).toBe(0);
   });

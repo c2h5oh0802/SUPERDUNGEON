@@ -324,22 +324,6 @@ kbd {
   font-family: var(--serif);
 }
 
-#runes {
-  margin-top: 4px;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  max-width: 320px;
-}
-
-.rune-chip {
-  font-size: 12px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  border: 1px solid var(--teal);
-  color: var(--teal);
-}
-
 .hud-bottom-right {
   position: absolute;
   right: 16px;
@@ -661,26 +645,26 @@ button.ghost {
   font-size: 14px;
 }
 
-.rune-cards {
+.choice-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
 @media (max-width: 600px) {
-  .rune-cards {
+  .choice-cards {
     grid-template-columns: 1fr;
   }
 }
 
-.rune-card {
+.choice-card {
   text-align: left;
   padding: 16px;
   border-color: var(--teal);
   background: rgba(20, 60, 60, 0.35);
 }
 
-.rune-card h3 {
+.choice-card h3 {
   color: var(--teal);
   font-family: var(--serif);
   font-size: 19px;
@@ -717,10 +701,6 @@ button.ghost {
 
 .c-chest {
   color: var(--gold);
-}
-
-.c-altar {
-  color: var(--teal);
 }
 
 .stats {

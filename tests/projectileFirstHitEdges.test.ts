@@ -9,7 +9,7 @@ import { makeWorld } from './helpers';
 const bolt = (w: ReturnType<typeof makeWorld>, owner = 999, y = 1.2): void => {
   const pos = { x: 9.5, y, z: 10 };
   const vel = { x: 0, y: 0, z: 18 };
-  const p: Projectile = { id:w.nextId++, kind:'bolt', owner, pos, vel, radius:PROJECTILES.bolt.radius, gravity:0, age:0, alive:true, pierceLeft:0, hitSet:new Set(), next:{...pos}, avgVel:{...vel}, deflected:false, tip:null, payload:'smoke' };
+  const p: Projectile = { id:w.nextId++, kind:'bolt', owner, pos, vel, radius:PROJECTILES.bolt.radius, gravity:0, age:0, alive:true, hitSet:new Set(), next:{...pos}, avgVel:{...vel}, deflected:false, tip:null, payload:'smoke' };
   w.projectiles.push(p);
 };
 

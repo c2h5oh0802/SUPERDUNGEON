@@ -1,4 +1,4 @@
-import { ARMORS, CLASSES, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type RuneId, type TalentId, type WeaponId } from '../config';
+import { ARMORS, CLASSES, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
@@ -35,7 +35,7 @@ export type Outcome = 'none' | 'win' | 'dead' | 'descend';
 export interface WorldOptions {
   /** 職業（預設戰士）。 */
   cls?: PlayerClass;
-  /** 從上一層帶下來的物資、生命與刻印。 */
+  /** 從上一層帶下來的物資、生命與裝備成長。 */
   carry?: PlayerCarry;
   /** 從上一層累積下來的統計（時間、擊倒數等）。 */
   stats?: RunStats;
@@ -53,7 +53,6 @@ export interface PlayerCarry {
   tipKind: 'paralysis' | 'chill';
   bottles: number;
   potions: number;
-  runes: RuneId[];
   weapon: { id: WeaponId; level: number };
   armor: { id: ArmorId; level: number };
   bowLevel: number;
@@ -100,8 +99,6 @@ export class World {
   awakened = false;
   /** 有敵人發現了屍體：整層戒備。 */
   alarm = false;
-  /** 開啟中的祭壇（介面顯示選擇時世界暫停）。 */
-  pendingAltar: number | null = null;
   /** 等待玩家選擇（天賦、強化）：顯示選擇時世界暫停。 */
   pendingChoice: PendingChoice | null = null;
   readonly choiceQueue: PendingChoice[] = [];
@@ -193,7 +190,6 @@ export class World {
       tool: slots[0]!,
       desiredTool: slots[0]!,
       action: null,
-      runes: [],
       hasHeart: false,
       dead: false,
       lastMoveDist: 0,
@@ -211,7 +207,6 @@ export class World {
       p.tipKind = c.tipKind;
       p.bottles = c.bottles;
       p.potions = c.potions;
-      p.runes = c.runes.slice();
       p.weapon = { ...c.weapon };
       p.armor = { ...c.armor };
       p.bowLevel = c.bowLevel;
@@ -237,9 +232,6 @@ export class World {
     }
     level.chests.forEach((c, k) =>
       this.interactables.push({ id: this.nextId++, kind: 'chest', x: c.x, z: c.z, yaw: c.yaw, used: false, ref: k, roomKey: c.roomKey }),
-    );
-    level.altars.forEach((a, k) =>
-      this.interactables.push({ id: this.nextId++, kind: 'altar', x: a.x, z: a.z, yaw: a.yaw, used: false, ref: k, roomKey: a.roomKey }),
     );
     if (level.heart)
       this.interactables.push({
@@ -287,10 +279,6 @@ export class World {
     return ev;
   }
 
-  hasRune(id: RuneId): boolean {
-    return this.player.runes.includes(id);
-  }
-
   addPickup(kind: Pickup['kind'], amount: number, x: number, y: number, z: number, stuckDir: V3 | null, item?: ItemId, level?: number): Pickup {
     const p: Pickup = { id: this.nextId++, kind, amount, x, y, z, stuckDir, taken: false, item, level };
     this.pickups.push(p);
@@ -311,7 +299,7 @@ export class World {
   frame(frameDelta: number, input: FrameInput): number {
     const realDt = clampRealDt(frameDelta);
     this.lastRealDt = realDt;
-    if (this.outcome !== 'none' || this.pendingAltar !== null || this.pendingChoice !== null) {
+    if (this.outcome !== 'none' || this.pendingChoice !== null) {
       this.lastWorldDt = 0;
       return 0;
     }
@@ -400,7 +388,7 @@ export class World {
       updateSmokes(this, dt);
       updateAreas(this, dt, (e, dmg, src) => damageEnemy(this, e, dmg, { source: src, sneak: false, head: false, x: e.x, y: 0.5, z: e.z }));
       updateBuffs(this, dt);
-      if (this.pendingAltar !== null || this.pendingChoice !== null) break;
+      if (this.pendingChoice !== null) break;
     }
   }
 
@@ -469,7 +457,6 @@ export class World {
       tipKind: p.tipKind,
       bottles: p.bottles,
       potions: p.potions,
-      runes: p.runes.slice(),
       weapon: { ...p.weapon },
       armor: { ...p.armor },
       bowLevel: p.bowLevel,
@@ -506,27 +493,6 @@ export class World {
 
   statsCopy(): RunStats {
     return { ...this.stats, damageTaken: { ...this.stats.damageTaken } };
-  }
-
-  chooseRune(rune: RuneId): void {
-    if (this.pendingAltar === null) return;
-    const it = this.interactables.find((i) => i.id === this.pendingAltar);
-    this.pendingAltar = null;
-    if (!it) return;
-    const altar = this.level.altars[it.ref]!;
-    if (!altar.offer.includes(rune)) return;
-    it.used = true;
-    this.applyRune(rune);
-  }
-
-  applyRune(rune: RuneId): void {
-    if (this.player.runes.includes(rune)) return;
-    this.player.runes.push(rune);
-    if (rune === 'vigor') {
-      this.player.maxHp += 4;
-      this.player.hp = Math.min(this.player.maxHp, this.player.hp + 4);
-    }
-    this.emit({ type: 'rune', kind: rune });
   }
 
   /** 以 2D 射線扇形揭露地圖。 */

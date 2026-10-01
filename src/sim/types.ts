@@ -1,4 +1,4 @@
-import type { ArmorId, ItemId, PlayerClass, PotionId, RuneId, TalentId, TipKind, Tool, WeaponId } from '../config';
+import type { ArmorId, ItemId, PlayerClass, PotionId, TalentId, TipKind, Tool, WeaponId } from '../config';
 import type { V2, V3 } from '../core/math';
 import type { EnemyKind } from '../gen/rooms';
 import type { PickupKind } from '../gen/generator';
@@ -105,7 +105,6 @@ export interface Player {
   tool: Tool;
   desiredTool: Tool;
   action: ActionState | null;
-  runes: RuneId[];
   hasHeart: boolean;
   dead: boolean;
   lastMoveDist: number;
@@ -194,7 +193,7 @@ export interface Projectile {
   gravity: number;
   age: number;
   alive: boolean;
-  pierceLeft: number;
+
   hitSet: Set<number>;
   /** 本子步的預定終點與平均速度（供同時空交會判定）。 */
   next: V3;
@@ -243,7 +242,7 @@ export interface Trap {
   hitSet: Set<number>;
 }
 
-export type InteractKind = 'door' | 'chest' | 'altar' | 'heart' | 'stairs' | 'resupply';
+export type InteractKind = 'door' | 'chest' | 'heart' | 'stairs' | 'resupply';
 
 export interface Interactable {
   id: number;
@@ -285,8 +284,6 @@ export type GameEventType =
   | 'trapSpike'
   | 'pickup'
   | 'chest'
-  | 'altarOpen'
-  | 'rune'
   | 'heart'
   | 'needHeart'
   | 'wake'

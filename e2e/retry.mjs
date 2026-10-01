@@ -12,7 +12,7 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
 };
 
-// 生成結果的完整簽章（地形、門、敵人初始位置與狀態、補給、祭壇），不受開局後經過多少慢動作時間影響
+// 生成結果的完整簽章（地形、門、敵人初始位置與狀態、補給），不受開局後經過多少慢動作時間影響
 const signature = async () => page.evaluate(() => window.__sd.level().signature);
 // 開局後的即時狀態（巡邏中的敵人會在慢動作中移動，只在失敗時列出以供比對）
 const liveSnapshot = async () =>
@@ -90,7 +90,7 @@ const st2 = await resetSample.jsonValue();
 await page.waitForTimeout(400);
 const sig2 = await signature();
 const live2 = await liveSnapshot();
-check('同種子重試：生成結果完全相同（地形、門、敵人初始位置、補給、祭壇）', sig1 === sig2, `${sig1.length} 字元`);
+check('同種子重試：生成結果完全相同（地形、門、敵人初始位置、補給）', sig1 === sig2, `${sig1.length} 字元`);
 const sameLive = JSON.stringify(live1.enemies) === JSON.stringify(live2.enemies);
 if (!sameLive) console.log('（資訊）開局後的即時敵人狀態不同，原因是取樣時已經過的世界時間不同：', live1.time.toFixed(3), 'vs', live2.time.toFixed(3));
 check('同種子重試：狀態重置（生命、時間、敵人與 AI 記憶）', st2.player.hp === st2.player.maxHp && st2.time < 0.5 &&

@@ -69,7 +69,6 @@ export function testLevel(rows: string[], enemies: Array<Partial<EnemySpawn> & {
     })),
     pickups: [],
     chests: [],
-    altars: [],
     heart: null,
     stairs: null,
     resupply: null,

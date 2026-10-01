@@ -3,12 +3,12 @@
 // 圖例：
 //   #  牆            .  地板          o  石柱          =  矮牆（1.0 m）
 //   P  高台（1.3 m） ^  尖刺踏板      s  補給點        C  寶箱
-//   A  刻印祭壇      H  沉眠之心台座  X  出口階梯      @  出生點
+//   H  沉眠之心台座  X  出口階梯      @  出生點
 //   R  補給台（練習） 1-9  敵人（見 enemies）          a-h  巡邏點
 
 export type Face = 'N' | 'S' | 'E' | 'W';
 export type EnemyKind = 'guard' | 'archer' | 'charger';
-export type Role = 'entrance' | 'combat' | 'altar' | 'treasure' | 'heart' | 'shortcut' | 'practice';
+export type Role = 'entrance' | 'combat' | 'treasure' | 'heart' | 'shortcut' | 'practice';
 
 export interface EnemyDef {
   m: string;
@@ -187,12 +187,12 @@ export const LAYOUTS: RoomLayout[] = [
     ],
   },
   {
-    id: 'altar-apse',
-    name: '祭壇間',
-    role: 'altar',
+    id: 'apse',
+    name: '側廳',
+    role: 'combat',
     rows: [
       '############',
-      '#.A........#',
+      '#..........#',
       '#..........#',
       '#.o......o.#',
       '#..........#',
@@ -210,9 +210,9 @@ export const LAYOUTS: RoomLayout[] = [
     ],
   },
   {
-    id: 'altar-rotunda',
-    name: '圓柱祭堂',
-    role: 'altar',
+    id: 'rotunda',
+    name: '圓柱廳',
+    role: 'combat',
     rows: [
       '##############',
       '#............#',
@@ -220,7 +220,7 @@ export const LAYOUTS: RoomLayout[] = [
       '#............#',
       '#....o..o....#',
       '#............#',
-      '#.....A......#',
+      '#............#',
       '#............#',
       '#............#',
       '#....o..o....#',
@@ -240,7 +240,7 @@ export const LAYOUTS: RoomLayout[] = [
     role: 'treasure',
     rows: [
       '##############',
-      '#C..........A#',
+      '#C...........#',
       '#............#',
       '#..=......=..#',
       '#..=..1...=..#',

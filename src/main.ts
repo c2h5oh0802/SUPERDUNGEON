@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, RUN, TALENTS, classInfo, runeInfo, type ClassInfo, type PlayerClass, type RuneId } from './config';
+import { ALL_CLASSES, RUN, TALENTS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, queueUse, upgradeLabel } from './sim/items';
 import { renderInventory } from './ui/inventory';
 import { clampRealDt } from './core/time';
@@ -17,11 +17,11 @@ import { Hud } from './ui/hud';
 import { drawMap } from './ui/mapView';
 import { SettingsStore } from './ui/settings';
 
-type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'rune' | 'choice' | 'inventory' | 'results';
+type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const SCREENS = ['screen-menu', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-rune', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
+const SCREENS = ['screen-menu', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
 
 export class App {
   readonly canvas = $<HTMLCanvasElement>('game');
@@ -53,7 +53,7 @@ export class App {
       onLockChange: (locked) => this.onLockChange(locked),
       onLockError: () => {},
       onFocusLost: () => this.onFocusLost(),
-      capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'rune' || this.mode === 'choice' || this.mode === 'inventory',
+      capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'choice' || this.mode === 'inventory',
     });
     this.input.attach();
     this.applySettings();
@@ -180,8 +180,6 @@ export class App {
     click('btn-new', () => this.startRun(randomSeed(), false));
     click('btn-menu', () => this.toMenu());
     click('btn-mobile-continue', () => this.show('screen-menu'));
-    for (const card of Array.from(document.querySelectorAll<HTMLButtonElement>('.rune-card')))
-      card.addEventListener('click', () => this.chooseRune(Number(card.dataset.idx)));
     // 設定
     const bindRange = (id: string, out: string, key: 'sensitivity' | 'fov' | 'masterVolume' | 'sfxVolume' | 'pixelRatio', fmt: (v: number) => string) => {
       const el = $<HTMLInputElement>(id);
@@ -328,7 +326,7 @@ export class App {
             `floor${this.runCount}`,
             floor === RUN.floors
               ? `第 ${floor} 層（最底層）：沉眠之心就在這一層，守衛也在旁邊。取得它就通關。`
-              : `第 ${floor} 層：敵人更多、醒著的更多。物資、生命與刻印都帶下來了；已自動存檔。`,
+              : `第 ${floor} 層：敵人更多、醒著的更多。物資與生命都帶下來了；已自動存檔。`,
             7,
           );
           return;
@@ -425,24 +423,6 @@ export class App {
     if (this.mode === 'playing' || this.mode === 'map') this.pause('（視窗失去焦點）');
   }
 
-  private openRune(): void {
-    const w = this.world!;
-    const it = w.interactables.find((i) => i.id === w.pendingAltar);
-    if (!it) return;
-    const offer = w.level.altars[it.ref]!.offer;
-    const cards = Array.from(document.querySelectorAll<HTMLButtonElement>('.rune-card'));
-    offer.forEach((id, k) => {
-      const info = runeInfo(id);
-      const c = cards[k]!;
-      c.dataset.rune = id;
-      c.querySelector('h3')!.textContent = info.name;
-      c.querySelector('p')!.textContent = info.text;
-    });
-    this.mode = 'rune';
-    this.show('screen-rune');
-    this.sfx.ui('open');
-  }
-
   /** 天賦或強化的選擇畫面（世界暫停）。 */
   private openChoice(): void {
     const w = this.world!;
@@ -456,9 +436,9 @@ export class App {
     $('choice-sub').textContent = c.kind === 'talent' ? '天賦本局有效。按數字鍵或直接點選。' : '強化本局有效，會帶到下一層。按數字鍵或直接點選。';
     const box = $('choice-cards');
     box.innerHTML = cards
-      .map((_, k) => `<button class="rune-card" data-idx="${k}"><kbd>${k + 1}</kbd><h3></h3><p></p></button>`)
+      .map((_, k) => `<button class="choice-card" data-idx="${k}"><kbd>${k + 1}</kbd><h3></h3><p></p></button>`)
       .join('');
-    const btns = Array.from(box.querySelectorAll<HTMLButtonElement>('.rune-card'));
+    const btns = Array.from(box.querySelectorAll<HTMLButtonElement>('.choice-card'));
     btns.forEach((b, k) => {
       b.querySelector('h3')!.textContent = cards[k]!.name;
       b.querySelector('p')!.textContent = cards[k]!.text;
@@ -514,19 +494,6 @@ export class App {
     this.backToPlay();
   }
 
-  private chooseRune(idx: number): void {
-    if (this.mode !== 'rune' || !this.world) return;
-    const card = document.querySelectorAll<HTMLButtonElement>('.rune-card')[idx];
-    const id = card?.dataset.rune as RuneId | undefined;
-    if (!id) return;
-    this.world.chooseRune(id);
-    const ev = this.world.drainEvents();
-    this.sfx.onEvents(ev);
-    this.hud.onEvents(ev, this.world);
-    this.enterPlaying();
-    if (!this.input.locked && !this.input.fallback) void this.input.requestLock();
-  }
-
   private showResults(): void {
     const w = this.world!;
     this.intentionalUnlock = true;
@@ -563,7 +530,6 @@ export class App {
       ['空中擊破瓶子', String(s.airbursts)],
       ['煙霧瓶／藥水', `${s.bottlesThrown} / ${s.potionsUsed}`],
       ['打開寶箱', String(s.chests)],
-      ['刻印', w.player.runes.map((r) => runeInfo(r).name).join('、') || '無'],
       ['受到傷害', dmg || '無'],
     ];
     $('res-stats').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
@@ -622,8 +588,7 @@ export class App {
         this.sfx.onEvents(events);
         this.hud.onEvents(events, w);
         this.devLog(events);
-        if (w.pendingAltar !== null) this.openRune();
-        else if (w.pendingChoice !== null) this.openChoice();
+        if (w.pendingChoice !== null) this.openChoice();
         if (w.outcome !== 'none') {
           this.outcomeT += realDt;
           const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
@@ -636,8 +601,6 @@ export class App {
       }
     } else if (w && this.mode === 'map') {
       if (raw.map || raw.escape) this.enterPlaying();
-    } else if (w && this.mode === 'rune') {
-      if (raw.digit === 1 || raw.digit === 2) this.chooseRune(raw.digit - 1);
     } else if (w && this.mode === 'choice') {
       if (raw.digit) this.choose(raw.digit - 1);
     } else if (w && this.mode === 'inventory') {

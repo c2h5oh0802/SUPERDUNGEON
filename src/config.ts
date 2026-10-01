@@ -349,59 +349,8 @@ export const DOOR = {
   losBlockBelow: 0.6,
 } as const;
 
-export const RUNES = {
-  pierce: { extra: 1 },
-  swiftBlade: { timeMul: 0.7 },
-  shadow: { detectMul: 1.6 },
-  vigor: { maxHp: 4, heal: 4 },
-} as const;
-
-export type RuneId = keyof typeof RUNES;
-
-export interface RuneInfo {
-  id: RuneId;
-  name: string;
-  text: string;
-}
-
 const fmt = (n: number) => String(Math.round(n * 100) / 100);
 const total = (a: { windup: number; active: number; recovery: number }) => a.windup + a.active + a.recovery;
-
-/** 刻印說明由上方數值生成，確保文字與效果一致。 */
-export function runeInfo(id: RuneId): RuneInfo {
-  switch (id) {
-    case 'pierce':
-      return {
-        id,
-        name: '穿甲刻印',
-        text: `箭與投擲石可穿透 ${RUNES.pierce.extra} 名敵人，後方敵人仍受全額傷害。`,
-      };
-    case 'swiftBlade': {
-      const sw = weaponTotal('longsword');
-      const kn = weaponTotal('knife');
-      const m = RUNES.swiftBlade.timeMul;
-      return {
-        id,
-        name: '疾刃刻印',
-        text: `近戰行動時間 ×${m}：長劍 ${fmt(sw)} → ${fmt(sw * m)} 秒、獵刀 ${fmt(kn)} → ${fmt(kn * m)} 秒。`,
-      };
-    }
-    case 'shadow':
-      return {
-        id,
-        name: '影行刻印',
-        text: `敵人發現你所需的時間 +${Math.round((RUNES.shadow.detectMul - 1) * 100)}%。`,
-      };
-    case 'vigor':
-      return {
-        id,
-        name: '堅韌刻印',
-        text: `最大生命 +${RUNES.vigor.maxHp}，並立即回復 ${RUNES.vigor.heal} 點生命。`,
-      };
-  }
-}
-
-export const ALL_RUNES: RuneId[] = ['pierce', 'swiftBlade', 'shadow', 'vigor'];
 
 // ---------- 職業：明確的起始武器，加上一條職業規則 ----------
 

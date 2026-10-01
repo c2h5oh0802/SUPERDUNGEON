@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSES, ENEMIES, PERCEPTION, PLAYER, RUNES, runeInfo, WEAPONS } from '../src/config';
-import { fireProjectile } from '../src/sim/playerSys';
+import { CLASSES, ENEMIES, PERCEPTION, PLAYER, WEAPONS } from '../src/config';
+import { actionTotal, fireProjectile } from '../src/sim/playerSys';
 import { emptyInput, type Projectile } from '../src/sim/types';
 import type { World } from '../src/sim/world';
 import { finishAction, makeWorld, run } from './helpers';
@@ -29,7 +29,7 @@ function inject(w: World, p: Partial<Projectile> & Pick<Projectile, 'kind' | 'po
     gravity: 0,
     age: 0,
     alive: true,
-    pierceLeft: 0,
+
     hitSet: new Set(),
     next: { ...p.pos },
     avgVel: { ...p.vel },
@@ -89,15 +89,15 @@ describe('劍', () => {
     expect(w.enemies[0]!.hp).toBe(ENEMIES.guard.hp);
   });
 
-  it('疾刃刻印真的縮短揮劍行動時間', () => {
+  it.each(['longsword', 'knife', 'spear', 'axe'] as const)('%s uses its full baseline melee timing without a Rune multiplier', (weapon) => {
     const w = makeWorld();
-    w.applyRune('swiftBlade');
-    const t0 = w.time;
+    w.player.weapon.id = weapon;
+    const spec = WEAPONS[weapon];
+    const base = spec.windup + spec.active + spec.recovery;
+    expect(actionTotal(w, 'melee')).toBeCloseTo(base, 10);
     swing(w);
-    const base = WEAPONS.longsword.windup + WEAPONS.longsword.active + WEAPONS.longsword.recovery;
-    expect(w.time - t0).toBeCloseTo(base * RUNES.swiftBlade.timeMul, 2);
-    const r2 = (n: number) => Math.round(n * 100) / 100;
-    expect(runeInfo('swiftBlade').text).toContain(`${r2(base)} → ${r2(base * RUNES.swiftBlade.timeMul)}`);
+    expect(w.lastAction!.spent).toBeCloseTo(base, 8);
+    expect(w.time).toBeCloseTo(base, 8);
   });
 });
 
@@ -163,22 +163,18 @@ describe('弓與投射物', () => {
     expect(w3.enemies[0]!.hp).toBe(ENEMIES.guard.hp - 3);
   });
 
-  it('穿甲刻印：箭穿過第一名敵人命中後方敵人（文字與效果一致）', () => {
-    const line = [
-      { kind: 'charger' as const, x: 9.5, z: 10.5, state: 'sleep' as const },
-      { kind: 'charger' as const, x: 9.5, z: 7.5, state: 'sleep' as const },
-    ];
-    const w0 = makeWorld(undefined, line, 'huntress');
-    shoot(w0, Math.atan2(1.1 - 1.55, 4));
-    expect(w0.enemies[0]!.hp).toBeLessThan(ENEMIES.charger.hp);
-    expect(w0.enemies[1]!.hp).toBe(ENEMIES.charger.hp);
-
-    const w1 = makeWorld(undefined, line, 'huntress');
-    w1.applyRune('pierce');
-    shoot(w1, Math.atan2(1.1 - 1.55, 4));
-    expect(w1.enemies[0]!.hp).toBeLessThan(ENEMIES.charger.hp);
-    expect(w1.enemies[1]!.hp).toBeLessThan(ENEMIES.charger.hp);
-    expect(runeInfo('pierce').text).toContain(`${RUNES.pierce.extra} 名`);
+  it.each(['bow', 'stone'] as const)('%s has no bonus penetration and stops at the first enemy', (kind) => {
+    const w = makeWorld(undefined, [
+      { kind: 'charger', x: 9.5, z: 10.5, state: 'sleep' },
+      { kind: 'charger', x: 9.5, z: 7.5, state: 'sleep' },
+    ], 'huntress');
+    w.player.pitch = Math.atan2(1.1 - 1.55, 4);
+    const projectile = fireProjectile(w, kind);
+    expect(projectile).not.toHaveProperty('pierceLeft');
+    for (let k = 0; k < 120 && projectile.alive; k++) w.advance(dt);
+    expect(w.enemies[0]!.hp).toBeLessThan(ENEMIES.charger.hp);
+    expect(w.enemies[1]!.hp).toBe(ENEMIES.charger.hp);
+    expect(projectile.alive).toBe(false);
   });
 
   it('煙霧阻斷視線，但不會刪除已射出的箭', () => {
@@ -256,25 +252,27 @@ describe('煙霧瓶與空爆', () => {
   });
 });
 
-describe('刻印', () => {
-  it('影行：發現所需時間真的變長', () => {
-    const mk = () => makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 4.5, state: 'idle', yaw: Math.PI }]);
-    const a = mk();
-    const b = mk();
-    b.applyRune('shadow');
-    a.advance(0.5);
-    b.advance(0.5);
-    expect(a.enemies[0]!.awareness).toBeGreaterThan(0.2);
-    expect(b.enemies[0]!.awareness).toBeLessThan(a.enemies[0]!.awareness / (RUNES.shadow.detectMul - 0.1));
-    expect(runeInfo('shadow').text).toContain(`+${Math.round((RUNES.shadow.detectMul - 1) * 100)}%`);
+describe('Rune-free baseline', () => {
+  it('new players and floor carry contain no active Rune state or application API', () => {
+    const w = makeWorld();
+    expect(w.player).not.toHaveProperty('runes');
+    expect(w.carry()).not.toHaveProperty('runes');
+    expect(w).not.toHaveProperty('pendingAltar');
+    expect(w).not.toHaveProperty('hasRune');
+    expect(w).not.toHaveProperty('applyRune');
+    expect(w).not.toHaveProperty('chooseRune');
+    expect(w.player.maxHp).toBe(PLAYER.maxHp);
   });
 
-  it('堅韌：最大生命 +4 並回復 4', () => {
-    const w = makeWorld();
-    w.player.hp = 5;
-    w.applyRune('vigor');
-    expect(w.player.maxHp).toBe(PLAYER.maxHp + RUNES.vigor.maxHp);
-    expect(w.player.hp).toBe(5 + RUNES.vigor.heal);
+  it('perception uses baseline fill time with no shadow modifier', () => {
+    const w = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 4.5, state: 'idle', yaw: Math.PI }]);
+    const e = w.enemies[0]!;
+    const distance = Math.hypot(e.x - w.player.x, e.z - w.player.z);
+    const fill = PERCEPTION.fillNear + (PERCEPTION.fillFar - PERCEPTION.fillNear) *
+      ((distance - PERCEPTION.nearDist) / (PERCEPTION.range - PERCEPTION.nearDist));
+    // Perception samples at configured intervals. The stationary guard sees the player.
+    w.advance(PERCEPTION.interval);
+    expect(e.awareness).toBeCloseTo(PERCEPTION.interval / fill, 7);
   });
 });
 

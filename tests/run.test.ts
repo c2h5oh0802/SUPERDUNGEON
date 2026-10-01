@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSES, PLAYER, RUN } from '../src/config';
+import { CLASSES, RUN, XP } from '../src/config';
+import { gainXp } from '../src/sim/progress';
 import { levelSignature } from '../src/gen/generator';
 import { generateLevel } from '../src/gen/validate';
 import { createFloorWorld, newRun, nextFloor, parseRun, serializeRun } from '../src/sim/run';
@@ -49,21 +50,24 @@ describe('樓層生成', () => {
 });
 
 describe('跨層保留與存檔', () => {
-  it('生命、物資、藥劑箭、刻印與統計帶到下一層', () => {
+  it('生命、物資、藥劑箭、升級成長與統計帶到下一層', () => {
     const run = newRun('CARRY', 'huntress');
     const w = createFloorWorld(run);
     w.damagePlayer(3, '測試', w.player.x, w.player.z);
     w.player.arrows = 5;
     w.player.tipped.chill = 0;
     w.player.tipKind = 'chill';
-    w.applyRune('vigor');
+    gainXp(w, XP.levels[1]!);
+    w.resolveChoice(0);
     w.stats.kills = 4;
     const next = nextFloor(run, w);
     const w2 = createFloorWorld(next);
     const p = w2.player;
-    expect([p.hp, p.maxHp]).toEqual([PLAYER.maxHp - 3 + 4, PLAYER.maxHp + 4]);
+    expect([p.hp, p.maxHp]).toEqual([w.player.hp, w.player.maxHp]);
     expect([p.arrows, p.tipped.paralysis, p.tipped.chill, p.tipKind]).toEqual([5, CLASSES.huntress.start.paralysis, 0, 'chill']);
-    expect(p.runes).toEqual(['vigor']);
+    expect(p.level).toBe(2);
+    expect(p.talents).toEqual(w.player.talents);
+    expect(p).not.toHaveProperty('runes');
     expect(w2.stats.kills).toBe(4);
     expect(w2.stats.damageTaken['測試']).toBe(3);
     expect(w2.level.floor).toBe(2);
@@ -101,7 +105,7 @@ describe('跨層保留與存檔', () => {
     expect(bad((o) => (o.cls = 'wizard'))).toBeNull();
     expect(bad((o) => (o.carry.hp = 999))).toBeNull();
     expect(bad((o) => (o.carry.arrows = -1))).toBeNull();
-    expect(bad((o) => (o.carry.runes = ['hax']))).toBeNull();
+    expect(bad((o) => (o.carry.weapon.level = 99))).toBeNull();
     expect(bad((o) => (o.carry = null))).toBeNull();
     expect(parseRun(JSON.stringify(good))).not.toBeNull();
   });

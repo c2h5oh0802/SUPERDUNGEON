@@ -34,6 +34,12 @@ async function waitIdle() {
 
 let s = await st();
 check('練習場：背包裡有 7 樣東西（含乾糧）', s.player.items.length === 7, s.player.items.map((i) => i.id).join(','));
+check('刻印介面已移除', await page.locator('#screen-rune, #runes, .rune-chip, .rune-card, .rune-cards').count() === 0);
+check('開發狀態不含刻印或待選祭壇', !Object.hasOwn(s.player, 'runes') && !Object.hasOwn(s, 'pendingAltar'));
+check('開發地圖與互動物不含祭壇', await page.evaluate(() => {
+  const state = window.__sd.state();
+  return !Object.hasOwn(window.__sd.level(), 'altars') && state.interactables.every((it) => it.kind !== 'altar');
+}));
 
 // 1) 背包：世界暫停，未知的藥水只顯示外觀
 await openBag();
@@ -58,8 +64,12 @@ await page.click(`#inv-list button[data-k="${await idx('scroll:upgrade')}"][data
 await page.waitForFunction(() => window.__sd.state().mode === 'choice', null, { timeout: 20000 });
 const choiceText = await page.textContent('#choice-cards');
 check('強化卷軸：跳出選擇畫面（武器；停用臂盾不出現）', choiceText.includes('長劍') && !choiceText.includes('臂盾'), choiceText.slice(0, 60));
+check('強化選擇沿用通用選擇卡片', await page.locator('#choice-cards.choice-cards .choice-card').count() === (await st()).pendingChoice.options.length);
+const upgradeTime = (await st()).time;
+await page.waitForTimeout(300);
+check('強化選擇時世界暫停', (await st()).time === upgradeTime);
 await page.screenshot({ path: `${OUT}items-upgrade.png` });
-await page.click('#choice-cards .rune-card[data-idx="0"]');
+await page.click('#choice-cards .choice-card[data-idx="0"]');
 await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 5000 });
 s = await st();
 check('選了武器：長劍 +1', s.player.weapon.id === 'longsword' && s.player.weapon.level === 1, JSON.stringify(s.player.weapon));
@@ -90,6 +100,10 @@ console.log('INFO 狀態注入：給 10 經驗');
 await page.waitForFunction(() => window.__sd.state().mode === 'choice', null, { timeout: 10000 });
 s = await st();
 check('升到第 2 級：跳出天賦選擇（兩個戰士天賦）', s.player.level === 2 && s.pendingChoice?.kind === 'talent' && s.pendingChoice.options.length === 2, JSON.stringify(s.pendingChoice));
+check('天賦選擇沿用通用選擇卡片', await page.locator('#choice-cards.choice-cards .choice-card').count() === 2);
+const talentTime = s.time;
+await page.waitForTimeout(300);
+check('天賦選擇時世界暫停', (await st()).time === talentTime);
 await page.screenshot({ path: `${OUT}items-talent.png` });
 await page.keyboard.press('Digit1');
 await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 5000 });

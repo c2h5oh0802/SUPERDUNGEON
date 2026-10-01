@@ -1,4 +1,4 @@
-import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type TipKind, type Tool } from '../config';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
@@ -43,7 +43,6 @@ export class Hud {
   private toasts = $('toasts');
   private hintEl = $('hint');
   private heartStatus = $('heart-status');
-  private runesEl = $('runes');
   private toolsEl = $('tools');
   private xpLevel = $('xp-level');
   private xpFill = $('xp-fill');
@@ -192,9 +191,6 @@ export class Hud {
         case 'wake':
           window.setTimeout(() => this.toast('地城甦醒了！帶著心回到入口石階', 'big', 3.5), 600);
           break;
-        case 'rune':
-          this.toast(`獲得 ${runeInfo(e.kind as RuneId).name}`, 'good', 2.5);
-          break;
         case 'fullInventory':
         case 'dryFire':
         case 'barred':
@@ -296,9 +292,6 @@ export class Hud {
           : `${f}（最底層）：取得沉眠之心`;
       this.objective.classList.toggle('escape', p.hasHeart);
       this.heartStatus.classList.toggle('hidden', !p.hasHeart);
-    });
-    this.set('runes', p.runes.join(','), () => {
-      this.runesEl.innerHTML = p.runes.map((id) => `<span class="rune-chip">${runeInfo(id).name}</span>`).join('');
     });
     // 工具
     this.set('tool', `${p.tool}|${p.desiredTool}`, () => {

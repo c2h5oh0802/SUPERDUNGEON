@@ -2,6 +2,8 @@
 
 Status: **Ready for Human Review**
 
+後續版本已[移除刻印祭壇](rune-removal.md)，天賦／強化選擇仍凍結 Hunger。以下測量是移除前的歷史基準（包含當時的祭壇路線／Rune 選擇），不是目前 Rune-free 版本的校準結果；飢餓與乾糧參數本次未改。
+
 Exact base: `787fdfbdeabc9e33f4b25ffccecd3203ebce73b2`, default branch `claude/wizardly-lamport-dlnz24`, freshly checked through GitHubMcp. All 105 files were checked against the remote blob hashes; the local base tree is `c83f81f552999d52caadd5e0323e03bb775ab967`. A fresh isolated dot-cloud checkout was created. Existing dirty review worktrees were not edited. No user computer, remote publication, deployment, dependency change, save deletion or migration requiring reset.
 
 The values below are provisional calibration. Bots establish mechanisms and cost ranges; they do not establish fun, accessibility, human survival balance or acceptance.
@@ -12,7 +14,7 @@ The values below are provisional calibration. Bots establish mechanisms and cost
 |---|---|---|
 | Single time engine | `World.frame` → `clampRealDt` → movement/startActions → `computeWorldDt` → `World.advance` substeps | `updateHunger` only inside each executed substep, after world time increments, before action effects |
 | Time rules | Idle 0.1×, actual horizontal movement/reference speed, ongoing actions and Space normal rate, max demand rather than sum, normal-speed cap | No time-engine changes, realDt deductions, per-action Hunger charges or wall-clock use |
-| UI pauses | App calls World.frame only in playing mode; map/inventory/pause skip it; altar/talent/upgrade stop frame and interrupt substeps | Hunger naturally freezes, including the unused remainder of a frame when a choice opens |
+| UI pauses | App calls World.frame only in playing mode; map/inventory/pause skip it; talent/upgrade stop frame and interrupt substeps | Hunger naturally freezes, including the unused remainder of a frame when a choice opens |
 | Shift | input.sneak → player.sneaking → 0.5 movement × armor/talent; movement demand ×2 (lightstep override); footsteps suppressed | All unchanged; Hunger sees only final world time |
 | Camera | renderer.crouch lowered eye by 0.35m | Remove that render-only field and lowering; eye stays 1.6m |
 | Physics/detection | Player height 1.8m, radius .35m; existing ray/cylinder proxy; no Shift visual-perception modifier | All unchanged, including hostile first-hit/friendly-fire/LoF rules and AI investigation |
