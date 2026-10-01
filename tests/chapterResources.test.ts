@@ -136,7 +136,7 @@ describe('knowledge, appearances and conservative v2 migration', () => {
     const run = newRun('UNKNOWN', 'warrior'), w = createFloorWorld(run);
     w.addPickup('item', 1, w.player.x, .1, w.player.z, null, 'potion:frost'); updatePickups(w);
     expect(w.events.filter((e) => e.type === 'pickup').every((e) => !e.text?.includes('冰霜'))).toBe(true);
-    shatterPotion(w, 'frost', w.player.x, .2, w.player.z);
+    drinkPotion(w, 'frost');
     expect(isKnown(w, 'potion:frost')).toBe(true);
     const resumed = createFloorWorld(parseRun(serializeRun(nextFloor(run, w)))!);
     expect(resumed.player.known).toEqual(w.player.known);
@@ -261,12 +261,12 @@ describe('optional resource rooms have useful alternatives, never a main-route i
 });
 
 describe('consumable responsibility edges', () => {
-  it('throwing either buff potion consumes the use and identifies it, without producing a fake area', () => {
+  it('throwing either buff potion does not identify it or produce a fake area', () => {
     const w = makeWorld();
     for (const id of ['invisibility', 'haste'] as const) {
       expect(isKnown(w, `potion:${id}`)).toBe(false);
       shatterPotion(w, id, w.player.x, 0, w.player.z);
-      expect(isKnown(w, `potion:${id}`)).toBe(true);
+      expect(isKnown(w, `potion:${id}`)).toBe(false);
     }
     expect(w.areas).toEqual([]); expect(w.player.invisT).toBe(0); expect(w.player.hasteT).toBe(0);
   });

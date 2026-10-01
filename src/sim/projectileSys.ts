@@ -147,6 +147,7 @@ export function updateProjectiles(w: World, dt: number): void {
       }
       if (hit.type === 'player') {
         p.alive = false;
+        w.emitNoise(at.x, at.y, at.z, NOISE.combatHit, 'combat', typeof p.owner === 'number' ? p.owner : undefined);
         // 戰士的臂盾：作用期間擋下正面來的弩矢
         if (shieldBlocks(w, at.x - p.vel.x * 0.2, at.z - p.vel.z * 0.2)) {
           w.stats.blocks++;
@@ -180,6 +181,10 @@ export function updateProjectiles(w: World, dt: number): void {
 
 function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void {
   p.alive = false;
+  // The DDA hit lies exactly on a cell boundary; sound stays on the incoming
+  // side, not accidentally inside the wall for +x/+z hits.
+  const speed = Math.hypot(p.avgVel.x, p.avgVel.y, p.avgVel.z) || 1;
+  const sound = { x: at.x - p.avgVel.x / speed * .03, y: at.y - p.avgVel.y / speed * .03, z: at.z - p.avgVel.z / speed * .03 };
   switch (p.kind) {
     case 'arrow':
       // 藥劑箭射空：藥劑灑掉，箭身可以撿回當一般箭
@@ -189,6 +194,7 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
       w.emitNoise(at.x, at.y, at.z, 4, 'impact');
       break;
     case 'bolt':
+      w.emitNoise(sound.x, sound.y, sound.z, NOISE.combatHit, 'impact', typeof p.owner === 'number' ? p.owner : undefined);
       w.emit({ type: 'hitWall', x: at.x, y: at.y, z: at.z, kind: 'bolt' });
       break;
     case 'stone': {

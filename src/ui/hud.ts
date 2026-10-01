@@ -160,7 +160,7 @@ export class Hud {
           if (e.kind === 'teleport') this.toast('你被傳送到別的地方', 'good', 2);
           break;
         case 'shatter':
-          if (e.kind === 'invisibility' || e.kind === 'haste') this.toast('藥水碎了，沒有明顯效果', '', 1.6);
+          if (e.text) this.toast(e.text, '', 1.6);
           break;
         case 'corpseFound':
           this.toast('有敵人發現了屍體！', 'bad', 2);

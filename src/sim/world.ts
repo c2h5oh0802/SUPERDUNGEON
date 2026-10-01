@@ -1,5 +1,5 @@
 import { recordSensesEvent, expireSenses, type SoundCue } from './senses';
-import { ARMORS, CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
+import { ARMORS, CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, RENDER, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
@@ -75,6 +75,9 @@ export interface ClassCue {
 }
 
 export class World {
+  /** Camera geometry only; not persistent run state. */
+  viewFov: number = RENDER.fov;
+  viewAspect = 16 / 9;
   readonly level: LevelData;
   readonly grid: Grid;
   readonly enav: Nav;
@@ -429,7 +432,7 @@ export class World {
 
   emitNoise(x: number, y: number, z: number, radius: number, source: string, emitterId?: number): void {
     this.emit({ type: 'noise', x, y, z, radius, source, id: emitterId });
-    onNoise(this, x, y, z, radius, emitterId);
+    onNoise(this, x, y, z, radius, emitterId, source);
   }
 
   damagePlayer(amount: number, source: string, fromX: number, fromZ: number): void {

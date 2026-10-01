@@ -69,12 +69,20 @@ export class GameRenderer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.opts.pixelRatio));
     this.camera.fov = this.opts.fov;
     this.camera.updateProjectionMatrix();
+    this.syncObservationView();
   }
 
   resize(w: number, h: number): void {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / Math.max(1, h);
     this.camera.updateProjectionMatrix();
+    this.syncObservationView();
+  }
+
+  private syncObservationView(): void {
+    if (!this.run) return;
+    this.run.world.viewFov = this.camera.fov;
+    this.run.world.viewAspect = this.camera.aspect;
   }
 
   setWorld(world: World): void {
@@ -94,6 +102,7 @@ export class GameRenderer {
     this.scene.add(level.group, props.group, fx.group);
     for (const v of enemies) this.scene.add(v.root);
     this.run = { world, level, props, fx, enemies, sampler };
+    this.syncObservationView();
     this.deathT = 0;
     this.hurtKick = 0;
     this.slow = 0;

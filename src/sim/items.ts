@@ -1,3 +1,4 @@
+import { observesPoint } from './observation';
 import {
   ALL_POTIONS,
   ALL_SCROLLS,
@@ -100,7 +101,7 @@ export function itemDesc(w: World, id: ItemId): string {
     return `${s.damage} 傷害（每級 +${s.perLevel}）、${Math.round((s.windup + s.active + s.recovery) * 100) / 100} 秒、範圍 ${s.reach} m、背刺 ×${s.sneakMultiplier}；${s.note}`;
   }
   if (c === 'armor') return ARMORS[k as keyof typeof ARMORS].note;
-  if (!isKnown(w, id)) return c === 'potion' ? '未知的藥水：喝下或丟出才知道效果。' : '未知的卷軸：讀了才知道效果。';
+  if (!isKnown(w, id)) return c === 'potion' ? '未知的藥水：喝下可試出效果；投擲只有親眼看到明顯效果才會辨識，單純碎瓶不會。' : '未知的卷軸：讀了才知道效果。';
   if (c === 'potion') {
     const p = POTIONS[k as PotionId];
     return `喝下：${p.drink}。丟出：${p.thrown}。`;
@@ -253,10 +254,14 @@ export function drinkPotion(w: World, id: PotionId): void {
 
 /** 丟出的藥水碎開（落地、撞到東西，或在空中被射爆）。 */
 export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: number): void {
-  w.emit({ type: 'shatter', kind: id, x, y, z });
+  const observed = observesPoint(w, { x, y, z });
+  const harmless = id === 'invisibility' || id === 'haste' || id === 'healing';
+  // Generic glass has no subtype cue. Known bottles keep their inventory names.
+  w.emit({ type: 'shatter', x, y, z, text: observed && harmless ? '藥水碎了，沒有明顯效果' : undefined });
   w.emitNoise(x, y, z, 6, 'bottle');
-  identify(w, `potion:${id}`);
-  if (id === 'invisibility' || id === 'haste' || id === 'healing') return;
+  if (harmless) return;
+  // Colored area/burst is grounded even when a bottle is airburst high above it.
+  if (observesPoint(w, { x, y: .4, z })) identify(w, `potion:${id}`);
   spawnArea(w, id, x, z);
 }
 

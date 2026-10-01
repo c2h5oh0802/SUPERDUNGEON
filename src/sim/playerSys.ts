@@ -359,7 +359,10 @@ function meleeWallCheck(w: World): void {
   const from = { x: p.x, y: 1.3, z: p.z };
   const to = { x: p.x + f.x * spec.reach * 0.8, y: 1.3, z: p.z + f.z * spec.reach * 0.8 };
   const hit = w.grid.segmentHit(from, to);
-  if (hit) w.emit({ type: 'hitWall', x: hit.x, y: hit.y, z: hit.z, kind: a.kind });
+  if (hit) {
+    w.emit({ type: 'hitWall', x: hit.x, y: hit.y, z: hit.z, kind: a.kind });
+    w.emitNoise(hit.x - f.x * .03, hit.y, hit.z - f.z * .03, NOISE.combatHit, 'impact');
+  }
 }
 
 function meleeHits(w: World): void {

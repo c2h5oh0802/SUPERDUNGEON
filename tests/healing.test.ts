@@ -109,11 +109,11 @@ describe('drink/H share reservation, completion, world time and statistics', () 
     expect(w.player.items).toEqual([]); expect(w.player.hp).toBe(1); expect(isKnown(w, 'potion:healing')).toBe(false);
     expect(w.stats.healingUsed).toBe(0); expect(w.stats.itemsUsed).toBe(0);
   });
-  it('throw does not heal any actor or spawn area; matches existing beneficial break identification', () => {
+  it('throw does not heal any actor or spawn area; harmless throwing cannot identify it', () => {
     const w = makeWorld(OPEN_ROOM, [{ kind: 'guard', x: 9, z: 9 }], 'huntress');
     w.player.hp = 1; w.enemies[0]!.hp = 1; shatterPotion(w, 'healing', 9, .2, 9);
     expect(w.player.hp).toBe(1); expect(w.enemies[0]!.hp).toBe(1); expect(w.areas).toEqual([]);
-    expect(isKnown(w, 'potion:healing')).toBe(true); expect(w.stats.healingUsed).toBe(0);
+    expect(isKnown(w, 'potion:healing')).toBe(false); expect(w.stats.healingUsed).toBe(0);
     const known = makeWorld(); addItem(known, 'potion:healing'); queueUse(known, 0, 'throw'); known.frame(dt, emptyInput());
     expect(known.player.action?.kind).toBe('bottle'); expect(known.player.items).toEqual([]);
   });

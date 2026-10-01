@@ -63,7 +63,7 @@ Raw reports include per-floor time, food found/used/remaining, Hungry/Starving e
 
 Only knowledge differs. Same seed and floor produce identical room choices, enemy identities/positions, item identities/positions, appearance assignments and drop-RNG state across classes. There are no class-specific loot rolls or bonus bottles. Existing discoveries carry across floors and saves, and old saves gain the selected class's initial knowledge without consuming RNG.
 
-Unknown bag names/descriptions and pickup notifications show appearances only. The special rooms never identify a bottle color as their answer. Any potion use or breakage identifies that potion, including an ineffective thrown Invisibility/Haste bottle. Reading Sleep identifies it. Upgrade remains known and outside the unknown/random-scroll pool.
+Unknown bag names/descriptions and pickup notifications show appearances only. The special rooms never identify a bottle color as their answer. Updated by the combat/identification fix: drinking identifies a potion; throwing Fire/Frost/Gas identifies only if the revealing effect is in view and unoccluded. Ineffective Invisibility/Haste/Healing breakage never identifies. Reading Sleep identifies it. Upgrade remains known and outside the unknown/random-scroll pool.
 
 ## Consumable responsibilities
 

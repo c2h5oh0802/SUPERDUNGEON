@@ -18,7 +18,7 @@ Healing is now part of the same unidentified Potion system. H is only a shortcut
 - H finds a known Healing stack, queues `queueUse` and calls the same `startPendingUse` reservation path as inventory. There is no direct H heal or separate resource
 - The ordinary Potion action still reserves/removes one item at start and applies the effect at completion. Interruption loses the reserved bottle as other potions do, but never completes healing or identification
 - Known Healing at full HP is disabled in the bag and refused by simulation/H. Unknown actual Healing can be manually drunk at full HP and identified; this spends the bottle with zero HP restored, without leaking identity through a disabled button
-- Throwing Healing never heals an actor or makes a cloud. Existing beneficial potions already identify on breakage, so Healing follows that exact policy (including identification) rather than changing Invisibility/Haste behavior
+- Throwing Healing never heals an actor or makes a cloud. Updated by the combat/identification fix: Healing, Invisibility and Haste shatter harmlessly without identification; only drinking reveals an unknown beneficial potion
 - HUD counts only already-known Healing stacks. Debug data retains actual item IDs for test fixtures, as it did for all unknown items; player HUD and bag names do not expose unknown Healing counts
 
 ## Removed paths and retained systems
@@ -67,7 +67,7 @@ An independent code review found the over-cap gear-return loss described above; 
 1. Warrior new run on a recorded seed: initial Healing/Teleport known, no free bottle. Find the first Healing, take damage and press H. Confirm paid action completion and roughly50% max HP healing
 2. Gain a level and repeat to check scaling. At full HP verify H does nothing and known Healing bag Use is disabled
 3. Huntress on the same seed: same bottle color/location, but unknown. Wounded H must not select it; manually drink to identify. A later matching bottle can now use H
-4. Test unknown actual Healing while full HP: manual experiment still works. Throw Healing: only break/identify, no healing
+4. Test unknown actual Healing while full HP: manual experiment still works. Throw Healing: only break, no identification or healing
 5. Play a whole normal chapter, then heavy exploration; record damage, healing found/used/remaining, HP entering each floor, food/Hunger and unused items at victory
 6. Practice: both classes can resupply actual Healing and use H. Continue a legacy save with a full bag and verify no item loss; recover outgoing gear if swapped while over-cap
 

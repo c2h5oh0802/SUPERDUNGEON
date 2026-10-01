@@ -1,3 +1,4 @@
+import { combatRoomCells } from './combatSound';
 import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
@@ -258,10 +259,13 @@ function resumeWandering(e: Enemy): void {
   e.awareness = 0;
 }
 
-/** 噪音：未察覺的敵人前往查看；睡眠中的敵人只對較近的噪音醒來。 */
-export function onNoise(w: World, x: number, y: number, z: number, radius: number, emitterId?: number): void {
+/** 噪音：未察覺的敵人前往查看；同房可傳達的戰鬥聲叫醒睡眠者；一般聲音仍依距離／遮蔽衰減。 */
+export function onNoise(w: World, x: number, y: number, z: number, radius: number, emitterId?: number, source = ''): void {
+  const roomCells = combatRoomCells(w, x, z, radius, source);
   for (const e of w.enemies) {
     if (!e.alive || e.state === 'alert' || e.id === emitterId) continue;
+    const cell = Math.floor(e.z) * w.grid.w + Math.floor(e.x);
+    if (roomCells.has(cell)) { investigate(w, e, { x, z }); continue; }
     const d = Math.hypot(e.x - x, e.z - z);
     if (d > radius) continue;
     let r = radius;
@@ -575,6 +579,7 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
         e.phase = 'active';
         e.phaseT = 0;
         w.emit({ type: 'enemyStrike', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
+        w.emitNoise(e.x, e.y + 1, e.z, NOISE.combatHit, 'combat', e.id);
       }
       return;
     case 'active': {
@@ -590,6 +595,7 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
           const clear = w.grid.segmentHit({ x: e.x, y: 1.2, z: e.z }, { x: p.x, y: 1.2, z: p.z });
           if (!clear) {
             e.hitDone = true;
+            w.emitNoise(p.x, 1, p.z, NOISE.combatHit, 'combat', e.id);
             if (shieldBlocks(w, e.x, e.z)) {
               w.stats.blocks++;
               w.emit({ type: 'block', id: e.id, kind: 'guard', x: (e.x + p.x) / 2, y: 1.2, z: (e.z + p.z) / 2 });
@@ -741,6 +747,7 @@ function fireBolt(w: World, e: Enemy): void {
   e.phaseT = 0;
   e.aimPoint = null;
   w.emit({ type: 'enemyFire', id: e.id, kind: e.kind, x: origin.x, y: origin.y, z: origin.z });
+  w.emitNoise(origin.x, origin.y, origin.z, NOISE.combatHit, 'combat', e.id);
 }
 
 function chargerAlert(w: World, e: Enemy, dt: number): void {
@@ -773,6 +780,7 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
         e.phaseT = 0;
         e.chargeDist = 0;
         w.emit({ type: 'enemyStrike', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
+        w.emitNoise(e.x, e.y + 1, e.z, NOISE.combatHit, 'combat', e.id);
       }
       return;
     case 'charge': {
@@ -794,6 +802,7 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       for (const o of w.enemies) {
         if (o === e || !o.alive || o.perched) continue;
         if (Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius) {
+          w.emitNoise(nx, 1, nz, NOISE.combatHit, 'impact', e.id);
           // 衝撞也會撞傷擋在路上的同伴
           w.emit({ type: 'bump', id: o.id, kind: 'charge', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
           damageEnemy(w, o, s.allyDamage, { source: 'charge', sneak: false, head: false, x: o.x, y: 1.0, z: o.z });
@@ -807,6 +816,7 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       if (!p.dead && Math.hypot(p.x - nx, p.z - nz) < e.radius + PLAYER.radius) {
         if (!e.hitDone) {
           e.hitDone = true;
+          w.emitNoise(p.x, 1, p.z, NOISE.combatHit, 'combat', e.id);
           if (shieldBlocks(w, e.x, e.z)) {
             // 臂盾擋下衝撞：戰士被推退，突進者收招但不暈眩
             w.stats.blocks++;
