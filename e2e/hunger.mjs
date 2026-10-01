@@ -74,8 +74,12 @@ try {
   assert.equal(s.lastAction.kind, 'eat'); assert.ok(Math.abs(s.lastAction.spent - .8) < .02);
   await page.screenshot({ path: `${OUT}hunger-after-food.png` });
 
-  // Real generated pickup, no giveItem injection: floor-1 entrance supply.
+  // Real generated item; explicitly injected position at an exploration-room ration.
   await page.reload(); await startRun(page, 'HUNGER-UI');
+  await page.evaluate(() => {
+    const food = window.__sd.state().pickups.find((it) => it.item === 'food:ration');
+    window.__sd.debug.teleport(food.x, food.z);
+  });
   await page.waitForFunction(() => window.__sd.state().player.items.some((it) => it.id === 'food:ration'));
   assert.equal((await state()).player.items.find((it) => it.id === 'food:ration').count, 1);
   assert.deepEqual(errors, []);

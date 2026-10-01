@@ -16,10 +16,9 @@ import {
   type PotionId,
   type ScrollId,
 } from '../config';
-import { dirFromYawPitch } from '../core/math';
+import { lullEnemy } from './enemySys';
 import { Rng } from '../core/rng';
 import { rollConsumable, rollItem } from '../gen/loot';
-import { AIM_EYE_Y, aimPoint } from './aim';
 import { Nav } from './nav';
 import { hasTalent, queueChoice } from './progress';
 import type { Area, Enemy, InvItem, UpgradeTarget } from './types';
@@ -47,7 +46,8 @@ export function looksFor(seed: string): Looks {
   if (l) return l;
   const rng = new Rng(`${seed}#looks`);
   const pi = rng.shuffle(ALL_POTIONS.map((_, k) => k));
-  const si = rng.shuffle(ALL_SCROLLS.map((_, k) => k));
+  // Preserve v2 glyph assignments: old timeStop slot becomes Sleep; slot 3 is retired.
+  const si = rng.shuffle([0, 1, 2, 3]);
   l = {
     potion: Object.fromEntries(ALL_POTIONS.map((id, k) => [id, pi[k]!])) as Record<PotionId, number>,
     scroll: Object.fromEntries(ALL_SCROLLS.map((id, k) => [id, si[k]!])) as Record<ScrollId, number>,
@@ -119,12 +119,12 @@ export function addItem(w: World, id: ItemId, level = 0): boolean {
   const items = w.player.items;
   const c = categoryOf(id);
   if (c === 'food' || c === 'potion' || c === 'scroll') {
-    const s = items.find((it) => it.id === id);
-    if (s) {
-      if (c === 'food' && s.count >= HUNGER.foodStackMax) return false;
-      s.count++;
-      return true;
-    }
+    const limit = c === 'food' ? HUNGER.foodStackMax : 99;
+    const s = items.find((it) => it.id === id && it.count < limit);
+    if (s) { s.count++; return true; }
+    // Keep the single ration-stack contract; migrated consumables may retain
+    // multiple <=99 stacks rather than invalidating the next boundary save.
+    if (c === 'food' && items.some((it) => it.id === id)) return false;
   }
   if (items.length >= ITEM_FX.slots) return false;
   items.push({ id, count: 1, level });
@@ -186,13 +186,20 @@ export function drinkPotion(w: World, id: PotionId): void {
 export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: number): void {
   w.emit({ type: 'shatter', kind: id, x, y, z });
   w.emitNoise(x, y, z, 6, 'bottle');
-  if (id === 'invisibility' || id === 'haste') return;
   identify(w, `potion:${id}`);
+  if (id === 'invisibility' || id === 'haste') return;
   spawnArea(w, id, x, z);
 }
 
 function spawnArea(w: World, kind: Area['kind'], x: number, z: number): void {
   const spec = ITEM_FX.area[kind];
+  if (kind === 'frost') {
+    // Local overlap only. No global fire physics or terrain/prop destruction.
+    for (let k = w.areas.length - 1; k >= 0; k--) {
+      const a = w.areas[k]!;
+      if (a.kind === 'fire' && Math.hypot(a.x - x, a.z - z) <= a.radius + spec.radius) w.areas.splice(k, 1);
+    }
+  }
   w.areas.push({ id: w.nextId++, kind, x, z, radius: spec.radius, age: 0, life: spec.life, tickT: 0, hitPlayer: false });
   w.emit({ type: 'area', kind, x, y: 0.1, z, radius: spec.radius });
 }
@@ -254,7 +261,6 @@ export function stunPlayer(w: World, dur: number): void {
 export function readScroll(w: World, id: ScrollId | 'upgrade'): void {
   if (id === 'upgrade' && upgradeTargets(w).length === 0) return;
   w.stats.itemsUsed++;
-  const p = w.player;
   if (id !== 'upgrade') identify(w, `scroll:${id}`);
   w.emit({ type: 'read', kind: id });
   switch (id) {
@@ -268,15 +274,9 @@ export function readScroll(w: World, id: ScrollId | 'upgrade'): void {
       w.explored.fill(1);
       w.mapped = true;
       return;
-    case 'timeStop':
-      for (const e of w.enemies) if (e.alive) e.paralyzeT = Math.max(e.paralyzeT, ITEM_FX.timeStop);
+    case 'sleep':
+      for (const e of w.enemies) if (Math.hypot(e.x - w.player.x, e.z - w.player.z) <= ITEM_FX.sleepRadius) lullEnemy(e);
       return;
-    case 'lure': {
-      const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
-      const at = aimPoint(w, eye, dirFromYawPitch(p.yaw, p.pitch));
-      w.emitNoise(at.x, Math.min(at.y, 1.5), at.z, ITEM_FX.lureRadius, 'lure');
-      return;
-    }
   }
 }
 
@@ -366,6 +366,7 @@ export function applyUpgrade(w: World, t: UpgradeTarget): void {
 
 /** 敵人倒下：一定機率掉東西（老兵一定掉，而且可能是裝備）。 */
 export function dropLoot(w: World, e: Enemy): void {
+  if (w.level.encounter) return;
   if (!e.veteran && !w.rng.chance(ITEM_FX.dropChance)) return;
   const roll = e.veteran ? rollItem(w.rng, w.level.floor) : rollConsumable(w.rng);
   w.addPickup('item', 1, e.x + 0.3, 0.15, e.z + 0.3, null, roll.id, roll.level);

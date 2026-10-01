@@ -273,7 +273,7 @@ export class App {
       this.startWorld(seed, true, fromGesture, () => {
         const w = new World(generateLevel(seed, { practice: true }), { cls: this.cls });
         // 練習場：先給幾樣東西試（背包 I）
-        for (const id of ['potion:fire', 'potion:frost', 'potion:gas', 'scroll:lure', 'scroll:upgrade', 'weapon:axe'] as const) addItem(w, id);
+        for (const id of ['potion:fire', 'potion:frost', 'potion:gas', 'scroll:sleep', 'scroll:upgrade', 'weapon:axe'] as const) addItem(w, id);
         return w;
       });
       return;
@@ -325,7 +325,7 @@ export class App {
           this.hud.hint(
             `floor${this.runCount}`,
             floor === RUN.floors
-              ? `第 ${floor} 層（最底層）：沉眠之心就在這一層，守衛也在旁邊。取得它就通關。`
+              ? `第 ${floor} 層（最底層）：先擊倒守心者，才能取走沉眠之心。進入戰鬥後飢餓暫停。`
               : `第 ${floor} 層：敵人更多、醒著的更多。物資與生命都帶下來了；已自動存檔。`,
             7,
           );
@@ -337,7 +337,7 @@ export class App {
             : '獵手（1 獵刀、2 獵弓、3 藥劑箭）：麻痺箭讓敵人的時間軸暫停，冰寒箭讓它變慢；再按一次 3 切換。暫停選單有完整職業說明。';
         const hint = practice
           ? '練習場：左邊有睡著與巡邏的盾衛，右邊房間有高台弩手與突進者，補給台（E）可補滿物資。'
-          : `地城共 ${RUN.floors} 層：每層找到往下的階梯，最底層取得沉眠之心。靜止時世界以慢動作流動。`;
+          : `地城共 ${RUN.floors} 層：前四層探索補給，第五層擊倒守心者後取得沉眠之心。靜止時世界以慢動作流動。`;
         this.hud.hint(`start${this.runCount}`, hint, 6);
         // 職業提示排在後面，一次只顯示一則
         this.hud.hint(`cls${this.runCount}`, clsHint, 9);

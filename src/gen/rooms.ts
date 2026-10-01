@@ -32,6 +32,40 @@ export interface RoomLayout {
 
 export const LAYOUTS: RoomLayout[] = [
   {
+    id: 'ember-cache', name: '餘燼側室', role: 'combat',
+    rows: [
+      '##############', '#............#', '#............#', '#.....C......#',
+      '#............#', '#............#', '#............#', '#............#',
+      '#.o........o.#', '#............#', '#..s.........#', '##############',
+    ],
+    enemies: [],
+  },
+  {
+    id: 'sentry-vault', name: '守望寶庫', role: 'treasure',
+    rows: [
+      '################', '#PP..........PP#', '#P1..........2P#', '#..............#',
+      '#......C.......#', '#..............#', '#..............#', '#..===....===..#',
+      '#..............#', '#..............#', '#.s..........s.#', '################',
+    ],
+    enemies: [
+      { m: '1', kind: 'archer', state: 'idle', face: 'S', tier: 0, perched: true },
+      { m: '2', kind: 'archer', state: 'idle', face: 'S', tier: 0, perched: true },
+    ],
+  },
+  {
+    id: 'guardian-hall', name: '守心者大廳', role: 'heart',
+    rows: [
+      '################', '#..............#', '#..o........o..#', '#..............#',
+      '#........1.....#', '#..............#', '#..............#', '#......H.......#',
+      '#..............#', '#..............#', '#.........2....#', '#..............#',
+      '#..o........o..#', '#..............#', '#..............#', '################',
+    ],
+    enemies: [
+      { m: '1', kind: 'guard', state: 'idle', face: 'W', tier: 0 },
+      { m: '2', kind: 'charger', state: 'idle', face: 'W', tier: 0 },
+    ],
+  },
+  {
     id: 'entrance',
     name: '入口石階',
     role: 'entrance',
@@ -415,7 +449,7 @@ export const LAYOUTS: RoomLayout[] = [
 ];
 
 export function layoutsByRole(role: Role): RoomLayout[] {
-  return LAYOUTS.filter((l) => l.role === role);
+  return LAYOUTS.filter((l) => l.role === role && !['ember-cache', 'sentry-vault', 'guardian-hall'].includes(l.id));
 }
 
 export function layoutById(id: string): RoomLayout {

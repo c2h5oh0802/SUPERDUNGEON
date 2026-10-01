@@ -1,4 +1,4 @@
-import { ENEMIES, PERCEPTION, PLAYER } from '../config';
+import { ENEMIES, HUNGER, ITEM_FX, PERCEPTION, PLAYER, RUN } from '../config';
 import { Nav } from '../sim/nav';
 import { buildLevel, type GenerateOptions, type LevelData } from './generator';
 
@@ -60,6 +60,28 @@ export function validateLevel(l: LevelData): ValidationResult {
       return false;
     });
     if (!reachableNear(pnav, seenNoTrap, l.heart.x, l.heart.z, 1.6)) errors.push('沉眠之心只能經過陷阱抵達');
+  }
+
+  if (!l.practice) {
+    const food = l.pickups.filter((p) => p.item === 'food:ration');
+    if (food.length !== HUNGER.foodPerFloor[l.floor - 1]) errors.push('乾糧保底數量錯誤');
+    const upgrades = l.pickups.filter((p) => p.item === 'scroll:upgrade');
+    if (upgrades.length !== (l.encounter ? 0 : 1)) errors.push('強化卷軸預算錯誤');
+    for (const p of food) need('乾糧', p.x, p.z, PLAYER.pickupRadius);
+    if (l.encounter && (l.pickups.length || l.chests.length || l.traps.length)) errors.push('首領層混入探索物資或陷阱');
+    if (l.encounter && !l.enemies.some((e) => e.boss)) errors.push('首領層缺少守心者');
+    if (l.floor <= RUN.explorationFloors && l.goal !== 'descend') errors.push('探索層不可直接通關');
+    const optional = l.rooms.filter((r) => r.optional);
+    const inOptional = (x: number, z: number) => optional.some((r) => x >= r.x0 && x <= r.x0 + r.w && z >= r.z0 && z <= r.z0 + r.h);
+    const flames = (l.specialRooms ?? []).flatMap((r) => r.fire ? [r.fire] : []);
+    const safe = floodAvoiding(pnav, l.spawn.x, l.spawn.z, (x, z) => inOptional(x, z) ||
+      flames.some((a) => Math.hypot(a.x - x, a.z - z) <= ITEM_FX.area.fire.radius + PLAYER.radius));
+    if (l.heart && !reachableNear(pnav, safe, l.heart.x, l.heart.z, 1.6)) errors.push('主線需要穿過特殊房');
+    for (const room of l.specialRooms ?? []) {
+      if (!optional.some((r) => r.key === room.roomKey)) errors.push('特殊房不是可選支線');
+      if (!l.pickups.some((p) => p.item === room.solution && p.x === room.supply.x && p.z === room.supply.z)) errors.push('特殊房缺少保底物資');
+      if (!reachableNear(pnav, safe, room.supply.x, room.supply.z, PLAYER.pickupRadius)) errors.push('特殊房物資需要穿過自身危險');
+    }
   }
 
   // 出生安全

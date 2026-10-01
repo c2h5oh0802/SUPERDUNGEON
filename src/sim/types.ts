@@ -179,6 +179,9 @@ export interface Enemy {
   veteran: boolean;
   /** 屍體已經被其他敵人發現過（只觸發一次）。 */
   corpseFound: boolean;
+  /** A committed attack resolves before Sleep is applied. */
+  pendingSleep: boolean;
+  boss: boolean;
 }
 
 export type ProjectileKind = 'arrow' | 'stone' | 'bottle' | 'bolt';

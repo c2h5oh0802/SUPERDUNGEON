@@ -60,13 +60,15 @@ const ITEM_IDS = new Set<string>([
   ...ALL_POTIONS.map((k) => `potion:${k}`),
   ...ALL_SCROLLS.map((k) => `scroll:${k}`),
   'scroll:upgrade',
+  // Accepted only as migration input; neither remains in the active pool.
+  'scroll:timeStop', 'scroll:lure',
   ...ALL_WEAPONS.map((k) => `weapon:${k}`),
   ...ALL_ARMORS.map((k) => `armor:${k}`),
 ]);
 const isInt = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 
 export function serializeRun(run: RunState): string {
-  return JSON.stringify({ v: SAVE_VERSION, ...run });
+  return JSON.stringify({ v: SAVE_VERSION, chapter: 2, ...run });
 }
 
 const isNum = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
@@ -80,7 +82,9 @@ export function parseRun(text: string | null): RunState | null {
   } catch {
     return null;
   }
-  if (!o || o.v !== SAVE_VERSION) return null;
+  if (!o || o.v !== SAVE_VERSION || (o.chapter !== undefined && o.chapter !== 2)) return null;
+  // Legacy floor-4 checkpoints keep their carry and resume exploration floor 4;
+  // the new arena follows. Floor-start saves never contain a won/Heart-taken state.
   if (typeof o.seed !== 'string' || !o.seed || o.seed.length > 32) return null;
   if (!ALL_CLASSES.includes(o.cls as PlayerClass)) return null;
   if (!isNum(o.floor, 1, RUN.floors) || !Number.isInteger(o.floor)) return null;
@@ -141,8 +145,8 @@ export function parseRun(text: string | null): RunState | null {
       armor: { id: ar.id as ArmorId, level: ar.level as number },
       bowLevel: c.bowLevel as number,
       shieldLevel: c.shieldLevel as number,
-      items: (c.items as Array<{ id: ItemId; count: number; level: number }>).map((it) => ({ id: it.id, count: it.count, level: it.level })),
-      known: (c.known as ItemId[]).slice(),
+      items: migrateItems(c.items as Array<{ id: string; count: number; level: number }>),
+      known: [...new Set((c.known as string[]).filter((id) => id !== 'scroll:lure').map((id) => id === 'scroll:timeStop' ? 'scroll:sleep' : id))] as ItemId[],
       xp: c.xp as number,
       level: c.level as number,
       talents: (c.talents as TalentId[]).slice(),
@@ -180,4 +184,21 @@ export function parseRun(text: string | null): RunState | null {
   }
   if (o.floor !== 1 && (!carry || !stats)) return null;
   return { seed: o.seed, cls: o.cls as PlayerClass, floor: o.floor, carry, stats };
+}
+
+/** Retired lure is discarded, not compensated with a stronger resource. Sleep aliases
+ * merge without losing quantities, preserving >99 as a second valid legacy stack. */
+function migrateItems(items: Array<{ id: string; count: number; level: number }>): PlayerCarry['items'] {
+  const out: PlayerCarry['items'] = [];
+  for (const it of items) {
+    if (it.id === 'scroll:lure') continue;
+    const id = (it.id === 'scroll:timeStop' ? 'scroll:sleep' : it.id) as ItemId;
+    let count = it.count;
+    if (id === 'scroll:sleep') {
+      const stack = out.find((s) => s.id === id && s.count < 99);
+      if (stack) { const added = Math.min(count, 99 - stack.count); stack.count += added; count -= added; }
+    }
+    if (count) out.push({ id, count, level: it.level });
+  }
+  return out;
 }

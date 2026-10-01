@@ -11,7 +11,7 @@ export const TIME = {
   maxSubstep: 1 / 120,
 } as const;
 
-/** Hunger v1 provisional calibration: measured four-floor route/combat costs, not a fun verdict. */
+/** Food Economy v2 provisional calibration: measured four-floor route/combat costs, not a fun verdict. */
 export const HUNGER = {
   /** Net elapsed world seconds. Thinking at idleRate consumes only that actual world time. */
   hungryAt: 120,
@@ -20,8 +20,8 @@ export const HUNGER = {
   damageEvery: 15,
   foodRestore: 60,
   foodStackMax: 99,
-  /** Guaranteed existing ground-item pickups at each floor entrance; no random food dependency. */
-  foodPerFloor: [1, 1, 1, 1],
+  /** Guaranteed exploration-room rations; no random food dependency; arena supplies none. */
+  foodPerFloor: [1, 1, 2, 2, 0],
   /** Practice entrance and resupply use the same bag item, without campaign RNG. */
   practiceRations: 3,
 } as const;
@@ -319,22 +319,21 @@ export const ENEMIES = {
 
 /** 一局的結構：逐層往下，最底層是沉眠之心。 */
 export const RUN = {
-  floors: 4,
+  floors: 5,
+  explorationFloors: 4,
   /** 每層房間難度加成（索引＝樓層 − 1）：越深，房間裡出現的敵人越多。 */
-  tierBonus: [-1, 0, 1, 2],
+  tierBonus: [-1, 0, 1, 2, 0],
   /** 睡著的敵人改成醒著的機率。 */
-  wakeChance: [0, 0, 0.35, 0.6],
-  /** 最底層（暫代首領房）：沉眠之心旁的守衛。 */
-  guardians: ['guard', 'charger'] as const,
+  wakeChance: [0, 0, 0.35, 0.6, 0],
   /** 敵人生命每深一層的加成。 */
   hpPerFloor: 0.15,
   /** 每層的老兵數量（戴頭盔：奇襲倍率上限 ×2、生命 ×1.5、發現速度 ×1.3）。 */
-  veterans: [0, 0, 1, 2],
+  veterans: [0, 0, 1, 2, 0],
   veteranHpMul: 1.5,
   veteranFillMul: 1 / 1.3,
   veteranSneakMul: 2,
   /** 閒置的敵人改成巡邏的機率（索引＝樓層 − 1）。 */
-  patrolChance: [0, 0.4, 0.4, 0.5],
+  patrolChance: [0, 0.4, 0.4, 0.5, 0],
 } as const;
 
 export const TRAP = {
@@ -404,6 +403,12 @@ export const CLASSES = {
 export type PlayerClass = keyof typeof CLASSES;
 export const ALL_CLASSES: PlayerClass[] = ['warrior', 'huntress'];
 
+/** Knowledge only: no loot, appearance or dungeon RNG is consumed. */
+export const CLASS_KNOWLEDGE: Record<PlayerClass, readonly ItemId[]> = {
+  warrior: ['potion:fire', 'scroll:teleport'],
+  huntress: ['potion:invisibility', 'scroll:mapping'],
+};
+
 export interface ClassInfo {
   id: PlayerClass;
   name: string;
@@ -427,7 +432,8 @@ export interface ClassInfo {
 export function classInfo(id: PlayerClass): ClassInfo {
   const cfg = CLASSES[id];
   const st = cfg.start;
-  const common = `共通：煙霧瓶 ${st.bottles}（Q）、治療藥水 ${st.potions}（H，回復 ${PLAYER.potionHeal}）、生命 ${PLAYER.maxHp}、布衣。撿到的武器與護甲兩個職業都能裝備；升級時從職業天賦中選一個。`;
+  const knowledge = id === 'warrior' ? '火焰藥水、傳送卷軸' : '隱形藥水、地圖卷軸';
+  const common = `起初認得${knowledge}；強化卷軸兩職業都認得。共通：煙霧瓶 ${st.bottles}（Q）、治療藥水 ${st.potions}（H，回復 ${PLAYER.potionHeal}）、生命 ${PLAYER.maxHp}、布衣。撿到的武器與護甲兩個職業都能裝備；升級時從職業天賦中選一個。`;
   if (id === 'warrior') {
     const w = CLASSES.warrior;
     const sw = WEAPONS.longsword;
@@ -547,11 +553,11 @@ export const RENDER = {
 /** 未知藥水（治療藥水一開始就認得，用 H 喝）。 */
 export type PotionId = 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
 /** 未知卷軸（強化卷軸一開始就認得）。 */
-export type ScrollId = 'teleport' | 'mapping' | 'timeStop' | 'lure';
+export type ScrollId = 'teleport' | 'mapping' | 'sleep';
 export type ItemId = 'food:ration' | `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
 
 export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste'];
-export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'timeStop', 'lure'];
+export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'sleep'];
 
 /** 每一局隨機對應的外觀（第一次使用才知道是什麼）。 */
 export const POTION_LOOKS = [
@@ -565,7 +571,7 @@ export const SCROLL_LOOKS = ['灰燼', '潮汐', '荊棘', '星辰'] as const;
 
 export const POTIONS: Record<PotionId, { name: string; drink: string; thrown: string }> = {
   fire: { name: '火焰藥水', drink: '在腳下燒起來（你也會被燒）', thrown: '碎開處燒起一片火，站在裡面的敵人每 0.5 秒受 1 傷害' },
-  frost: { name: '冰霜藥水', drink: '在腳下結冰（你也會變慢）', thrown: '碎開處結冰，裡面的敵人時間軸變成半速' },
+  frost: { name: '冰霜藥水', drink: '在腳下結冰、熄滅接觸的火焰', thrown: '碎開處結冰，裡面的敵人時間軸變成半速，並熄滅接觸的火焰' },
   gas: { name: '麻痺氣體', drink: '在腳下冒出氣體（你會被麻痺）', thrown: '碎開處冒出氣體，裡面的敵人時間軸暫停' },
   invisibility: { name: '隱形藥水', drink: '8 秒內敵人看不到你（攻擊會現形）', thrown: '碎了，沒有效果' },
   haste: { name: '迅捷藥水', drink: '8 秒內你的行動只花一半世界時間', thrown: '碎了，沒有效果' },
@@ -575,8 +581,7 @@ export const SCROLLS: Record<ScrollId | 'upgrade', { name: string; text: string 
   upgrade: { name: '強化卷軸', text: '選一件裝備強化一級' },
   teleport: { name: '傳送卷軸', text: '傳送到這一層遠離敵人的地方' },
   mapping: { name: '地圖卷軸', text: '顯示整層地圖與往下的路' },
-  timeStop: { name: '時停卷軸', text: '這一層所有敵人的時間軸暫停 3 秒' },
-  lure: { name: '誘敵卷軸', text: '準星指向的地方發出很大的聲響' },
+  sleep: { name: '沉睡卷軸', text: '令附近 6 公尺內的普通敵人入睡；已鎖定的攻擊先完成，首領免疫；聲音、靠近與受擊仍會喚醒' },
 };
 
 export const ITEM_FX = {
@@ -587,8 +592,7 @@ export const ITEM_FX = {
   },
   invisibility: 8,
   haste: { duration: 8, timeMul: 0.5 },
-  timeStop: 3,
-  lureRadius: 16,
+  sleepRadius: 6,
   teleportMinDist: 12,
   /** 背包格數（同種藥水、卷軸疊在一格）。 */
   slots: 10,

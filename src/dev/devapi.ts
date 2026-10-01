@@ -1,6 +1,7 @@
 import { PLAYER, type ItemId } from '../config';
 import { hungerState } from '../sim/hunger';
 import { addItem } from '../sim/items';
+import { damageEnemy } from '../sim/enemySys';
 import { gainXp } from '../sim/progress';
 import { activeLoopCount } from '../core/loop';
 import { levelSignature } from '../gen/generator';
@@ -35,6 +36,10 @@ export function installDevApi(app: App): void {
         mirrored: w.level.mirrored,
         floor: w.level.floor,
         goal: w.level.goal,
+        encounterState: w.encounterState,
+        hungerPaused: w.hungerPaused,
+        heartAvailable: w.heartAvailable,
+        specialRooms: w.level.specialRooms,
         run: app.run ? { floor: app.run.floor, seed: app.run.seed, cls: app.run.cls } : null,
         time: w.time,
         realTime: w.realTime,
@@ -124,6 +129,8 @@ export function installDevApi(app: App): void {
           roomKey: e.roomKey,
           shieldUp: e.shieldUp,
           veteran: e.veteran,
+          boss: e.boss,
+          pendingSleep: e.pendingSleep,
           paralyzeT: e.paralyzeT,
           slowT: e.slowT,
           pushing: !!e.push,
@@ -147,7 +154,7 @@ export function installDevApi(app: App): void {
         lastAction: w.lastAction ? { ...w.lastAction } : null,
         cueText: document.getElementById('cue')?.textContent ?? '',
         smokes: w.smokes.map((s) => ({ id: s.id, x: s.x, y: s.y, z: s.z, radius: s.radius, age: s.age, air: s.air })),
-        pickups: w.pickups.filter((k) => !k.taken).map((k) => ({ id: k.id, kind: k.kind, amount: k.amount, x: k.x, y: k.y, z: k.z })),
+        pickups: w.pickups.filter((k) => !k.taken).map((k) => ({ id: k.id, kind: k.kind, item: k.item, amount: k.amount, x: k.x, y: k.y, z: k.z })),
         interactables: w.interactables.map((i) => ({ id: i.id, kind: i.kind, x: i.x, z: i.z, used: i.used, ref: i.ref })),
         doors: w.grid.doors.map((d) => ({ id: d.id, cx: d.cx, cz: d.cz, progress: d.progress, target: d.target, barred: d.barred, arch: d.arch, axis: d.axis })),
         interactTarget: w.interactTarget,
@@ -205,6 +212,12 @@ export function installDevApi(app: App): void {
     /** 狀態注入（僅供除錯定位，不可作為正常流程證據）。 */
     debug: {
       /** 聚焦 AI 測試：狀態注入，不是玩家輸入或真人流程證據。 */
+      defeatGuardians() {
+        const w = app.world;
+        if (!w?.level.encounter) return;
+        for (const e of w.enemies) if (e.boss && e.alive)
+          damageEnemy(w, e, e.hp, { source: 'debug', sneak: false, head: false, x: e.x, y: e.y, z: e.z });
+      },
       setInvisible(seconds: number) {
         if (app.world) app.world.player.invisT = Math.max(0, seconds);
       },

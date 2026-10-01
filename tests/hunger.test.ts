@@ -204,12 +204,12 @@ describe('One ration in the existing bag and action system', () => {
 });
 
 describe('Food distribution, carry and backwards-compatible v2 saves', () => {
-  it('guarantees configured reachable entrance food in every floor, independent of RNG/class', () => {
+  it('guarantees configured non-entrance exploration food, independent of RNG/class', () => {
     for (let seed = 0; seed < 20; seed++) for (let floor = 1; floor <= 4; floor++) {
       const l = generateLevel(`HUNGER${seed}`, { floor });
       const food = l.pickups.filter((p) => p.item === 'food:ration');
       expect(food).toHaveLength(HUNGER.foodPerFloor[floor - 1]!);
-      expect(food.every((p) => p.x === l.spawn.x && p.z === l.spawn.z)).toBe(true);
+      expect(food.every((p) => Math.hypot(p.x - l.spawn.x, p.z - l.spawn.z) > 3)).toBe(true);
     }
   });
 
@@ -252,6 +252,8 @@ describe('Food distribution, carry and backwards-compatible v2 saves', () => {
     const resumed = createFloorWorld(parsed!);
     expect(resumed.player.hunger).toBe(0); expect(resumed.player.starvationT).toBe(0);
     expect(resumed.player.items.some((it) => it.id === 'food:ration')).toBe(false);
+    const food = resumed.pickups.find((p) => p.item === 'food:ration')!;
+    resumed.player.x = food.x; resumed.player.z = food.z;
     updatePickups(resumed); expect(resumed.player.items).toContainEqual({ id: 'food:ration', count: 1, level: 0 });
   });
 

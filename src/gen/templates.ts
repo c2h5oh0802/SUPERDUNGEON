@@ -26,7 +26,7 @@ export interface TemplateEdge {
 }
 
 export interface Template {
-  id: 'A' | 'B' | 'practice';
+  id: 'A' | 'B' | 'practice' | 'arena';
   name: string;
   cols: number;
   rows: number;
@@ -119,6 +119,16 @@ export const TEMPLATE_PRACTICE: Template = {
     { key: 'P2', col: 1, row: 0, role: 'practice', tier: 1, layout: 'practice-range' },
   ],
   edges: [{ a: 'P1', b: 'P2', type: 'door' }],
+};
+
+/** Dedicated final floor: supply-free antechamber, then an existing-enemy encounter. */
+export const TEMPLATE_ARENA: Template = {
+  id: 'arena', name: '守心者大廳', cols: 2, rows: 1,
+  rooms: [
+    { key: 'E', col: 0, row: 0, role: 'entrance', tier: 0, layout: 'entrance' },
+    { key: 'H', col: 1, row: 0, role: 'heart', tier: 1, layout: 'guardian-hall' },
+  ],
+  edges: [{ a: 'E', b: 'H', type: 'door' }],
 };
 
 export const RUN_TEMPLATES: Template[] = [TEMPLATE_A, TEMPLATE_B];

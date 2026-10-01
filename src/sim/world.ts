@@ -1,4 +1,4 @@
-import { ARMORS, CLASSES, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
+import { ARMORS, CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
@@ -97,6 +97,7 @@ export class World {
   deathCause: string | null = null;
   heartTaken = false;
   awakened = false;
+  encounterState: 'none' | 'dormant' | 'active' | 'resolved' = 'none';
   /** 有敵人發現了屍體：整層戒備。 */
   alarm = false;
   /** 等待玩家選擇（天賦、強化）：顯示選擇時世界暫停。 */
@@ -141,6 +142,7 @@ export class World {
 
   constructor(level: LevelData, opts: WorldOptions = {}) {
     this.level = level;
+    this.encounterState = level.encounter ? 'dormant' : 'none';
     this.grid = level.grid;
     this.enav = new Nav(this.grid, Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius));
     // 房間中心投影到既有導航格；入口不列入目的地，不改生成與可達性規則。
@@ -172,7 +174,7 @@ export class World {
       shieldLevel: 0,
       sneaking: false,
       items: [],
-      known: [],
+      known: [...CLASS_KNOWLEDGE[cls]],
       xp: 0,
       level: 1,
       talents: [],
@@ -212,7 +214,7 @@ export class World {
       p.bowLevel = c.bowLevel;
       p.shieldLevel = c.shieldLevel;
       p.items = c.items.map((it) => ({ ...it }));
-      p.known = c.known.slice();
+      p.known = [...new Set([...CLASS_KNOWLEDGE[cls], ...c.known])];
       p.xp = c.xp;
       p.level = c.level;
       p.talents = c.talents.slice();
@@ -266,6 +268,11 @@ export class World {
         ref: 0,
         roomKey: level.resupply.roomKey,
       });
+    for (const room of level.specialRooms ?? []) if (room.fire) {
+      const a = ITEM_FX.area.fire;
+      this.areas.push({ id: this.nextId++, kind: 'fire', ...room.fire, radius: a.radius,
+        age: 0, life: Infinity, tickT: 0, hitPlayer: false });
+    }
     this.reveal();
   }
 
@@ -374,15 +381,17 @@ export class World {
   advance(worldDt: number): void {
     const { n, dt } = substeps(worldDt, TIME.maxSubstep);
     for (let s = 0; s < n; s++) {
-      if (this.outcome !== 'none') break;
+      if (this.outcome !== 'none' || this.pendingChoice !== null) break;
+      this.updateEncounter();
       this.time += dt;
       this.stats.worldTime = this.baseWorldTime + this.time;
       // 唯一飢餓入口：每個真正執行的世界子步；不吃 realDt、移動或行動倍率。
-      updateHunger(this, dt);
+      if (!this.hungerPaused) updateHunger(this, dt);
       if (this.outcome !== 'none') break;
       updatePlayerAction(this, dt);
       updateProjectiles(this, dt);
       updateEnemies(this, dt);
+      this.updateEncounter();
       updateDoors(this, dt);
       updateTraps(this, dt);
       updateSmokes(this, dt);
@@ -436,11 +445,40 @@ export class World {
     }
   }
 
+  get hungerPaused(): boolean {
+    return this.encounterState === 'active' || this.encounterState === 'resolved';
+  }
+
+  get heartAvailable(): boolean {
+    return !this.level.encounter || this.encounterState === 'resolved';
+  }
+
+  startEncounter(): void {
+    if (this.encounterState !== 'dormant') return;
+    this.encounterState = 'active';
+    this.emit({ type: 'buff', kind: 'encounter', text: '守心者甦醒：本場戰鬥暫停飢餓消耗' });
+  }
+
+  updateEncounter(): void {
+    if (!this.level.encounter || this.encounterState === 'resolved') return;
+    const room = this.level.rooms.find((r) => r.key === this.level.encounter!.roomKey)!;
+    const p = this.player;
+    // Cross the inner threshold, rather than freezing the entire fifth floor.
+    if (p.x > room.x0 + 1 && p.x < room.x0 + room.w - 1 &&
+        p.z > room.z0 + 1 && p.z < room.z0 + room.h - 1) this.startEncounter();
+    if (!this.enemies.some((e) => e.boss && e.alive)) {
+      this.encounterState = 'resolved';
+      this.emit({ type: 'buff', kind: 'encounter', text: '守心者已倒下：可以取走沉眠之心' });
+    }
+  }
+
   takeHeart(): void {
+    if (!this.heartAvailable) return;
     this.heartTaken = true;
     this.player.hasHeart = true;
     this.emit({ type: 'heart' });
-    awakenDungeon(this);
+    // Retain legacy/practice awakening; arena victory has no escape phase.
+    if (!this.level.encounter) awakenDungeon(this);
   }
 
   /** 帶到下一層的玩家狀態。 */

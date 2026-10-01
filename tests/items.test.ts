@@ -59,10 +59,10 @@ describe('未鑑定的藥水與卷軸', () => {
 
   it('走過去撿起地上的物品', () => {
     const w = makeWorld(OPEN_ROOM, [], 'huntress');
-    const p = w.addPickup('item', 1, w.player.x, 0.15, w.player.z - 0.4, null, 'scroll:lure', 0);
+    const p = w.addPickup('item', 1, w.player.x, 0.15, w.player.z - 0.4, null, 'scroll:sleep', 0);
     w.frame(dt, input(w));
     expect(p.taken).toBe(true);
-    expect(w.player.items[0]!.id).toBe('scroll:lure');
+    expect(w.player.items[0]!.id).toBe('scroll:sleep');
   });
 });
 
@@ -132,24 +132,23 @@ describe('增益藥水', () => {
 });
 
 describe('卷軸', () => {
-  it('時停：這一層所有敵人暫停 3 秒；地圖：整層都揭開', () => {
+  it('沉睡只影響附近敵人；地圖仍揭開整層', () => {
     const w = makeWorld(OPEN_ROOM, [{ kind: 'guard', x: 9.5, z: 6.5, yaw: 0, state: 'idle' }, { kind: 'archer', x: 3.5, z: 3.5, yaw: 0, state: 'idle' }], 'warrior');
-    readScroll(w, 'timeStop');
-    expect(w.enemies.every((e) => e.paralyzeT >= ITEM_FX.timeStop)).toBe(true);
+    w.player.z = 11.5;
+    readScroll(w, 'sleep');
+    expect(w.enemies[0]!.state).toBe('sleep');
+    expect(w.enemies[1]!.state).not.toBe('sleep');
+    expect(w.enemies.every((e) => e.paralyzeT === 0)).toBe(true);
     readScroll(w, 'mapping');
     expect(w.explored.every((v) => v === 1)).toBe(true);
-    expect(isKnown(w, 'scroll:timeStop') && isKnown(w, 'scroll:mapping')).toBe(true);
+    expect(isKnown(w, 'scroll:sleep') && isKnown(w, 'scroll:mapping')).toBe(true);
   });
 
-  it('傳送：移到遠離敵人的地方；誘敵：準星指的地方發出大聲響', () => {
+  it('傳送：移到遠離敵人的地方', () => {
     const w = makeWorld(OPEN_ROOM, [{ kind: 'guard', x: 9.5, z: 12.5, yaw: 0, state: 'idle' }], 'warrior');
     readScroll(w, 'teleport');
     const g = w.enemies[0]!;
     expect(Math.hypot(w.player.x - g.x, w.player.z - g.z)).toBeGreaterThan(8);
-    const l = makeWorld(OPEN_ROOM, [{ kind: 'guard', x: 9.5, z: 3.5, yaw: Math.PI / 2, state: 'idle' }], 'warrior');
-    l.player.yaw = 0;
-    readScroll(l, 'lure');
-    expect(l.enemies[0]!.state).toBe('investigate');
   });
 
   it('強化卷軸：選一件裝備強化（選擇時世界暫停），武器傷害 +1', () => {
@@ -231,7 +230,7 @@ describe('跨層保留與存檔', () => {
     expect(back).toEqual(next);
     const w2 = createFloorWorld(back);
     expect(w2.player.items).toEqual(w.player.items);
-    expect(w2.player.known).toEqual(['potion:frost']);
+    expect(w2.player.known).toEqual(w.player.known);
     expect(w2.player.armor).toEqual({ id: 'leather', level: 1 });
     expect([w2.player.xp, w2.player.level, w2.player.talents]).toEqual([w.player.xp, w.player.level, w.player.talents]);
     const bad = JSON.parse(serializeRun(next));

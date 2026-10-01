@@ -1,4 +1,5 @@
-// 完整冒險：潛入 → 取心 → 撤離 → 通關（或死亡）。
+// 五層冒險：四個探索層 → 守心者 → 取心通關（或死亡）。
+// Uses normal controls with omniscient read-only navigation/aiming; not human balance evidence.
 // 用法：node e2e/playthrough.mjs <seed> [--headed] [--class=warrior|huntress]
 import { Bot, OUT, launch, startRun, wrap, yawTo } from './lib.mjs';
 
@@ -249,6 +250,9 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
       await bot.releaseAll();
       return 'ended';
     }
+    if (s.mode === 'choice') {
+      await bot.releaseAll(); await page.click('#choice-cards button[data-idx="0"]'); continue;
+    }
     if (s.mode !== 'playing') {
       await bot.releaseAll();
       await page.waitForTimeout(100);
@@ -269,6 +273,13 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
       log('progress game', gameNow.toFixed(1), 'world', s.time.toFixed(1), 'pos', p.x.toFixed(1), p.z.toFixed(1), 'hp', p.hp, 'heart', s.heartTaken);
     }
     void lastD;
+    const food = p.items.findIndex((it) => it.id === 'food:ration');
+    if (!p.action && p.hunger >= 120 && food >= 0) {
+      await bot.releaseAll(); await bot.tap('KeyI');
+      await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
+      await page.click(`#inv-list button[data-k="${food}"][data-m="use"]`);
+      await bot.waitIdle(); continue;
+    }
     // 治療
     if (p.hp <= 4 && p.potions > 0 && !p.action) {
       await bot.releaseAll();
@@ -360,19 +371,25 @@ async function useAt(x, z, label) {
   await shot(label);
 }
 
-const heart = lvl.heart;
-const stairs = lvl.stairs;
-let r = await goTo(heart.x + 0.0, heart.z + 1.3, 1.0, 240000);
-log('to heart:', r);
-if (r === 'arrived') {
-  await useAt(heart.x, heart.z, 'heart');
-  const s = await bot.st();
-  log('heartTaken', s.heartTaken, 'awakened', s.awakened);
-  await page.waitForTimeout(600);
-  await shot('awake');
-  r = await goTo(stairs.front.x, stairs.front.z, 0.8, 300000);
-  log('to stairs:', r);
-  if (r === 'arrived') await useAt(stairs.front.x + stairs.rise.x * 1.5, stairs.front.z + stairs.rise.z * 1.5, 'stairs');
+for (let floor = 1; floor <= 5; floor++) {
+  const level = await page.evaluate(() => window.__sd.level());
+  const heart = level.heart;
+  const route = await goTo(heart.x, heart.z + 1.3, 1.0, 240000);
+  log('floor', floor, 'route', route);
+  if (route !== 'arrived') break;
+  if (floor === 5) {
+    const began = Date.now();
+    while (Date.now() - began < 180000) {
+      const s = await bot.st();
+      if (s.outcome !== 'none' || s.heartAvailable) break;
+      if (s.mode === 'choice') { await page.click('#choice-cards button[data-idx="0"]'); continue; }
+      if (!await fight(s)) { await bot.down('Space'); await page.waitForTimeout(100); await bot.up('Space'); }
+    }
+    if (!(await bot.st()).heartAvailable) break;
+    if (await goTo(heart.x, heart.z + 1.3, 1, 60000) !== 'arrived') break;
+  }
+  await useAt(heart.x, heart.z, `goal-${floor}`);
+  if (floor < 5) await page.waitForFunction((f) => window.__sd.state().floor === f + 1 && window.__sd.state().mode === 'playing', floor, { timeout: 90000 });
 }
 await page.waitForTimeout(1500);
 const fin = await bot.st();

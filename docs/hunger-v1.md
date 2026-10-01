@@ -1,5 +1,7 @@
 # Hunger v1 + Shift 安靜慢走
 
+最新 [Chapter 1 resources v1](chapter1-resources-v1.md) 已改為 4 探索層＋1 首領層、Food Economy v2（1/1/2/2/0）、職業初始知識、沉睡卷軸與兩種可選資源房；本文件其餘內容含歷史版本敘述，衝突時以上述最新規格為準。
+
 Status: **Ready for Human Review**
 
 後續版本已[移除刻印祭壇](rune-removal.md)，天賦／強化選擇仍凍結 Hunger。以下測量是移除前的歷史基準（包含當時的祭壇路線／Rune 選擇），不是目前 Rune-free 版本的校準結果；飢餓與乾糧參數本次未改。

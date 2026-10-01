@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const scripts = ['browser.mjs', 'airburst.mjs', 'retry.mjs', 'classes.mjs', 'floors.mjs', 'items.mjs', 'living-dungeon.mjs', 'melee-movement.mjs', 'combat-economy.mjs', 'hunger.mjs'];
+const scripts = ['browser.mjs', 'airburst.mjs', 'retry.mjs', 'classes.mjs', 'floors.mjs', 'items.mjs', 'living-dungeon.mjs', 'melee-movement.mjs', 'combat-economy.mjs', 'hunger.mjs', 'chapter-resources.mjs'];
 let failed = 0;
 for (const s of scripts) {
   console.log(`\n=== ${s} ===`);

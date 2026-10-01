@@ -1,0 +1,8 @@
+42 baseline protected, 18 baseline unprotected, 42 final protected, 18 final unprotected records: all unique scenario, resource conservation and outcome assertions passed.
+All 84 protected runs completed every declared route policy.
+All 36 unprotected simple-melee controls died before campaign completion; not a human survival verdict.
+The v1.3 arena adapter preserved all pre-existing baseline metrics exactly.
+Seven FLOW1 Warrior baseline scenarios reproduced exactly using the delivered .mjs scripts.
+All 60 final source results exactly match the preceding candidate3 measurements after final stack/identification/dev corrections.
+Baseline source SHA-256 unchanged; final source SHA-256 matches measured source; final protected/survival sources identical.
+Delivered .mjs scripts passed the candidate repository's ESLint configuration.

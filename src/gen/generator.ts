@@ -1,10 +1,11 @@
-import { HUNGER, RUN, WORLD, type ItemId } from '../config';
+import { HUNGER, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
+import { Nav } from '../sim/nav';
 import { Grid, T, type DoorState, type TileId } from '../sim/grid';
 import { layoutById, layoutsByRole, type EnemyKind, type Face, type RoomLayout } from './rooms';
-import { RUN_TEMPLATES, TEMPLATE_PRACTICE, type Template, type TemplateRoom } from './templates';
+import { RUN_TEMPLATES, TEMPLATE_ARENA, TEMPLATE_PRACTICE, type Template, type TemplateRoom } from './templates';
 
 export interface EnemySpawn {
   kind: EnemyKind;
@@ -18,6 +19,8 @@ export interface EnemySpawn {
   roomKey: string;
   /** 老兵：戴頭盔，背刺只 ×2、生命 ×1.5、發現速度 ×1.3。 */
   veteran?: boolean;
+  /** Arena guardian; ordinary AI, but no Sleep or random loot. */
+  boss?: boolean;
 }
 
 /**
@@ -78,6 +81,14 @@ export interface RoomInst {
   h: number;
 }
 
+export interface SpecialRoom {
+  kind: 'embers' | 'sentries';
+  roomKey: string;
+  solution: 'potion:frost' | 'potion:invisibility';
+  supply: V2;
+  fire?: V2;
+}
+
 export interface LevelData {
   seed: string;
   /** 第幾層（1 起算）。 */
@@ -100,6 +111,8 @@ export interface LevelData {
   traps: Array<{ i: number; j: number }>;
   torches: TorchSpawn[];
   practice: boolean;
+  encounter?: { roomKey: string };
+  specialRooms?: SpecialRoom[];
 }
 
 const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };
@@ -494,47 +507,6 @@ function addPatrols(d: Draft, rng: Rng, chance: number): void {
   }
 }
 
-/** 最底層（暫代首領房）：沉眠之心旁放守衛，背對心、面向房間。 */
-function placeGuardians(d: Draft, rng: Rng): void {
-  const h = d.heart;
-  if (!h) return;
-  const room = d.rooms.find((r) => r.key === h.roomKey)!;
-  const traps = new Set(d.traps.map((t) => `${t.i},${t.j}`));
-  const cells: V2[] = [];
-  for (let j = room.z0 + 1; j < room.z0 + room.h - 1; j++) {
-    for (let i = room.x0 + 1; i < room.x0 + room.w - 1; i++) {
-      if (d.tiles[j * d.w + i] !== T.Floor || traps.has(`${i},${j}`)) continue;
-      const x = i + 0.5;
-      const z = j + 0.5;
-      const dh = Math.hypot(x - h.x, z - h.z);
-      if (dh < 2.5 || dh > 5) continue;
-      // 周圍一格都要是地板（不卡牆、不卡柱子）
-      let ok = true;
-      for (let dj = -1; dj <= 1 && ok; dj++)
-        for (let di = -1; di <= 1 && ok; di++) if (d.tiles[(j + dj) * d.w + i + di] !== T.Floor) ok = false;
-      if (ok && d.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 0.9)) ok = false;
-      if (ok && d.enemies.some((e) => Math.hypot(e.x - x, e.z - z) < 1.5)) ok = false;
-      if (ok) cells.push({ x, z });
-    }
-  }
-  for (const kind of RUN.guardians) {
-    if (!cells.length) return;
-    const c = cells.splice(rng.int(0, cells.length - 1), 1)[0]!;
-    for (let k = cells.length - 1; k >= 0; k--) if (Math.hypot(cells[k]!.x - c.x, cells[k]!.z - c.z) < 2) cells.splice(k, 1);
-    d.enemies.push({
-      kind,
-      x: c.x,
-      z: c.z,
-      y: 0,
-      yaw: Math.atan2(-(c.x - h.x), -(c.z - h.z)),
-      state: 'idle',
-      patrol: [],
-      perched: false,
-      roomKey: h.roomKey,
-    });
-  }
-}
-
 function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
   const spots = rng.shuffle(d.pickupSpots.slice());
   const item = (r: { id: ItemId; level: number }) => ({ kind: 'item' as const, amount: 1, item: r.id, level: r.level });
@@ -577,6 +549,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   const fi = floor - 1;
   let t: Template;
   if (opts.practice) t = TEMPLATE_PRACTICE;
+  else if (floor === RUN.floors) t = TEMPLATE_ARENA;
   else if (opts.template) t = RUN_TEMPLATES.find((x) => x.id === opts.template)!;
   else t = rng.pick(RUN_TEMPLATES);
   const mirrored = opts.practice ? false : rng.chance(0.5);
@@ -601,12 +574,23 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     spawn: null,
   };
   const layouts = assignLayouts(t, rng);
+  if (!opts.practice && floor <= RUN.explorationFloors) {
+    const optional = t.rooms.filter((r) => r.optional);
+    if (optional[0]) layouts.set(optional[0].key, layoutById('ember-cache'));
+    if (optional[1]) layouts.set(optional[1].key, layoutById('sentry-vault'));
+  }
   for (const r of t.rooms) stampRoom(d, t, r, layouts.get(r.key)!, opts.practice ? 0 : RUN.tierBonus[fi]!);
+  // Fixed sentry posts look across the chest approach, not past the side walls.
+  for (const room of d.rooms.filter((r) => r.layoutId === 'sentry-vault')) {
+    const chest = d.chests.find((c) => c.roomKey === room.key)!;
+    for (const e of d.enemies.filter((e) => e.roomKey === room.key))
+      e.yaw = Math.atan2(-(chest.x - e.x), -(chest.z + 1.3 - e.z));
+  }
   if (!opts.practice) {
     // 越深越多醒著的敵人
     const wake = RUN.wakeChance[fi]!;
     for (const e of d.enemies) if (e.state === 'sleep' && rng.chance(wake)) e.state = 'idle';
-    if (floor === RUN.floors) placeGuardians(d, rng);
+    if (floor === RUN.floors) for (const e of d.enemies) e.boss = true;
     addPatrols(d, rng, RUN.patrolChance[fi]!);
     // 老兵：從地面上的盾衛與突進者中挑
     const pool = d.enemies.filter((e) => !e.perched && e.kind !== 'archer');
@@ -620,7 +604,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   fillWalls(d);
   for (const room of d.rooms) roomTorches(d, room, rng);
 
-  const pickups = opts.practice ? [] : placePickups(d, rng, floor);
+  const pickups = opts.practice || floor === RUN.floors ? [] : placePickups(d, rng, floor);
   for (const c of d.chests) c.contents.item = rollItem(rng, floor);
   if (mirrored) {
     mirrorDraft(d);
@@ -649,12 +633,64 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   });
 
   if (!d.spawn) throw new Error('no spawn');
-  // Guaranteed ration through the same ground pickup/bag flow. Append after generation so
-  // existing RNG calls, loot, enemy layouts and mirroring stay identical to older seeds.
-  // Entrance spawn is guaranteed reachable; a full bag leaves the ration on the ground.
+  // Supplies use deterministic, reachable room cells, without another RNG stream or
+  // stealing the Upgrade budget. Optional-room solutions are outside *both* branches.
+  const nav = new Nav(grid, PLAYER.radius);
+  const seen = nav.flood(d.spawn.x, d.spawn.z, false);
+  const mainRooms = d.rooms.filter((r) => !r.optional && r.role === 'combat');
+  const supplyAt = (index: number): V2 => {
+    const room = mainRooms[index % mainRooms.length];
+    if (!room) return { x: d.spawn!.x, z: d.spawn!.z };
+    const spots: V2[] = [];
+    for (let j = room.z0 + 1; j < room.z0 + room.h - 1; j++) for (let i = room.x0 + 1; i < room.x0 + room.w - 1; i++) {
+      const q = { x: i + 0.5, z: j + 0.5 };
+      const c = nav.nearestPassable(q.x, q.z, 0.4);
+      if (c < 0 || !seen[c] || grid.circleBlocked(q.x, q.z, PLAYER.radius) ||
+          d.traps.some((tr) => Math.hypot(tr.i + .5 - q.x, tr.j + .5 - q.z) < 1.2) ||
+          pickups.some((p) => Math.hypot(p.x - q.x, p.z - q.z) < 1)) continue;
+      spots.push(q);
+    }
+    spots.sort((a, b) => Math.hypot(a.x - room.x0 - room.w / 2, a.z - room.z0 - room.h / 2) -
+      Math.hypot(b.x - room.x0 - room.w / 2, b.z - room.z0 - room.h / 2));
+    if (!spots.length) throw new Error('No reachable supply cell');
+    return spots[0]!;
+  };
   const rationCount = opts.practice ? HUNGER.practiceRations : (HUNGER.foodPerFloor[fi] ?? 0);
   for (let k = 0; k < rationCount; k++) {
-    pickups.push({ kind: 'item', amount: 1, item: 'food:ration', level: 0, x: d.spawn.x, z: d.spawn.z });
+    let q: V2 = opts.practice ? d.spawn : supplyAt(k === 0 ? 0 : mainRooms.length - 1);
+    if (!opts.practice && k === 0) {
+      // Reliable first opportunity sits just inside the first exploration room's
+      // approach, not at spawn or tucked behind a random central obstruction.
+      const room = mainRooms[0]!;
+      const center = nav.nearestPassable(room.x0 + room.w / 2, room.z0 + room.h / 2);
+      const target = nav.center(center);
+      const path = nav.findPath(d.spawn.x, d.spawn.z, target.x, target.z) ?? [];
+      let from: V2 = d.spawn;
+      const samples: V2[] = [];
+      // Navigation returns smoothed corners, so sample segments rather than
+      // mistaking the final room-center waypoint for its entry threshold.
+      for (const to of path) {
+        const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / .2));
+        for (let n = 1; n <= steps; n++) samples.push({ x: from.x + (to.x - from.x) * n / steps, z: from.z + (to.z - from.z) * n / steps });
+        from = to;
+      }
+      const approach = samples.find((p) => p.x > room.x0 + 1.1 && p.x < room.x0 + room.w - 1.1 &&
+        p.z > room.z0 + 1.1 && p.z < room.z0 + room.h - 1.1 && !grid.circleBlocked(p.x, p.z, PLAYER.radius) &&
+        !d.traps.some((tr) => Math.hypot(tr.i + .5 - p.x, tr.j + .5 - p.z) < 1.2));
+      if (approach) q = approach;
+    }
+    pickups.push({ kind: 'item', amount: 1, item: 'food:ration', level: 0, x: q.x, z: q.z });
+  }
+  const specialRooms: SpecialRoom[] = [];
+  if (!opts.practice && floor <= RUN.explorationFloors) for (const room of d.rooms.filter((r) => r.optional)) {
+    const embers = room.layoutId === 'ember-cache';
+    const solution = embers ? 'potion:frost' : 'potion:invisibility';
+    const supply = supplyAt(embers ? 0 : 1);
+    pickups.push({ kind: 'item', amount: 1, item: solution, level: 0, ...supply });
+    const chest = d.chests.find((c) => c.roomKey === room.key)!;
+    // Flames cover the direct approach; the perimeter remains a longer safe route.
+    const fire = embers ? { x: chest.x, z: chest.z + 2 } : undefined;
+    specialRooms.push({ kind: embers ? 'embers' : 'sentries', roomKey: room.key, solution, supply, fire });
   }
   return {
     seed,
@@ -676,6 +712,8 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     traps: d.traps,
     torches: d.torches,
     practice: !!opts.practice,
+    encounter: floor === RUN.floors && !opts.practice ? { roomKey: 'H' } : undefined,
+    specialRooms,
   };
 }
 
@@ -689,8 +727,11 @@ export function levelSignature(l: LevelData): string {
     tiles: Array.from(l.grid.tiles).join(''),
     doors: l.grid.doors.map((d) => [d.cells, d.arch, d.barred]),
     pillars: l.grid.pillars.map((p) => [r(p.x), r(p.z)]),
-    enemies: l.enemies.map((e) => [e.kind, r(e.x), r(e.z), r(e.yaw), e.state, !!e.veteran, e.patrol.length]),
-    pickups: l.pickups.map((p) => [p.kind, p.amount, r(p.x), r(p.z)]),
+    enemies: l.enemies.map((e) => [e.kind, r(e.x), r(e.z), r(e.yaw), e.state, !!e.veteran, !!e.boss, e.patrol]),
+    pickups: l.pickups.map((p) => [p.kind, p.item, p.level, p.amount, r(p.x), r(p.z)]),
     rooms: l.rooms.map((x) => x.layoutId),
+    chests: l.chests.map((c) => [c.x, c.z, c.contents]),
+    specialRooms: l.specialRooms,
+    encounter: l.encounter,
   });
 }

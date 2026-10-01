@@ -1,6 +1,6 @@
-// 逐層骨架：第 1 層 → 往下的階梯 → … → 第 4 層取得沉眠之心；中途重新整理，從主選單「繼續」。
+// 逐層骨架：第 1 層 → 往下的階梯 → … → 第 5 層擊倒守心者後取得沉眠之心；中途重新整理，從主選單「繼續」。
 // 走到每層目標旁邊用的是「狀態注入」（debug.teleport），其餘都是正常輸入（E 互動、點按鈕）。
-// 原因：自動化腳本無法可靠地打穿四層；這裡要驗證的是樓層切換、跨層保留與存檔。
+// 原因：自動化腳本無法可靠地打穿五層；這裡要驗證的是樓層切換、跨層保留與存檔。
 import { Bot, OUT, launch, startRun, yawTo } from './lib.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173/';
@@ -54,7 +54,7 @@ const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('superdu
 
 let s = await st();
 check('第 1 層開始', s.floor === 1 && s.goal === 'descend', `floor=${s.floor} goal=${s.goal}`);
-check('HUD 目標顯示樓層', (await page.textContent('#objective')).includes('第 1 / 4 層'), await page.textContent('#objective'));
+check('HUD 目標顯示樓層', (await page.textContent('#objective')).includes('第 1 / 5 層'), await page.textContent('#objective'));
 check('第 1 層開頭自動存檔', (await saved())?.floor === 1);
 const t1 = await useGoal();
 check('目標提示是「走下階梯」', !!t1 && t1.label.includes('走下階梯'), t1?.label);
@@ -71,7 +71,7 @@ await page.reload();
 await page.mouse.move(400, 225);
 const cont = page.locator('#btn-continue');
 check('重新整理後出現「繼續」', await cont.isVisible(), await cont.textContent());
-check('「繼續」顯示樓層、職業、種子', (await cont.textContent()).includes('第 2 / 4 層') && (await cont.textContent()).includes('獵手'), await cont.textContent());
+check('「繼續」顯示樓層、職業、種子', (await cont.textContent()).includes('第 2 / 5 層') && (await cont.textContent()).includes('獵手'), await cont.textContent());
 await cont.click();
 await waitFloor(2);
 s = await st();
@@ -80,7 +80,7 @@ check('從存檔繼續：生命是進入這一層時的值（不是之後改的 
 
 check('跨層存檔含飢餓與傷害餘數', typeof before.carry.hunger === 'number' && typeof before.carry.starvationT === 'number');
 check('續玩保留樓層開頭飢餓（另加短暫閒置時間）', s.player.hunger >= before.carry.hunger && s.player.hunger < before.carry.hunger + 2);
-check('續玩保留乾糧並拾取本層保底', s.player.items.find((it) => it.id === 'food:ration')?.count === (before.carry.items.find((it) => it.id === 'food:ration')?.count ?? 0) + 1);
+check('續玩保留乾糧，探索補給不自動出現在入口', (s.player.items.find((it) => it.id === 'food:ration')?.count ?? 0) === (before.carry.items.find((it) => it.id === 'food:ration')?.count ?? 0));
 
 // Legacy v2 fixture: removed Rune IDs and optional Hunger fields must remain loadable.
 await page.evaluate((save) => {
@@ -98,7 +98,7 @@ await page.click('#btn-continue'); await waitFloor(2);
 s = await st();
 check('舊 Rune 存檔保留正常生命上限且無刻印狀態', s.player.maxHp === before.carry.maxHp && !Object.hasOwn(s.player, 'runes'));
 check('舊檔以正常飢餓與零傷害餘數載入', s.player.hunger < 2 && s.player.starvationT === 0);
-check('舊檔沒有乾糧庫存仍可拾取本層保底', s.player.items.find((it) => it.id === 'food:ration')?.count === 1);
+check('舊檔沒有乾糧庫存仍保有本層可探索的保底', !s.player.items.some((it) => it.id === 'food:ration') && s.pickups.some((it) => it.item === 'food:ration'));
 
 await useGoal();
 await waitFloor(3);
@@ -106,15 +106,34 @@ check('重新存檔不再寫入 Rune', !Object.hasOwn((await saved()).carry, 'ru
 await useGoal();
 await waitFloor(4);
 s = await st();
-check('第 4 層（最底層）目標是沉眠之心', s.goal === 'heart' && (await page.textContent('#objective')).includes('最底層'), await page.textContent('#objective'));
+check('第 4 層仍是探索層', s.goal === 'descend');
 await page.screenshot({ path: `${OUT}floors-4.png` });
-const t4 = await useGoal();
-check('最底層的提示是「取走沉眠之心」', !!t4 && t4.label.includes('沉眠之心'), t4?.label);
+await useGoal(); await waitFloor(5); s = await st();
+check('第 5 層是無隨機物資的守心者大廳', s.goal === 'heart' && s.encounterState === 'dormant' && s.pickups.length === 0);
+const pre = s.player.hunger;
+await bot.down('Space'); await page.waitForTimeout(300); await bot.up('Space');
+check('正式戰鬥前仍消耗飢餓', (await st()).player.hunger > pre);
+// Position/invisibility injection isolates the gate and Hunger UI from combat damage.
+await page.evaluate(() => window.__sd.debug.setInvisible(30));
+const locked = await useGoal();
+check('守心者存活時沉眠之心鎖定', locked && !locked.enabled && (await st()).outcome === 'none');
+s = await st(); const hunger = s.player.hunger;
+await bot.down('Space'); await page.waitForTimeout(250); await bot.up('Space');
+check('首領戰飢餓暫停', (await st()).player.hunger === hunger && (await st()).hungerPaused);
+// Explicit encounter-completion injection; this verifies the UI gate, not combat skill.
+await page.evaluate(() => window.__sd.debug.defeatGuardians());
+while ((await st()).pendingChoice) {
+  await page.waitForFunction(() => window.__sd.state().mode === 'choice');
+  await page.click('#choice-cards button[data-idx="0"]');
+}
+await page.waitForFunction(() => window.__sd.state().mode === 'playing');
+const t5 = await useGoal();
+check('守心者倒下後提示可取心', t5?.enabled && t5.label.includes('取走沉眠之心'));
 await page.waitForFunction(() => window.__sd.state().mode === 'results', null, { timeout: 30000 });
 s = await st();
 check('取得沉眠之心就通關', s.outcome === 'win');
 const res = await page.textContent('#res-stats');
-check('結算顯示到達樓層', res.includes('第 4 / 4 層'), res.slice(0, 80));
+check('結算顯示到達樓層', res.includes('第 5 / 5 層'), res.slice(0, 80));
 check('通關後清除存檔', (await saved()) === null);
 await page.screenshot({ path: `${OUT}floors-results.png` });
 

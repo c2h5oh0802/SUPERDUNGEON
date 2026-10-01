@@ -12,7 +12,7 @@ describe('樓層生成', () => {
     for (let f = 1; f <= RUN.floors; f++) {
       expect(levelSignature(generateLevel('FLOORS', { floor: f }))).toBe(levelSignature(generateLevel('FLOORS', { floor: f })));
     }
-    const sigs = new Set([1, 2, 3, 4].map((f) => levelSignature(generateLevel('FLOORS', { floor: f }))));
+    const sigs = new Set([1, 2, 3, 4, 5].map((f) => levelSignature(generateLevel('FLOORS', { floor: f }))));
     expect(sigs.size).toBe(RUN.floors);
   });
 
@@ -38,7 +38,7 @@ describe('樓層生成', () => {
     };
     const counts = [1, 2, 3, 4].map((f) => avg(f, (n) => n));
     const awake = [1, 2, 3, 4].map((f) => avg(f, (n, a) => a / n));
-    for (let f = 1; f < RUN.floors; f++) expect(counts[f]!).toBeGreaterThan(counts[f - 1]!);
+    for (let f = 1; f < RUN.explorationFloors; f++) expect(counts[f]!).toBeGreaterThan(counts[f - 1]!);
     expect(awake[3]!).toBeGreaterThan(awake[0]!);
     for (let k = 1; k <= 10; k++) {
       const l = generateLevel(`G${k}`, { floor: RUN.floors });

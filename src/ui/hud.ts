@@ -153,9 +153,8 @@ export class Hud {
           break;
         case 'read':
           if (e.kind === 'mapping') this.toast('整層地圖都揭開了（Tab）', 'good', 2);
-          if (e.kind === 'timeStop') this.toast('時間停住了！', 'big', 2);
+          if (e.kind === 'sleep') this.toast('附近敵人陷入沉睡；已鎖定的攻擊仍會完成', 'big', 2);
           if (e.kind === 'teleport') this.toast('你被傳送到別的地方', 'good', 2);
-          if (e.kind === 'lure') this.toast('遠處傳來巨響', 'good', 2);
           break;
         case 'shatter':
           if (e.kind === 'invisibility' || e.kind === 'haste') this.toast('藥水碎了，沒有明顯效果', '', 1.6);
@@ -189,7 +188,7 @@ export class Hud {
           this.toast(`往下走……第 ${e.amount} 層`, 'big', 2);
           break;
         case 'wake':
-          window.setTimeout(() => this.toast('地城甦醒了！帶著心回到入口石階', 'big', 3.5), 600);
+          this.toast('地城甦醒了', 'big', 3.5);
           break;
         case 'fullInventory':
         case 'dryFire':
@@ -276,20 +275,20 @@ export class Hud {
     const hs = hungerState(p.hunger);
     const hpct = Math.floor(100 * p.hunger / HUNGER.starvingAt);
     const food = p.items.find((it) => it.id === 'food:ration')?.count ?? 0;
-    this.set('hunger', `${hs}|${hpct}|${food}`, () => {
+    this.set('hunger', `${hs}|${hpct}|${food}|${w.hungerPaused}`, () => {
       this.hungerEl.className = hs;
-      this.hungerLabel.textContent = `飢餓：${HUNGER_NAMES[hs]} ${hpct}% · 乾糧 ${food}（I）`;
+      this.hungerLabel.textContent = `飢餓：${HUNGER_NAMES[hs]} ${hpct}%${w.hungerPaused ? '（首領戰暫停）' : ''} · 乾糧 ${food}（I）`;
       this.hungerFill.style.width = `${hpct}%`;
       this.hungerEl.title = `飢餓只隨世界時間增加；${HUNGER.hungryAt} 秒提醒，${HUNGER.starvingAt} 秒瀕餓，每 ${HUNGER.damageEvery} 秒損失 1 生命`;
     });
     // 目標
-    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}`, () => {
+    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
         : w.level.goal === 'descend'
           ? `${f}：找到往下的階梯`
-          : `${f}（最底層）：取得沉眠之心`;
+          : `${f}（首領層）：${w.heartAvailable ? '取得沉眠之心' : '擊倒守心者，解封沉眠之心'}`;
       this.objective.classList.toggle('escape', p.hasHeart);
       this.heartStatus.classList.toggle('hidden', !p.hasHeart);
     });

@@ -10,7 +10,7 @@ import type { Enemy, Projectile } from './types';
 
 export function createEnemy(w: World, s: EnemySpawn): Enemy {
   const spec = ENEMIES[s.kind];
-  const patrol = s.perched ? [] : [...w.roamPoints, ...s.patrol].map((p) => ({ ...p }));
+  const patrol = s.perched || s.boss ? [] : [...w.roamPoints, ...s.patrol].map((p) => ({ ...p }));
   // 越深越硬；老兵再 ×1.5
   const hp = Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
   return {
@@ -72,6 +72,8 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     shieldUp: false,
     veteran: !!s.veteran,
     corpseFound: false,
+    pendingSleep: false,
+    boss: !!s.boss,
   };
 }
 
@@ -157,6 +159,9 @@ const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive) return;
+  if (e.boss) w.startEncounter();
+  // A hit wakes a sleeper and cancels a not-yet-applied lull.
+  e.pendingSleep = false;
   e.hp -= dmg;
   e.hurtT = 0.3;
   w.emit({ type: 'hitEnemy', id: e.id, amount: dmg, head: info.head, sneak: info.sneak, source: info.source, x: info.x, y: info.y, z: info.z, kind: e.kind });
@@ -172,6 +177,7 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     e.lodged = 0;
     w.emit({ type: 'enemyDeath', id: e.id, x: e.x, y: e.y, z: e.z, kind: e.kind });
     w.onKill(e);
+    w.updateEncounter();
     return;
   }
   if (PLAYER_WEAPONS.has(info.source)) {
@@ -906,12 +912,47 @@ function unawareBehavior(w: World, e: Enemy, dt: number): void {
   }
 }
 
+/** Commitment means an already locked aim/windup or an active strike/charge.
+ * Recovery/reload/stun have delivered the threat and may safely enter normal sleep. */
+export function sleepCommitted(e: Enemy): boolean {
+  return e.phase === 'active' || e.phase === 'charge' ||
+    ((e.phase === 'windup' || e.phase === 'aim') && e.locked);
+}
+
+function enterSleep(e: Enemy): void {
+  interruptEnemy(e);
+  e.pendingSleep = false;
+  e.phase = 'none';
+  e.state = 'sleep';
+  e.awareness = 0;
+  e.seesPlayer = false;
+  e.suspicious = false;
+  e.target = null;
+  e.lastKnown = null;
+  e.path = null;
+  e.pathGoal = null;
+  e.searchGoal = null;
+  e.searchT = 0;
+  e.loseT = 0;
+  e.sleepProxT = 0;
+  e.shieldUp = false;
+  // Physical displacement is independent of AI sleep, just like paralysis.
+}
+
+export function lullEnemy(e: Enemy): void {
+  if (!e.alive || e.boss) return;
+  if (sleepCommitted(e)) e.pendingSleep = true;
+  else enterSleep(e);
+}
+
 export function updateEnemies(w: World, dt: number): void {
   for (const e of w.enemies) {
     if (!e.alive) {
       e.deathT += dt;
       continue;
     }
+    if (e.boss && w.encounterState === 'dormant') continue;
+    if (e.pendingSleep && !sleepCommitted(e)) enterSleep(e);
     if (e.hurtT > 0) e.hurtT = Math.max(0, e.hurtT - dt);
     // 被盾推是外力：麻痺中也照樣滑出去
     if (e.push) {
@@ -975,6 +1016,7 @@ export function updateEnemies(w: World, dt: number): void {
       }
       unawareBehavior(w, e, edt);
     }
+    if (e.pendingSleep && !sleepCommitted(e)) enterSleep(e);
     if (e.kind === 'guard') e.shieldUp = guardWantsShield(w, e);
   }
 }

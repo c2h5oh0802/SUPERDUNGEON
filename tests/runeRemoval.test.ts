@@ -134,7 +134,7 @@ describe('Retained growth and generated rooms', () => {
     expect(variants).toHaveLength(2);
     expect(variants.every((l) => l.role === 'combat' && l.enemies.length > 0 && !l.rows.join('').includes('A'))).toBe(true);
     for (const template of RUN_TEMPLATES) {
-      for (let seed = 0; seed < 8; seed++) for (let floor = 1; floor <= RUN.floors; floor++) {
+      for (let seed = 0; seed < 8; seed++) for (let floor = 1; floor <= RUN.explorationFloors; floor++) {
         const l = generateLevel(`NO-RUNES-${seed}`, { template: template.id as 'A' | 'B', floor });
         expect(validateLevel(l)).toEqual({ ok: true, errors: [] });
         expect(l.rooms.map((r) => r.key)).toEqual(template.rooms.map((r) => r.key));
@@ -148,7 +148,7 @@ describe('Retained growth and generated rooms', () => {
         expect(l).not.toHaveProperty('altars');
         expect(l.pickups.filter((p) => p.item === 'scroll:upgrade')).toHaveLength(1);
         expect(l.pickups.filter((p) => p.item === 'food:ration')).toHaveLength(HUNGER.foodPerFloor[floor - 1]!);
-        expect(l.chests).toHaveLength(1);
+        expect(l.chests).toHaveLength(2);
       }
     }
   }, 30000);

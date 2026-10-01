@@ -512,7 +512,7 @@ function performUse(w: World, it: Interactable): void {
       return;
     }
     case 'heart':
-      if (it.used) return;
+      if (it.used || !w.heartAvailable) return;
       it.used = true;
       if (w.level.goal === 'descend') {
         // 往下一層：這一層結束，由上層（App）生成下一層並帶著物資過去
@@ -602,7 +602,8 @@ export function findInteractTarget(w: World): InteractTarget | null {
         label = 'E 打開寶箱';
         break;
       case 'heart':
-        label = w.level.goal === 'descend' ? `E 走下階梯（第 ${w.level.floor + 1} 層）` : 'E 取走沉眠之心';
+        enabled = w.heartAvailable;
+        label = w.level.goal === 'descend' ? `E 走下階梯（第 ${w.level.floor + 1} 層）` : enabled ? 'E 取走沉眠之心' : '守心者仍在：沉眠之心尚未解封';
         break;
       case 'stairs':
         label = '來時的階梯：回不去了';
