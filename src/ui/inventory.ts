@@ -31,6 +31,8 @@ export function renderInventory(w: World, onAction: (index: number, mode: 'use' 
       const acts =
         c === 'potion'
           ? `<button data-k="${k}" data-m="use">喝</button><button data-k="${k}" data-m="throw">丟出</button>`
+          : c === 'food'
+            ? `<button data-k="${k}" data-m="use"${p.hunger <= 0 ? ' disabled' : ''}>${p.hunger <= 0 ? '已飽食' : '吃'}</button>`
           : c === 'scroll'
             ? `<button data-k="${k}" data-m="use">讀</button>`
             : `<button data-k="${k}" data-m="use">裝備</button>`;

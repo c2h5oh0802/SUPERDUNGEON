@@ -1,4 +1,5 @@
-import { ARMORS, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, runeInfo, type RuneId, type TipKind, type Tool } from '../config';
+import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
@@ -31,6 +32,9 @@ function toolEmpty(p: Player, t: Tool): boolean {
 export class Hud {
   private root = $('hud');
   private hpEl = $('hp');
+  private hungerEl = $('hunger');
+  private hungerLabel = $('hunger-label');
+  private hungerFill = $('hunger-fill');
   private objective = $('objective');
   private flowFill = $('flow-fill');
   private flowLabel = $('flow-label');
@@ -131,7 +135,14 @@ export class Hud {
       switch (e.type) {
         case 'pickup':
           this.toast(e.kind === 'item' ? `撿到 ${e.text ?? ''}` : `+${e.amount} ${e.text ?? ''}`, 'good', 1.6);
-          if (e.kind === 'item') this.hint('bag', '撿到物品了：按 I 打開背包（世界暫停），可以喝、讀、丟出或裝備。', 7);
+          if (e.kind === 'item') this.hint('bag', '撿到物品了：按 I 打開背包（世界暫停），可以吃、喝、讀、丟出或裝備。', 7);
+          break;
+        case 'hungerState':
+          if (e.text) this.toast(e.text, e.kind === 'normal' ? 'good' : 'bad', 3);
+          break;
+        case 'eat':
+          // 狀態轉換已有提示；仍在同一狀態時也確認吃下的結果。
+          this.toast('吃下乾糧，飢餓減少', 'good', 1.8);
           break;
         case 'identify':
         case 'equip':
@@ -265,6 +276,16 @@ export class Hud {
         this.hpEl.appendChild(d);
       }
     });
+    // 飢餓緊鄰生命，進度是往瀕餓累積（不是另一份飽食資源）。
+    const hs = hungerState(p.hunger);
+    const hpct = Math.floor(100 * p.hunger / HUNGER.starvingAt);
+    const food = p.items.find((it) => it.id === 'food:ration')?.count ?? 0;
+    this.set('hunger', `${hs}|${hpct}|${food}`, () => {
+      this.hungerEl.className = hs;
+      this.hungerLabel.textContent = `飢餓：${HUNGER_NAMES[hs]} ${hpct}% · 乾糧 ${food}（I）`;
+      this.hungerFill.style.width = `${hpct}%`;
+      this.hungerEl.title = `飢餓只隨世界時間增加；${HUNGER.hungryAt} 秒提醒，${HUNGER.starvingAt} 秒瀕餓，每 ${HUNGER.damageEvery} 秒損失 1 生命`;
+    });
     // 目標
     this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
@@ -335,7 +356,7 @@ export class Hud {
     const st = p.sneaking ? 'sneak' : moving ? 'loud' : '';
     this.set('stealth', `${st}|${w.alarm}`, () => {
       this.stealthEl.className = `${st}${w.alarm ? ' alarm' : ''}`;
-      this.stealthEl.textContent = p.sneaking ? '潛行步：安靜' : moving ? '腳步聲（Shift 潛行）' : '靜止';
+      this.stealthEl.textContent = p.sneaking ? '潛行步：安靜' : moving ? '腳步聲（Shift 安靜慢走）' : '靜止';
     });
     // 時間流速
     const rate = w.lastRealDt > 0 ? w.lastWorldDt / w.lastRealDt : 0;

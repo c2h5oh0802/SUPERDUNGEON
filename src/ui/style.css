@@ -1165,3 +1165,10 @@ button.ghost {
   opacity: 0.55;
   color: var(--teal);
 }
+
+/* Hunger v1: compact resource readout beside HP; explicit text as well as color. */
+#hunger { width: 230px; max-width: 40vw; color: var(--muted); font-size: 12px; margin: 5px 0; }
+#hunger.hungry { color: var(--gold); }
+#hunger.starving { color: var(--threat); }
+.hungerbar { height: 4px; margin-top: 4px; background: #393246; border-radius: 2px; overflow: hidden; }
+#hunger-fill { display: block; height: 100%; background: currentColor; width: 0; }

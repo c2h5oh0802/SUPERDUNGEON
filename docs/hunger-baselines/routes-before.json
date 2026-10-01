@@ -1,0 +1,1562 @@
+[
+  {
+    "seed": "FLOW1",
+    "cls": "warrior",
+    "policy": "direct",
+    "totalEnemies": 87,
+    "worldTime": 62.828,
+    "realTime": 63.584,
+    "distance": 264.385,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 19.756,
+        "realTime": 19.967,
+        "distance": 83.79,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 14.524,
+        "realTime": 14.717,
+        "distance": 60.947,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 13.837,
+        "realTime": 14.017,
+        "distance": 57.788,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 14.711,
+        "realTime": 14.883,
+        "distance": 61.86,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "cls": "warrior",
+    "policy": "explore",
+    "totalEnemies": 87,
+    "worldTime": 196.264,
+    "realTime": 199.533,
+    "distance": 848.153,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 72.884,
+        "realTime": 74.1,
+        "distance": 318.17,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 39.091,
+        "realTime": 39.683,
+        "distance": 167.436,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 39.312,
+        "realTime": 40.067,
+        "distance": 168.526,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 44.977,
+        "realTime": 45.683,
+        "distance": 194.021,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "cls": "warrior",
+    "policy": "heavy_explore",
+    "totalEnemies": 87,
+    "worldTime": 204.27,
+    "realTime": 207.666,
+    "distance": 881.754,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 45.422,
+        "realTime": 46.283,
+        "distance": 194.675,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 54.741,
+        "realTime": 55.583,
+        "distance": 236.816,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 49.684,
+        "realTime": 50.4,
+        "distance": 214.505,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 54.423,
+        "realTime": 55.4,
+        "distance": 235.757,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "cls": "warrior",
+    "policy": "long_shift",
+    "totalEnemies": 87,
+    "worldTime": 123.629,
+    "realTime": 125.45,
+    "distance": 272.742,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 37.984,
+        "realTime": 38.6,
+        "distance": 84.102,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 27.657,
+        "realTime": 27.9,
+        "distance": 60.873,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 28.545,
+        "realTime": 29.133,
+        "distance": 62.873,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 29.443,
+        "realTime": 29.817,
+        "distance": 64.894,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "cls": "warrior",
+    "policy": "long_wait",
+    "totalEnemies": 87,
+    "worldTime": 302.828,
+    "realTime": 303.584,
+    "distance": 264.385,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 79.756,
+        "realTime": 79.967,
+        "distance": 83.79,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 74.524,
+        "realTime": 74.717,
+        "distance": 60.947,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 73.837,
+        "realTime": 74.017,
+        "distance": 57.788,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 74.711,
+        "realTime": 74.883,
+        "distance": 61.86,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "cls": "warrior",
+    "policy": "direct",
+    "totalEnemies": 83,
+    "worldTime": 72.225,
+    "realTime": 73.033,
+    "distance": 305.266,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 19.367,
+        "realTime": 19.567,
+        "distance": 82.002,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 19.525,
+        "realTime": 19.733,
+        "distance": 82.76,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 14.042,
+        "realTime": 14.233,
+        "distance": 58.835,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "B",
+        "worldTime": 19.291,
+        "realTime": 19.5,
+        "distance": 81.669,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "cls": "warrior",
+    "policy": "explore",
+    "totalEnemies": 83,
+    "worldTime": 252.871,
+    "realTime": 256.067,
+    "distance": 1100.355,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 70.904,
+        "realTime": 71.683,
+        "distance": 309.345,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 71.551,
+        "realTime": 72.417,
+        "distance": 312.347,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 39.4,
+        "realTime": 40.15,
+        "distance": 168.843,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "B",
+        "worldTime": 71.016,
+        "realTime": 71.817,
+        "distance": 309.821,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "cls": "warrior",
+    "policy": "heavy_explore",
+    "totalEnemies": 83,
+    "worldTime": 182.245,
+    "realTime": 185.584,
+    "distance": 781.879,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 44.417,
+        "realTime": 45.217,
+        "distance": 190.069,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 44.454,
+        "realTime": 45.25,
+        "distance": 190.34,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 49.47,
+        "realTime": 50.417,
+        "distance": 213.528,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "B",
+        "worldTime": 43.904,
+        "realTime": 44.7,
+        "distance": 187.942,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "cls": "warrior",
+    "policy": "long_shift",
+    "totalEnemies": 83,
+    "worldTime": 138.62,
+    "realTime": 139.916,
+    "distance": 306.456,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 37.105,
+        "realTime": 37.383,
+        "distance": 82.124,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 37.538,
+        "realTime": 37.883,
+        "distance": 83.098,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 26.878,
+        "realTime": 27.217,
+        "distance": 59.125,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "B",
+        "worldTime": 37.099,
+        "realTime": 37.433,
+        "distance": 82.109,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "cls": "warrior",
+    "policy": "long_wait",
+    "totalEnemies": 83,
+    "worldTime": 312.225,
+    "realTime": 313.033,
+    "distance": 305.266,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 79.367,
+        "realTime": 79.567,
+        "distance": 82.002,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 79.525,
+        "realTime": 79.733,
+        "distance": 82.76,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 74.042,
+        "realTime": 74.233,
+        "distance": 58.835,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "B",
+        "worldTime": 79.291,
+        "realTime": 79.5,
+        "distance": 81.669,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW3",
+    "cls": "warrior",
+    "policy": "direct",
+    "totalEnemies": 81,
+    "worldTime": 68.046,
+    "realTime": 68.799,
+    "distance": 287.131,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 14.202,
+        "realTime": 14.383,
+        "distance": 59.567,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 19.625,
+        "realTime": 19.833,
+        "distance": 83.157,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 20.034,
+        "realTime": 20.233,
+        "distance": 85.018,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 14.185,
+        "realTime": 14.35,
+        "distance": 59.389,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW3",
+    "cls": "warrior",
+    "policy": "explore",
+    "totalEnemies": 81,
+    "worldTime": 227.174,
+    "realTime": 230.616,
+    "distance": 986.169,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 37.809,
+        "realTime": 38.517,
+        "distance": 161.823,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 71.496,
+        "realTime": 72.283,
+        "distance": 312.046,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 73.058,
+        "realTime": 74.283,
+        "distance": 319.075,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 44.811,
+        "realTime": 45.533,
+        "distance": 193.225,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW3",
+    "cls": "warrior",
+    "policy": "heavy_explore",
+    "totalEnemies": 81,
+    "worldTime": 204.849,
+    "realTime": 208,
+    "distance": 883.815,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 62.911,
+        "realTime": 63.733,
+        "distance": 273.484,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 43.915,
+        "realTime": 44.717,
+        "distance": 188.13,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 43.977,
+        "realTime": 44.833,
+        "distance": 188.121,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 54.046,
+        "realTime": 54.717,
+        "distance": 234.079,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW3",
+    "cls": "warrior",
+    "policy": "long_shift",
+    "totalEnemies": 81,
+    "worldTime": 128.962,
+    "realTime": 130.283,
+    "distance": 284.73,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 27.182,
+        "realTime": 27.55,
+        "distance": 59.805,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 37.441,
+        "realTime": 37.683,
+        "distance": 82.88,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 37.193,
+        "realTime": 37.433,
+        "distance": 82.32,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 27.146,
+        "realTime": 27.617,
+        "distance": 59.725,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW3",
+    "cls": "warrior",
+    "policy": "long_wait",
+    "totalEnemies": 81,
+    "worldTime": 308.046,
+    "realTime": 308.799,
+    "distance": 287.131,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 74.202,
+        "realTime": 74.383,
+        "distance": 59.567,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 79.625,
+        "realTime": 79.833,
+        "distance": 83.157,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 80.034,
+        "realTime": 80.233,
+        "distance": 85.018,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 74.185,
+        "realTime": 74.35,
+        "distance": 59.389,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW4",
+    "cls": "warrior",
+    "policy": "direct",
+    "totalEnemies": 83,
+    "worldTime": 73.227,
+    "realTime": 74.016,
+    "distance": 309.569,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 19.775,
+        "realTime": 19.983,
+        "distance": 83.782,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 19.393,
+        "realTime": 19.6,
+        "distance": 82.067,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 19.781,
+        "realTime": 19.983,
+        "distance": 83.825,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 14.278,
+        "realTime": 14.45,
+        "distance": 59.896,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW4",
+    "cls": "warrior",
+    "policy": "explore",
+    "totalEnemies": 83,
+    "worldTime": 255.066,
+    "realTime": 258.549,
+    "distance": 1110.24,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 72.445,
+        "realTime": 73.2,
+        "distance": 316.253,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 71.617,
+        "realTime": 72.883,
+        "distance": 312.56,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 71.06,
+        "realTime": 71.783,
+        "distance": 310.077,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 39.944,
+        "realTime": 40.683,
+        "distance": 171.351,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW4",
+    "cls": "warrior",
+    "policy": "heavy_explore",
+    "totalEnemies": 83,
+    "worldTime": 185.149,
+    "realTime": 188.617,
+    "distance": 795.172,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 45.097,
+        "realTime": 45.9,
+        "distance": 193.291,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 46.378,
+        "realTime": 47.317,
+        "distance": 199.069,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 44.148,
+        "realTime": 44.933,
+        "distance": 189.069,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 49.526,
+        "realTime": 50.467,
+        "distance": 213.744,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "FLOW4",
+    "cls": "warrior",
+    "policy": "long_shift",
+    "totalEnemies": 83,
+    "worldTime": 140.367,
+    "realTime": 141.651,
+    "distance": 310.385,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 37.896,
+        "realTime": 38.117,
+        "distance": 83.903,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 37.144,
+        "realTime": 37.5,
+        "distance": 82.213,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 38.013,
+        "realTime": 38.367,
+        "distance": 84.167,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 27.314,
+        "realTime": 27.667,
+        "distance": 60.102,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "FLOW4",
+    "cls": "warrior",
+    "policy": "long_wait",
+    "totalEnemies": 83,
+    "worldTime": 313.227,
+    "realTime": 314.016,
+    "distance": 309.569,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "B",
+        "worldTime": 79.775,
+        "realTime": 79.983,
+        "distance": 83.782,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 79.393,
+        "realTime": 79.6,
+        "distance": 82.067,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 79.781,
+        "realTime": 79.983,
+        "distance": 83.825,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 74.278,
+        "realTime": 74.45,
+        "distance": 59.896,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "cls": "warrior",
+    "policy": "direct",
+    "totalEnemies": 81,
+    "worldTime": 67.734,
+    "realTime": 68.517,
+    "distance": 285.804,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 14.109,
+        "realTime": 14.283,
+        "distance": 59.213,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 19.559,
+        "realTime": 19.767,
+        "distance": 82.8,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 19.518,
+        "realTime": 19.717,
+        "distance": 82.651,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 14.548,
+        "realTime": 14.75,
+        "distance": 61.141,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "cls": "warrior",
+    "policy": "explore",
+    "totalEnemies": 81,
+    "worldTime": 223.481,
+    "realTime": 226.534,
+    "distance": 969.468,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 39.369,
+        "realTime": 40.017,
+        "distance": 168.753,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 71.226,
+        "realTime": 71.9,
+        "distance": 310.848,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 72.761,
+        "realTime": 73.767,
+        "distance": 317.674,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 40.125,
+        "realTime": 40.85,
+        "distance": 172.193,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "cls": "warrior",
+    "policy": "heavy_explore",
+    "totalEnemies": 81,
+    "worldTime": 196.148,
+    "realTime": 199.583,
+    "distance": 844.65,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 55.852,
+        "realTime": 56.617,
+        "distance": 241.748,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 44.396,
+        "realTime": 45.1,
+        "distance": 190.209,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 45.951,
+        "realTime": 46.983,
+        "distance": 197.084,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 49.949,
+        "realTime": 50.883,
+        "distance": 215.61,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "cls": "warrior",
+    "policy": "long_shift",
+    "totalEnemies": 81,
+    "worldTime": 129.883,
+    "realTime": 131.167,
+    "distance": 286.808,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 27.028,
+        "realTime": 27.367,
+        "distance": 59.459,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 37.462,
+        "realTime": 37.683,
+        "distance": 82.929,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 37.529,
+        "realTime": 37.867,
+        "distance": 83.077,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 27.864,
+        "realTime": 28.25,
+        "distance": 61.342,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "cls": "warrior",
+    "policy": "long_wait",
+    "totalEnemies": 81,
+    "worldTime": 307.734,
+    "realTime": 308.517,
+    "distance": 285.804,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 74.109,
+        "realTime": 74.283,
+        "distance": 59.213,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "B",
+        "worldTime": 79.559,
+        "realTime": 79.767,
+        "distance": 82.8,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "B",
+        "worldTime": 79.518,
+        "realTime": 79.717,
+        "distance": 82.651,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 74.548,
+        "realTime": 74.75,
+        "distance": 61.141,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "RUN1",
+    "cls": "warrior",
+    "policy": "direct",
+    "totalEnemies": 87,
+    "worldTime": 57.136,
+    "realTime": 58.018,
+    "distance": 239.572,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 14.435,
+        "realTime": 14.767,
+        "distance": 60.591,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 14.428,
+        "realTime": 14.617,
+        "distance": 60.547,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 14.436,
+        "realTime": 14.617,
+        "distance": 60.583,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 13.837,
+        "realTime": 14.017,
+        "distance": 57.852,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "RUN1",
+    "cls": "warrior",
+    "policy": "explore",
+    "totalEnemies": 87,
+    "worldTime": 156.926,
+    "realTime": 159.549,
+    "distance": 672.786,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 38.895,
+        "realTime": 39.483,
+        "distance": 166.762,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 39.882,
+        "realTime": 40.533,
+        "distance": 171.129,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 39.142,
+        "realTime": 39.75,
+        "distance": 167.744,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 39.007,
+        "realTime": 39.783,
+        "distance": 167.152,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "RUN1",
+    "cls": "warrior",
+    "policy": "heavy_explore",
+    "totalEnemies": 87,
+    "worldTime": 217.044,
+    "realTime": 220.167,
+    "distance": 938.766,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 56.884,
+        "realTime": 57.667,
+        "distance": 246.317,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 1
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 55.601,
+        "realTime": 56.4,
+        "distance": 240.587,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 2
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 55.134,
+        "realTime": 55.833,
+        "distance": 238.531,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 3
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 49.425,
+        "realTime": 50.267,
+        "distance": 213.33,
+        "outcome": "win",
+        "ok": true,
+        "chests": 4
+      }
+    ]
+  },
+  {
+    "seed": "RUN1",
+    "cls": "warrior",
+    "policy": "long_shift",
+    "totalEnemies": 87,
+    "worldTime": 110.933,
+    "realTime": 112.416,
+    "distance": 244.192,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 27.501,
+        "realTime": 27.883,
+        "distance": 60.526,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 27.494,
+        "realTime": 27.933,
+        "distance": 60.509,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 27.379,
+        "realTime": 27.533,
+        "distance": 60.25,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 28.559,
+        "realTime": 29.067,
+        "distance": 62.907,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  },
+  {
+    "seed": "RUN1",
+    "cls": "warrior",
+    "policy": "long_wait",
+    "totalEnemies": 87,
+    "worldTime": 297.136,
+    "realTime": 298.018,
+    "distance": 239.572,
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "template": "A",
+        "worldTime": 74.435,
+        "realTime": 74.767,
+        "distance": 60.591,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 2,
+        "template": "A",
+        "worldTime": 74.428,
+        "realTime": 74.617,
+        "distance": 60.547,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 3,
+        "template": "A",
+        "worldTime": 74.436,
+        "realTime": 74.617,
+        "distance": 60.583,
+        "outcome": "descend",
+        "ok": true,
+        "chests": 0
+      },
+      {
+        "floor": 4,
+        "template": "A",
+        "worldTime": 73.837,
+        "realTime": 74.017,
+        "distance": 57.852,
+        "outcome": "win",
+        "ok": true,
+        "chests": 0
+      }
+    ]
+  }
+]

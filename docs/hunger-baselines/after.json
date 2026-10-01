@@ -1,0 +1,2189 @@
+[
+  {
+    "seed": "FLOW1",
+    "policy": "direct",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 0,
+    "foodRestored": 0,
+    "maxHunger": 62.82779829677718,
+    "hungryTime": 0,
+    "starvingTime": 0,
+    "transitions": [],
+    "endHunger": 62.82779829677718,
+    "foodRemaining": 4,
+    "totalEnemies": 87,
+    "worldTime": 62.828,
+    "realTime": 63.583,
+    "distance": 264.38,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "walk": 60.37100817332051,
+      "interact": 2.4567901234566527
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 19.756,
+        "distance": 83.79,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 14.524,
+        "distance": 60.95,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 13.837,
+        "distance": 57.79,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 14.711,
+        "distance": 61.86,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "normal",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 1,
+    "foodRestored": 60,
+    "maxHunger": 120.78959557386565,
+    "hungryTime": 0.7999999999999545,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 4,
+        "worldTime": 120.006,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 120.806,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 88.52048024463616,
+    "foodRemaining": 3,
+    "totalEnemies": 87,
+    "worldTime": 148.52,
+    "realTime": 149.8,
+    "distance": 457.21,
+    "kills": 42,
+    "damage": {
+      "弩手的弩矢": 16,
+      "盾衛的劍": 57,
+      "突進者的衝撞": 8
+    },
+    "phaseTimes": {
+      "walk": 94.77170299271403,
+      "incidental_combat": 31.004999999998514,
+      "interact": 5.30018518518488,
+      "fight": 16.643592066672262,
+      "eat": 0.7999999999999545
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 41.821,
+        "distance": 153.54,
+        "kills": 9,
+        "enemies": 15,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 33.892,
+        "distance": 94.19,
+        "kills": 9,
+        "enemies": 21,
+        "alive": 12,
+        "chests": 2,
+        "hp": 22,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 32.114,
+        "distance": 92.36,
+        "kills": 10,
+        "enemies": 24,
+        "alive": 14,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 40.694,
+        "distance": 117.12,
+        "kills": 14,
+        "enemies": 27,
+        "alive": 13,
+        "chests": 4,
+        "hp": 28,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "heavy",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 159.1639685299268,
+    "hungryTime": 42.38504605750347,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.005,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 120.838,
+        "state": "normal"
+      },
+      {
+        "floor": 2,
+        "worldTime": 180.01,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 180.81,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 240.01,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 240.81,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.005,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.805,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 360.012,
+        "state": "hungry"
+      }
+    ],
+    "endHunger": 159.1639685299268,
+    "foodRemaining": 0,
+    "totalEnemies": 87,
+    "worldTime": 399.164,
+    "realTime": 403.567,
+    "distance": 1478.93,
+    "kills": 87,
+    "damage": {
+      "盾衛的劍": 87,
+      "弩手的弩矢": 22,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 231.84255398971422,
+      "incidental_combat": 41.269333333331126,
+      "interact": 9.824237866580333,
+      "fight": 113.02784334014734,
+      "eat": 3.2000000000005855
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 100.677,
+        "distance": 388.16,
+        "kills": 15,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 1,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 96.444,
+        "distance": 340.85,
+        "kills": 21,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 2,
+        "hp": 30,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 95.907,
+        "distance": 353.64,
+        "kills": 24,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 3,
+        "hp": 34,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 106.136,
+        "distance": 396.28,
+        "kills": 27,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 4,
+        "hp": 36,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "long_shift",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 1,
+    "foodRestored": 60,
+    "maxHunger": 121.04073333206841,
+    "hungryTime": 1.0499999999999403,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 4,
+        "worldTime": 120.007,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 121.057,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 64.43209135675994,
+    "foodRemaining": 3,
+    "totalEnemies": 87,
+    "worldTime": 124.432,
+    "realTime": 126.25,
+    "distance": 272.74,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "walk": 121.18517777648428,
+      "interact": 2.446913580246779,
+      "eat": 0.7999999999999545
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 37.99,
+        "distance": 84.1,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 27.663,
+        "distance": 60.87,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 28.551,
+        "distance": 62.87,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 30.229,
+        "distance": 64.89,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "long_wait",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 120.79732231484404,
+    "hungryTime": 3.2000000000005002,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.006,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 120.806,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.014,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.814,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 240,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 240.8,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.014,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.814,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 63.57965014880567,
+    "foodRemaining": 0,
+    "totalEnemies": 87,
+    "worldTime": 303.58,
+    "realTime": 304.383,
+    "distance": 264.38,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "wait": 237.5999999999076,
+      "walk": 60.32286002520664,
+      "interact": 2.4567901234587453,
+      "eat": 3.2000000000005002
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 79.756,
+        "distance": 83.79,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 74.524,
+        "distance": 60.95,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 73.837,
+        "distance": 57.79,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 75.463,
+        "distance": 61.86,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "extreme_wait",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 180,
+    "hungryTime": 201.40616836304508,
+    "starvingTime": 362.78829660023075,
+    "transitions": [
+      {
+        "floor": 1,
+        "worldTime": 120,
+        "state": "hungry"
+      },
+      {
+        "floor": 1,
+        "worldTime": 120.8,
+        "state": "normal"
+      },
+      {
+        "floor": 1,
+        "worldTime": 180,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 200.573,
+        "state": "normal"
+      },
+      {
+        "floor": 2,
+        "worldTime": 240.006,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 300.006,
+        "state": "starving"
+      },
+      {
+        "floor": 3,
+        "worldTime": 395.097,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 455.114,
+        "state": "starving"
+      },
+      {
+        "floor": 4,
+        "worldTime": 588.934,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 648.95,
+        "state": "starving"
+      }
+    ],
+    "endHunger": 180,
+    "foodRemaining": 0,
+    "totalEnemies": 87,
+    "worldTime": 782.828,
+    "realTime": 783.583,
+    "distance": 264.38,
+    "kills": 0,
+    "damage": {
+      "飢餓": 22
+    },
+    "phaseTimes": {
+      "wait": 716.7999999995467,
+      "eat": 3.200000000000629,
+      "walk": 60.37100817327217,
+      "interact": 2.456790123454539
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 199.756,
+        "distance": 83.79,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 194.524,
+        "distance": 60.95,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 193.837,
+        "distance": 57.79,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 194.711,
+        "distance": 61.86,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "direct",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 0,
+    "foodRestored": 0,
+    "maxHunger": 72.2246011285959,
+    "hungryTime": 0,
+    "starvingTime": 0,
+    "transitions": [],
+    "endHunger": 72.2246011285959,
+    "foodRemaining": 4,
+    "totalEnemies": 83,
+    "worldTime": 72.225,
+    "realTime": 73.033,
+    "distance": 305.27,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "walk": 69.7678110051328,
+      "interact": 2.4567901234566456
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 19.367,
+        "distance": 82,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 19.525,
+        "distance": 82.76,
+        "kills": 0,
+        "enemies": 20,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 14.042,
+        "distance": 58.83,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 19.291,
+        "distance": 81.67,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "normal",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 1,
+    "foodRestored": 60,
+    "maxHunger": 120.78459147679169,
+    "hungryTime": 0.7999999999999545,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 3,
+        "worldTime": 120.001,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 120.801,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 119.6893043123016,
+    "foodRemaining": 3,
+    "totalEnemies": 83,
+    "worldTime": 179.689,
+    "realTime": 181.233,
+    "distance": 562.71,
+    "kills": 47,
+    "damage": {
+      "盾衛的劍": 78,
+      "弩手的弩矢": 16,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 106.03271882897543,
+      "incidental_combat": 36.80666666666478,
+      "interact": 4.912716049382436,
+      "fight": 31.137202767186743,
+      "eat": 0.7999999999999545
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 42.882,
+        "distance": 156.2,
+        "kills": 9,
+        "enemies": 15,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 50.352,
+        "distance": 158.84,
+        "kills": 13,
+        "enemies": 20,
+        "alive": 7,
+        "chests": 2,
+        "hp": 22,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 31.374,
+        "distance": 94.57,
+        "kills": 8,
+        "enemies": 24,
+        "alive": 16,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 55.08,
+        "distance": 153.09,
+        "kills": 17,
+        "enemies": 24,
+        "alive": 7,
+        "chests": 4,
+        "hp": 28,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "heavy",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 180,
+    "hungryTime": 84.11388841642335,
+    "starvingTime": 12.218252849557842,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.004,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 120.804,
+        "state": "normal"
+      },
+      {
+        "floor": 2,
+        "worldTime": 180.015,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 181.215,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 240.012,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 240.812,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 300,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 321.322,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 360.009,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 420.001,
+        "state": "starving"
+      }
+    ],
+    "endHunger": 180,
+    "foodRemaining": 0,
+    "totalEnemies": 83,
+    "worldTime": 432.22,
+    "realTime": 436.95,
+    "distance": 1606.25,
+    "kills": 83,
+    "damage": {
+      "盾衛的劍": 84,
+      "突進者的衝撞": 12,
+      "弩手的弩矢": 26
+    },
+    "phaseTimes": {
+      "walk": 235.2021349263575,
+      "incidental_combat": 44.778592592589995,
+      "interact": 9.82293511711806,
+      "fight": 139.21593192632844,
+      "eat": 3.200000000000543
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 101.95,
+        "distance": 400.14,
+        "kills": 15,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 1,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 109.72,
+        "distance": 403.35,
+        "kills": 20,
+        "enemies": 20,
+        "alive": 0,
+        "chests": 2,
+        "hp": 28,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 108.85,
+        "distance": 380.67,
+        "kills": 24,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 3,
+        "hp": 34,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 111.7,
+        "distance": 422.09,
+        "kills": 24,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 4,
+        "hp": 36,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "long_shift",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 1,
+    "foodRestored": 60,
+    "maxHunger": 120.78464023761337,
+    "hungryTime": 0.7999999999999545,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 4,
+        "worldTime": 120.001,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 120.801,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 79.4039285076658,
+    "foodRemaining": 3,
+    "totalEnemies": 83,
+    "worldTime": 139.404,
+    "realTime": 140.6,
+    "distance": 306.42,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "walk": 136.15701492736747,
+      "interact": 2.4469135802467648,
+      "eat": 0.7999999999999545
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 37.111,
+        "distance": 82.12,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 37.543,
+        "distance": 83.1,
+        "kills": 0,
+        "enemies": 20,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 26.884,
+        "distance": 59.12,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 37.866,
+        "distance": 82.07,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "long_wait",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 120.79240670227816,
+    "hungryTime": 3.2000000000005855,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.001,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 120.801,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.009,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.809,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 240.001,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 240.801,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.002,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.802,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 72.98953774582816,
+    "foodRemaining": 0,
+    "totalEnemies": 83,
+    "worldTime": 312.99,
+    "realTime": 313.833,
+    "distance": 305.26,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "wait": 237.59999999990623,
+      "walk": 69.73274762222908,
+      "interact": 2.4567901234587453,
+      "eat": 3.2000000000005855
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 79.367,
+        "distance": 82,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 79.525,
+        "distance": 82.76,
+        "kills": 0,
+        "enemies": 20,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 74.042,
+        "distance": 58.83,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 80.055,
+        "distance": 81.66,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "extreme_wait",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 180,
+    "hungryTime": 201.01729909172974,
+    "starvingTime": 372.19063537000915,
+    "transitions": [
+      {
+        "floor": 1,
+        "worldTime": 120,
+        "state": "hungry"
+      },
+      {
+        "floor": 1,
+        "worldTime": 120.8,
+        "state": "normal"
+      },
+      {
+        "floor": 1,
+        "worldTime": 180,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 200.184,
+        "state": "normal"
+      },
+      {
+        "floor": 2,
+        "worldTime": 240.001,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 300.001,
+        "state": "starving"
+      },
+      {
+        "floor": 3,
+        "worldTime": 399.709,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 459.726,
+        "state": "starving"
+      },
+      {
+        "floor": 4,
+        "worldTime": 593.751,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 653.767,
+        "state": "starving"
+      }
+    ],
+    "endHunger": 180,
+    "foodRemaining": 0,
+    "totalEnemies": 83,
+    "worldTime": 792.225,
+    "realTime": 793.033,
+    "distance": 305.27,
+    "kills": 0,
+    "damage": {
+      "飢餓": 23
+    },
+    "phaseTimes": {
+      "wait": 716.7999999995467,
+      "eat": 3.200000000000629,
+      "walk": 69.76781100507648,
+      "interact": 2.456790123454539
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 199.367,
+        "distance": 82,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 199.525,
+        "distance": 82.76,
+        "kills": 0,
+        "enemies": 20,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 194.042,
+        "distance": 58.83,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 199.291,
+        "distance": 81.67,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "direct",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 0,
+    "foodRestored": 0,
+    "maxHunger": 67.7338447157902,
+    "hungryTime": 0,
+    "starvingTime": 0,
+    "transitions": [],
+    "endHunger": 67.7338447157902,
+    "foodRemaining": 4,
+    "totalEnemies": 81,
+    "worldTime": 67.734,
+    "realTime": 68.517,
+    "distance": 285.8,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "walk": 65.2770545923304,
+      "interact": 2.456790123456649
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 14.109,
+        "distance": 59.21,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 19.559,
+        "distance": 82.8,
+        "kills": 0,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 19.518,
+        "distance": 82.65,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 14.548,
+        "distance": 61.14,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "normal",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 1,
+    "foodRestored": 60,
+    "maxHunger": 120.79426670798745,
+    "hungryTime": 0.7999999999999545,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 3,
+        "worldTime": 120.011,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 120.811,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 101.1593602045168,
+    "foodRemaining": 3,
+    "totalEnemies": 81,
+    "worldTime": 161.159,
+    "realTime": 162.517,
+    "distance": 515.98,
+    "kills": 41,
+    "damage": {
+      "盾衛的劍": 66,
+      "弩手的弩矢": 22,
+      "突進者的衝撞": 16
+    },
+    "phaseTimes": {
+      "walk": 99.16846334432108,
+      "incidental_combat": 32.55333333333169,
+      "interact": 4.913580246913293,
+      "fight": 23.723983279874243,
+      "eat": 0.7999999999999545
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 29.259,
+        "distance": 106.61,
+        "kills": 8,
+        "enemies": 14,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 46.699,
+        "distance": 165.5,
+        "kills": 10,
+        "enemies": 19,
+        "alive": 9,
+        "chests": 2,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 48.269,
+        "distance": 148.25,
+        "kills": 12,
+        "enemies": 21,
+        "alive": 9,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 36.932,
+        "distance": 95.62,
+        "kills": 11,
+        "enemies": 27,
+        "alive": 16,
+        "chests": 4,
+        "hp": 26,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "heavy",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 172.88885826940293,
+    "hungryTime": 67.23865010563674,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.004,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 120.804,
+        "state": "normal"
+      },
+      {
+        "floor": 2,
+        "worldTime": 180.016,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 180.816,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 240.013,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 240.813,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 300.011,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 311.963,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 360.002,
+        "state": "hungry"
+      }
+    ],
+    "endHunger": 172.88885826940293,
+    "foodRemaining": 0,
+    "totalEnemies": 81,
+    "worldTime": 412.889,
+    "realTime": 417.8,
+    "distance": 1549.02,
+    "kills": 81,
+    "damage": {
+      "弩手的弩矢": 24,
+      "盾衛的劍": 81,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 235.79151353339788,
+      "incidental_combat": 38.66503333333114,
+      "interact": 9.824136623047806,
+      "fight": 125.40817477949793,
+      "eat": 3.200000000000543
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 98.156,
+        "distance": 389.39,
+        "kills": 14,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 1,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 108.797,
+        "distance": 413.39,
+        "kills": 19,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 2,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 104.207,
+        "distance": 389.64,
+        "kills": 21,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 3,
+        "hp": 28,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 101.729,
+        "distance": 356.61,
+        "kills": 27,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 4,
+        "hp": 32,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "long_shift",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 1,
+    "foodRestored": 60,
+    "maxHunger": 120.79267126586006,
+    "hungryTime": 0.7999999999999545,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 4,
+        "worldTime": 120.009,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 120.809,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 70.66070522618413,
+    "foodRemaining": 3,
+    "totalEnemies": 81,
+    "worldTime": 130.661,
+    "realTime": 131.9,
+    "distance": 286.75,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "walk": 127.4137916459025,
+      "interact": 2.446913580246772,
+      "eat": 0.7999999999999545
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 27.034,
+        "distance": 59.46,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 37.468,
+        "distance": 82.93,
+        "kills": 0,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 37.535,
+        "distance": 83.08,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 28.624,
+        "distance": 61.29,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "long_wait",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 120.7933018213935,
+    "hungryTime": 3.2000000000005855,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.009,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 120.809,
+        "state": "normal"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.001,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.801,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 240.003,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 240.803,
+        "state": "normal"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.01,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 300.81,
+        "state": "normal"
+      }
+    ],
+    "endHunger": 68.46297451432413,
+    "foodRemaining": 0,
+    "totalEnemies": 81,
+    "worldTime": 308.463,
+    "realTime": 309.283,
+    "distance": 285.7,
+    "kills": 0,
+    "damage": {},
+    "phaseTimes": {
+      "wait": 237.59999999990623,
+      "walk": 65.20618439072494,
+      "interact": 2.4567901234587453,
+      "eat": 3.2000000000005855
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 74.109,
+        "distance": 59.21,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 79.559,
+        "distance": 82.8,
+        "kills": 0,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 79.518,
+        "distance": 82.65,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 75.277,
+        "distance": 61.04,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "extreme_wait",
+    "guard": true,
+    "eatEnabled": true,
+    "foodFound": 4,
+    "foodUsed": 4,
+    "foodRestored": 240,
+    "maxHunger": 180,
+    "hungryTime": 195.75931145666902,
+    "starvingTime": 367.69119992560843,
+    "transitions": [
+      {
+        "floor": 1,
+        "worldTime": 120,
+        "state": "hungry"
+      },
+      {
+        "floor": 1,
+        "worldTime": 120.8,
+        "state": "normal"
+      },
+      {
+        "floor": 1,
+        "worldTime": 180,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 194.926,
+        "state": "normal"
+      },
+      {
+        "floor": 2,
+        "worldTime": 240.009,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 300.009,
+        "state": "starving"
+      },
+      {
+        "floor": 3,
+        "worldTime": 394.485,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 454.501,
+        "state": "starving"
+      },
+      {
+        "floor": 4,
+        "worldTime": 594.003,
+        "state": "hungry"
+      },
+      {
+        "floor": 4,
+        "worldTime": 654.02,
+        "state": "starving"
+      }
+    ],
+    "endHunger": 180,
+    "foodRemaining": 0,
+    "totalEnemies": 81,
+    "worldTime": 787.734,
+    "realTime": 788.517,
+    "distance": 285.8,
+    "kills": 0,
+    "damage": {
+      "飢餓": 23
+    },
+    "phaseTimes": {
+      "wait": 716.7999999995467,
+      "eat": 3.200000000000629,
+      "walk": 65.27705459227747,
+      "interact": 2.456790123454539
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 194.109,
+        "distance": 59.21,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 199.559,
+        "distance": 82.8,
+        "kills": 0,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 199.518,
+        "distance": 82.65,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 194.548,
+        "distance": 61.14,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "normal",
+    "guard": true,
+    "eatEnabled": false,
+    "foodFound": 4,
+    "foodUsed": 0,
+    "foodRestored": 0,
+    "maxHunger": 160.40696175160178,
+    "hungryTime": 40.3960283769685,
+    "starvingTime": 0,
+    "transitions": [
+      {
+        "floor": 3,
+        "worldTime": 120.011,
+        "state": "hungry"
+      }
+    ],
+    "endHunger": 160.40696175160178,
+    "foodRemaining": 4,
+    "totalEnemies": 81,
+    "worldTime": 160.407,
+    "realTime": 161.717,
+    "distance": 515.97,
+    "kills": 41,
+    "damage": {
+      "盾衛的劍": 66,
+      "弩手的弩矢": 22,
+      "突進者的衝撞": 16
+    },
+    "phaseTimes": {
+      "walk": 99.21606489145688,
+      "incidental_combat": 32.55333333333169,
+      "interact": 4.913580246913293,
+      "fight": 23.723983279874243
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 29.259,
+        "distance": 106.61,
+        "kills": 8,
+        "enemies": 14,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 46.699,
+        "distance": 165.5,
+        "kills": 10,
+        "enemies": 19,
+        "alive": 9,
+        "chests": 2,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 47.517,
+        "distance": 148.24,
+        "kills": 12,
+        "enemies": 21,
+        "alive": 9,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 36.932,
+        "distance": 95.62,
+        "kills": 11,
+        "enemies": 27,
+        "alive": 16,
+        "chests": 4,
+        "hp": 26,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "heavy",
+    "guard": true,
+    "eatEnabled": false,
+    "foodFound": 4,
+    "foodUsed": 0,
+    "foodRestored": 0,
+    "maxHunger": 180,
+    "hungryTime": 60.00892346589455,
+    "starvingTime": 223.44587581839681,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.004,
+        "state": "hungry"
+      },
+      {
+        "floor": 2,
+        "worldTime": 180.013,
+        "state": "starving"
+      }
+    ],
+    "endHunger": 180,
+    "foodRemaining": 4,
+    "totalEnemies": 81,
+    "worldTime": 403.459,
+    "realTime": 408.2,
+    "distance": 1532.89,
+    "kills": 81,
+    "damage": {
+      "弩手的弩矢": 36,
+      "盾衛的劍": 87,
+      "飢餓": 14
+    },
+    "phaseTimes": {
+      "walk": 235.54195586212478,
+      "incidental_combat": 37.48025925925714,
+      "interact": 9.823772004624264,
+      "fight": 120.61274693741987
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 98.156,
+        "distance": 389.39,
+        "kills": 14,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 1,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 106.237,
+        "distance": 411.02,
+        "kills": 19,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 2,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 104.291,
+        "distance": 389.8,
+        "kills": 21,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 3,
+        "hp": 28,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 94.774,
+        "distance": 342.68,
+        "kills": 27,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 4,
+        "hp": 32,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "long_wait",
+    "guard": true,
+    "eatEnabled": false,
+    "foodFound": 4,
+    "foodUsed": 0,
+    "foodRestored": 0,
+    "maxHunger": 180,
+    "hungryTime": 59.9919650773172,
+    "starvingTime": 127.73256818179615,
+    "transitions": [
+      {
+        "floor": 2,
+        "worldTime": 120.009,
+        "state": "hungry"
+      },
+      {
+        "floor": 3,
+        "worldTime": 180.001,
+        "state": "starving"
+      }
+    ],
+    "endHunger": 180,
+    "foodRemaining": 4,
+    "totalEnemies": 81,
+    "worldTime": 307.734,
+    "realTime": 308.517,
+    "distance": 285.8,
+    "kills": 0,
+    "damage": {
+      "飢餓": 8
+    },
+    "phaseTimes": {
+      "wait": 239.9999999999054,
+      "walk": 65.27705459236985,
+      "interact": 2.4567901234587453
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 74.109,
+        "distance": 59.21,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 79.559,
+        "distance": 82.8,
+        "kills": 0,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 79.518,
+        "distance": 82.65,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 74.548,
+        "distance": 61.14,
+        "kills": 0,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  }
+]

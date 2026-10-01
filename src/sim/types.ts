@@ -4,7 +4,7 @@ import type { EnemyKind } from '../gen/rooms';
 import type { PickupKind } from '../gen/generator';
 
 export type { Tool, TipKind };
-export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'door' | 'use' | 'read' | 'equip' | 'stunned';
+export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'stunned';
 
 export interface ActionState {
   kind: ActionKind;
@@ -68,6 +68,10 @@ export interface Player {
   vz: number;
   hp: number;
   maxHp: number;
+  /** 累積飢餓（世界秒）；只由實際世界時間增加。 */
+  hunger: number;
+  /** 飢餓傷害的未滿一跳世界時間，跨層／存檔保留。 */
+  starvationT: number;
   /** 數字鍵 1、2、3 對應的工具（依職業）。 */
   slots: readonly Tool[];
   /** 裝備與強化等級。 */
@@ -309,6 +313,8 @@ export type GameEventType =
   | 'noise'
   | 'resupply'
   | 'toolSwitch'
+  | 'hungerState'
+  | 'eat'
   | 'fullInventory'
   | 'counter'
   | 'deflect'

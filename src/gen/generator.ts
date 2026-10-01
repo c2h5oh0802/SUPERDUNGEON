@@ -1,4 +1,4 @@
-import { ALL_RUNES, RUN, WORLD, type ItemId, type RuneId } from '../config';
+import { ALL_RUNES, HUNGER, RUN, WORLD, type ItemId, type RuneId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
@@ -673,6 +673,13 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   });
 
   if (!d.spawn) throw new Error('no spawn');
+  // Guaranteed ration through the same ground pickup/bag flow. Append after generation so
+  // existing RNG calls, loot, enemy layouts and mirroring stay identical to older seeds.
+  // Entrance spawn is guaranteed reachable; a full bag leaves the ration on the ground.
+  const rationCount = opts.practice ? HUNGER.practiceRations : (HUNGER.foodPerFloor[fi] ?? 0);
+  for (let k = 0; k < rationCount; k++) {
+    pickups.push({ kind: 'item', amount: 1, item: 'food:ration', level: 0, x: d.spawn.x, z: d.spawn.z });
+  }
   return {
     seed,
     floor,

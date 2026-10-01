@@ -33,7 +33,7 @@ async function waitIdle() {
 }
 
 let s = await st();
-check('練習場：背包裡有 6 樣東西', s.player.items.length === 6, s.player.items.map((i) => i.id).join(','));
+check('練習場：背包裡有 7 樣東西（含乾糧）', s.player.items.length === 7, s.player.items.map((i) => i.id).join(','));
 
 // 1) 背包：世界暫停，未知的藥水只顯示外觀
 await openBag();
@@ -57,7 +57,7 @@ await openBag();
 await page.click(`#inv-list button[data-k="${await idx('scroll:upgrade')}"][data-m="use"]`);
 await page.waitForFunction(() => window.__sd.state().mode === 'choice', null, { timeout: 20000 });
 const choiceText = await page.textContent('#choice-cards');
-check('強化卷軸：跳出選擇畫面（武器、臂盾）', choiceText.includes('長劍') && choiceText.includes('臂盾'), choiceText.slice(0, 60));
+check('強化卷軸：跳出選擇畫面（武器；停用臂盾不出現）', choiceText.includes('長劍') && !choiceText.includes('臂盾'), choiceText.slice(0, 60));
 await page.screenshot({ path: `${OUT}items-upgrade.png` });
 await page.click('#choice-cards .rune-card[data-idx="0"]');
 await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 5000 });

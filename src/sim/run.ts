@@ -6,6 +6,7 @@ import {
   ALL_SCROLLS,
   ALL_WEAPONS,
   ITEM_FX,
+  HUNGER,
   PLAYER,
   RUN,
   TALENTS,
@@ -56,6 +57,7 @@ export function nextFloor(run: RunState, w: World): RunState {
 const SAVE_VERSION = 2;
 
 const ITEM_IDS = new Set<string>([
+  'food:ration',
   ...ALL_POTIONS.map((k) => `potion:${k}`),
   ...ALL_SCROLLS.map((k) => `scroll:${k}`),
   'scroll:upgrade',
@@ -114,9 +116,16 @@ export function parseRun(text: string | null): RunState | null {
     if (!Array.isArray(c.known) || !c.known.every((k) => ITEM_IDS.has(k as string))) return null;
     if (!isInt(c.xp, 0, 100000) || !isInt(c.level, 1, XP.levels.length)) return null;
     if (!Array.isArray(c.talents) || !c.talents.every((t) => (t as string) in TALENTS)) return null;
+    // v2 的新增欄位是可選的；舊檔以飽食、沒有殘留傷害計時續玩。
+    const hunger = c.hunger === undefined ? 0 : c.hunger;
+    const starvationT = c.starvationT === undefined ? 0 : c.starvationT;
+    if (!isNum(hunger, 0, HUNGER.starvingAt) || !isNum(starvationT, 0, HUNGER.damageEvery)) return null;
+    if (starvationT >= HUNGER.damageEvery || (hunger < HUNGER.starvingAt && starvationT !== 0)) return null;
     carry = {
       hp: c.hp as number,
       maxHp: c.maxHp as number,
+      hunger,
+      starvationT,
       arrows: c.arrows as number,
       stones: c.stones as number,
       tipped: { paralysis: t.paralysis as number, chill: t.chill as number },

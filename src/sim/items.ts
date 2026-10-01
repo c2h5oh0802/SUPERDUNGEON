@@ -3,6 +3,7 @@ import {
   ALL_SCROLLS,
   ARMORS,
   ITEM_FX,
+  HUNGER,
   PLAYER,
   POTIONS,
   POTION_LOOKS,
@@ -26,7 +27,7 @@ import type { World } from './world';
 
 // 物品：未鑑定的藥水與卷軸（每一局外觀不同）、背包、喝／讀／丟／裝備，以及效果。
 
-export type ItemCategory = 'potion' | 'scroll' | 'weapon' | 'armor';
+export type ItemCategory = 'food' | 'potion' | 'scroll' | 'weapon' | 'armor';
 
 export const categoryOf = (id: ItemId): ItemCategory => id.split(':')[0] as ItemCategory;
 const keyOf = (id: ItemId): string => id.split(':')[1]!;
@@ -57,7 +58,7 @@ export function looksFor(seed: string): Looks {
 
 export function isKnown(w: World, id: ItemId): boolean {
   const c = categoryOf(id);
-  if (c === 'weapon' || c === 'armor' || id === 'scroll:upgrade') return true;
+  if (c === 'food' || c === 'weapon' || c === 'armor' || id === 'scroll:upgrade') return true;
   return w.player.known.includes(id);
 }
 
@@ -76,6 +77,7 @@ export function identify(w: World, id: ItemId): void {
 export function itemName(w: World, id: ItemId, level = 0): string {
   const c = categoryOf(id);
   const lv = level ? ` +${level}` : '';
+  if (c === 'food') return '乾糧';
   if (c === 'weapon') return `${WEAPONS[keyOf(id) as keyof typeof WEAPONS].name}${lv}`;
   if (c === 'armor') return `${ARMORS[keyOf(id) as keyof typeof ARMORS].name}${lv}`;
   if (!isKnown(w, id)) return lookName(w, id);
@@ -86,6 +88,7 @@ export function itemName(w: World, id: ItemId, level = 0): string {
 export function itemDesc(w: World, id: ItemId): string {
   const c = categoryOf(id);
   const k = keyOf(id);
+  if (c === 'food') return `吃下：減少 ${HUNGER.foodRestore} 世界秒的飢餓。吃完才生效；正常行動要花時間，已飽食時保留。`;
   if (c === 'weapon') {
     const s = WEAPONS[k as keyof typeof WEAPONS];
     return `${s.damage} 傷害（每級 +${s.perLevel}）、${Math.round((s.windup + s.active + s.recovery) * 100) / 100} 秒、範圍 ${s.reach} m、背刺 ×${s.sneakMultiplier}；${s.note}`;
@@ -104,6 +107,7 @@ export function itemColor(seed: string, id: ItemId): number {
   const c = categoryOf(id);
   if (c === 'potion') return POTION_LOOKS[looksFor(seed).potion[keyOf(id) as PotionId]]!.color;
   if (c === 'scroll') return id === 'scroll:upgrade' ? 0xf2c14e : 0xe8dcc0;
+  if (c === 'food') return 0xc59a5c;
   if (c === 'armor') return 0x9aa4b0;
   return 0xc3cad4;
 }
@@ -114,9 +118,10 @@ export function itemColor(seed: string, id: ItemId): number {
 export function addItem(w: World, id: ItemId, level = 0): boolean {
   const items = w.player.items;
   const c = categoryOf(id);
-  if (c === 'potion' || c === 'scroll') {
+  if (c === 'food' || c === 'potion' || c === 'scroll') {
     const s = items.find((it) => it.id === id);
     if (s) {
+      if (c === 'food' && s.count >= HUNGER.foodStackMax) return false;
       s.count++;
       return true;
     }
@@ -144,6 +149,10 @@ export function queueUse(w: World, index: number, mode: 'use' | 'throw'): void {
 
 /** 行動開始時從背包拿出來（避免排隊期間背包變動）。 */
 export function takeForAction(w: World, index: number): ItemId | null {
+  if (w.player.items[index]?.id === 'food:ration' && w.player.hunger <= 0) {
+    w.emit({ type: 'fullInventory', text: '已經飽食，乾糧已保留' });
+    return null;
+  }
   if (w.player.items[index]?.id === 'scroll:upgrade' && upgradeTargets(w).length === 0) {
     w.emit({ type: 'fullInventory', text: '目前沒有可強化的裝備，卷軸已保留' });
     return null;

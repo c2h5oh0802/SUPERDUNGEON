@@ -11,6 +11,21 @@ export const TIME = {
   maxSubstep: 1 / 120,
 } as const;
 
+/** Hunger v1 provisional calibration: measured four-floor route/combat costs, not a fun verdict. */
+export const HUNGER = {
+  /** Net elapsed world seconds. Thinking at idleRate consumes only that actual world time. */
+  hungryAt: 120,
+  starvingAt: 180,
+  /** 1 HP per interval after crossing starvingAt; no other debuff. */
+  damageEvery: 15,
+  foodRestore: 60,
+  foodStackMax: 99,
+  /** Guaranteed existing ground-item pickups at each floor entrance; no random food dependency. */
+  foodPerFloor: [1, 1, 1, 1],
+  /** Practice entrance and resupply use the same bag item, without campaign RNG. */
+  practiceRations: 3,
+} as const;
+
 export const WORLD = {
   cell: 1,
   wallHeight: 4.5,
@@ -46,6 +61,7 @@ export const ACTIONS = {
   shield: { windup: 0.05, active: 0.15, recovery: 0.2 },
   bottle: { windup: 0.12, active: 0, recovery: 0.28 },
   potion: { windup: 0.0, active: 0, recovery: 0.8 },
+  eat: { windup: 0.0, active: 0, recovery: 0.8 },
   door: { windup: 0.0, active: 0, recovery: 0.3 },
   use: { windup: 0.0, active: 0, recovery: 0.6 },
   read: { windup: 0.0, active: 0, recovery: 0.6 },
@@ -583,7 +599,7 @@ export const RENDER = {
 export type PotionId = 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
 /** 未知卷軸（強化卷軸一開始就認得）。 */
 export type ScrollId = 'teleport' | 'mapping' | 'timeStop' | 'lure';
-export type ItemId = `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
+export type ItemId = 'food:ration' | `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
 
 export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste'];
 export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'timeStop', 'lure'];

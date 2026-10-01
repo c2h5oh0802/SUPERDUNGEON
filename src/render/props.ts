@@ -299,6 +299,10 @@ export class PropsVisual {
       pieces.push({ geo: T(new THREE.SphereGeometry(0.17, 9, 7).scale(1, 0.8, 1), 0, 0.14, 0), color: 0x8a5e3a });
       pieces.push({ geo: T(new THREE.CylinderGeometry(0.06, 0.09, 0.08, 8), 0, 0.29, 0), color: 0x6b4a30 });
       pieces.push({ geo: T(new THREE.TorusGeometry(0.07, 0.015, 5, 10).rotateX(Math.PI / 2), 0, 0.27, 0), color: 0xf2c14e, glow: 1 });
+    } else if (kind === 'item:food') {
+      // 同一套拾取物幾何：簡單包裹乾糧，不引入美術資產或另一套物品系統。
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.3, 0.13, 0.2), 0, 0.08, 0), color: 0xffffff, glow: 0.3 });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.04, 0.14, 0.21), 0, 0.08, 0), color: 0x725336 });
     } else if (kind === 'item:scroll') {
       // 卷軸：捲起來的紙＋封蠟
       pieces.push({ geo: T(new THREE.CylinderGeometry(0.06, 0.06, 0.34, 8).rotateZ(Math.PI / 2), 0, 0.07, 0), color: 0xffffff, glow: 0.4 });

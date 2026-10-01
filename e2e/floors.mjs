@@ -78,6 +78,24 @@ s = await st();
 check('從存檔繼續：同一個種子的第 2 層、同一個職業', s.seed === 'FLOORS1' && s.floor === 2 && s.player.cls === 'huntress');
 check('從存檔繼續：生命是進入這一層時的值（不是之後改的 7）', s.player.hp === before.carry.hp, `hp=${s.player.hp} saved=${before.carry.hp}`);
 
+check('跨層存檔含飢餓與傷害餘數', typeof before.carry.hunger === 'number' && typeof before.carry.starvationT === 'number');
+check('續玩保留樓層開頭飢餓（另加短暫閒置時間）', s.player.hunger >= before.carry.hunger && s.player.hunger < before.carry.hunger + 2);
+check('續玩保留乾糧並拾取本層保底', s.player.items.find((it) => it.id === 'food:ration')?.count === (before.carry.items.find((it) => it.id === 'food:ration')?.count ?? 0) + 1);
+
+// Existing v2 fixture with optional Hunger fields/food absent must continue normally.
+await page.evaluate((save) => {
+  delete save.carry.hunger;
+  delete save.carry.starvationT;
+  save.carry.items = save.carry.items.filter((it) => it.id !== 'food:ration');
+  localStorage.setItem('superdungeon.run.v1', JSON.stringify(save));
+}, before);
+await page.reload();
+check('舊 v2 缺少飢餓欄位仍可繼續', await page.locator('#btn-continue').isVisible());
+await page.click('#btn-continue'); await waitFloor(2);
+s = await st();
+check('舊檔以正常飢餓與零傷害餘數載入', s.player.hunger < 2 && s.player.starvationT === 0);
+check('舊檔沒有乾糧庫存仍可拾取本層保底', s.player.items.find((it) => it.id === 'food:ration')?.count === 1);
+
 await useGoal();
 await waitFloor(3);
 await useGoal();

@@ -38,7 +38,6 @@ export class GameRenderer {
   private run: RunVisual | null = null;
   private slow = 0;
   private hurtKick = 0;
-  private crouch = 0;
   private deathT = 0;
   private realTime = 0;
   private lightT = 0;
@@ -143,9 +142,8 @@ export class GameRenderer {
 
     // 鏡頭
     const cam = this.camera;
-    // 潛行步：鏡頭壓低（只是畫面回饋，判定不變）
-    this.crouch = lerp(this.crouch, p.sneaking ? 1 : 0, 1 - Math.exp(-realDt * 10));
-    let eye: number = PLAYER.eyeHeight - 0.35 * this.crouch;
+    // Shift 是安靜慢走：視線高度與站立一致，不暗示能蹲下躲弩矢。
+    let eye: number = PLAYER.eyeHeight;
     let roll = 0;
     if (p.dead) {
       this.deathT += realDt;

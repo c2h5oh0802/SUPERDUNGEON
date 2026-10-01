@@ -1,4 +1,5 @@
 import { PLAYER, type ItemId } from '../config';
+import { hungerState } from '../sim/hunger';
 import { addItem } from '../sim/items';
 import { gainXp } from '../sim/progress';
 import { activeLoopCount } from '../core/loop';
@@ -53,6 +54,11 @@ export function installDevApi(app: App): void {
           pitch: p.pitch,
           hp: p.hp,
           maxHp: p.maxHp,
+          hunger: p.hunger,
+          hungerState: hungerState(p.hunger),
+          starvationT: p.starvationT,
+          eyeY: app.renderer.camera.position.y,
+          hitHeight: PLAYER.height,
           arrows: p.arrows,
           stones: p.stones,
           tipped: { ...p.tipped },

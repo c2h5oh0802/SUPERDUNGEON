@@ -1,6 +1,7 @@
-import { ACTIONS, ALL_TIPS, CLASSES, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, RUNES, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, RUNES, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
+import { eatRation } from './hunger';
 import { meleeCandidates } from './meleeTargets';
-import { categoryOf, drinkPotion, equipFromBag, readScroll, takeForAction } from './items';
+import { addItem, categoryOf, drinkPotion, equipFromBag, readScroll, takeForAction } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
@@ -72,7 +73,10 @@ function startPendingUse(w: World): void {
     p.action!.item = id;
     return;
   }
-  if (c === 'potion') {
+  if (c === 'food') {
+    startAction(w, 'eat');
+    p.action!.item = id;
+  } else if (c === 'potion') {
     startAction(w, 'potion');
     p.action!.item = id;
   } else if (c === 'scroll') {
@@ -296,6 +300,12 @@ export function updatePlayerAction(w: World, dt: number): void {
       if (!a.fired && a.t >= a.windup) {
         a.fired = true;
         fireProjectile(w, a.kind);
+      }
+      break;
+    case 'eat':
+      if (!a.fired && done && a.item === 'food:ration') {
+        a.fired = true;
+        eatRation(w);
       }
       break;
     case 'potion':
@@ -531,6 +541,15 @@ function performUse(w: World, it: Interactable): void {
       p.bottles = PLAYER.maxBottles;
       p.potions = PLAYER.maxPotions;
       p.hp = p.maxHp;
+      if (w.level.practice) {
+        const food = p.items.find((it) => it.id === 'food:ration')?.count ?? 0;
+        for (let k = food; k < HUNGER.practiceRations; k++) {
+          if (!addItem(w, 'food:ration')) {
+            w.emit({ type: 'fullInventory', text: '背包滿了，乾糧未補入；先使用一格物品再補給' });
+            break;
+          }
+        }
+      }
       w.emit({ type: 'resupply' });
       return;
     case 'door':

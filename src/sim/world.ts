@@ -1,4 +1,5 @@
 import { ARMORS, CLASSES, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type RuneId, type TalentId, type WeaponId } from '../config';
+import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
 import { applyTalent, gainXp, killXp, onFloorStart } from './progress';
@@ -44,6 +45,8 @@ export interface WorldOptions {
 export interface PlayerCarry {
   hp: number;
   maxHp: number;
+  hunger: number;
+  starvationT: number;
   arrows: number;
   stones: number;
   tipped: { paralysis: number; chill: number };
@@ -163,6 +166,8 @@ export class World {
       vz: 0,
       hp: PLAYER.maxHp,
       maxHp: PLAYER.maxHp,
+      hunger: 0,
+      starvationT: 0,
       slots,
       weapon: { id: CLASSES[cls].weapon, level: 0 },
       armor: { id: 'cloth', level: 0 },
@@ -198,6 +203,8 @@ export class World {
       const p = this.player;
       p.hp = c.hp;
       p.maxHp = c.maxHp;
+      p.hunger = c.hunger ?? 0;
+      p.starvationT = c.starvationT ?? 0;
       p.arrows = c.arrows;
       p.stones = c.stones;
       p.tipped = { ...c.tipped };
@@ -382,6 +389,9 @@ export class World {
       if (this.outcome !== 'none') break;
       this.time += dt;
       this.stats.worldTime = this.baseWorldTime + this.time;
+      // 唯一飢餓入口：每個真正執行的世界子步；不吃 realDt、移動或行動倍率。
+      updateHunger(this, dt);
+      if (this.outcome !== 'none') break;
       updatePlayerAction(this, dt);
       updateProjectiles(this, dt);
       updateEnemies(this, dt);
@@ -451,6 +461,8 @@ export class World {
     return {
       hp: p.hp,
       maxHp: p.maxHp,
+      hunger: p.hunger,
+      starvationT: p.starvationT,
       arrows: p.arrows,
       stones: p.stones,
       tipped: { ...p.tipped },

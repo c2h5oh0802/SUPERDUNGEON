@@ -1,0 +1,984 @@
+[
+  {
+    "seed": "FLOW1",
+    "policy": "direct",
+    "guard": false,
+    "totalEnemies": 15,
+    "worldTime": 16.849,
+    "realTime": 17.217,
+    "distance": 74.56,
+    "kills": 0,
+    "damage": {
+      "盾衛的劍": 6,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 16.848694816576664,
+      "interact": 0
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 16.849,
+        "distance": 74.56,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 15,
+        "chests": 0,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "normal",
+    "guard": false,
+    "totalEnemies": 36,
+    "worldTime": 59.804,
+    "realTime": 60.367,
+    "distance": 199.48,
+    "kills": 14,
+    "damage": {
+      "弩手的弩矢": 2,
+      "盾衛的劍": 18,
+      "突進者的衝撞": 8
+    },
+    "phaseTimes": {
+      "walk": 38.899570652387986,
+      "incidental_combat": 11.593333333332883,
+      "interact": 1.549197530864113,
+      "fight": 7.762333957492132
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 42.919,
+        "distance": 155.71,
+        "kills": 9,
+        "enemies": 15,
+        "alive": 6,
+        "chests": 1,
+        "hp": 13,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 16.885,
+        "distance": 43.77,
+        "kills": 5,
+        "enemies": 21,
+        "alive": 16,
+        "chests": 1,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "heavy",
+    "guard": false,
+    "totalEnemies": 15,
+    "worldTime": 52.561,
+    "realTime": 53.4,
+    "distance": 188.61,
+    "kills": 8,
+    "damage": {
+      "盾衛的劍": 24,
+      "弩手的弩矢": 2
+    },
+    "phaseTimes": {
+      "walk": 42.42917515515439,
+      "incidental_combat": 8.28999999999953,
+      "interact": 1.8417601464348934
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 52.561,
+        "distance": 188.61,
+        "kills": 8,
+        "enemies": 15,
+        "alive": 7,
+        "chests": 1,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "direct",
+    "guard": false,
+    "totalEnemies": 15,
+    "worldTime": 15.634,
+    "realTime": 31.5,
+    "distance": 65.63,
+    "kills": 0,
+    "damage": {
+      "盾衛的劍": 12
+    },
+    "phaseTimes": {
+      "walk": 15.634282833671843,
+      "interact": 0
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 15.634,
+        "distance": 65.63,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 15,
+        "chests": 0,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "normal",
+    "guard": false,
+    "totalEnemies": 59,
+    "worldTime": 100.656,
+    "realTime": 101.4,
+    "distance": 337.14,
+    "kills": 24,
+    "damage": {
+      "盾衛的劍": 27,
+      "弩手的弩矢": 4,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 62.671743267856044,
+      "incidental_combat": 16.34833333333258,
+      "interact": 2.456790123456642,
+      "fight": 19.17887949451662
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 43.619,
+        "distance": 156.26,
+        "kills": 9,
+        "enemies": 15,
+        "alive": 6,
+        "chests": 1,
+        "hp": 13,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 51.022,
+        "distance": 159.03,
+        "kills": 15,
+        "enemies": 20,
+        "alive": 5,
+        "chests": 2,
+        "hp": 3,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 6.014,
+        "distance": 21.85,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 24,
+        "chests": 2,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "heavy",
+    "guard": false,
+    "totalEnemies": 15,
+    "worldTime": 9.926,
+    "realTime": 10.183,
+    "distance": 39.37,
+    "kills": 1,
+    "damage": {
+      "盾衛的劍": 6,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 9.050626421040219,
+      "incidental_combat": 0.8749999999999503,
+      "interact": 0
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 9.926,
+        "distance": 39.37,
+        "kills": 1,
+        "enemies": 15,
+        "alive": 14,
+        "chests": 0,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "direct",
+    "guard": false,
+    "totalEnemies": 33,
+    "worldTime": 32.402,
+    "realTime": 62.267,
+    "distance": 126.28,
+    "kills": 2,
+    "damage": {
+      "盾衛的劍": 12
+    },
+    "phaseTimes": {
+      "walk": 31.787812208883444,
+      "interact": 0.6141975308641641
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 14.109,
+        "distance": 59.21,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 14,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 18.293,
+        "distance": 67.07,
+        "kills": 2,
+        "enemies": 19,
+        "alive": 17,
+        "chests": 0,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "normal",
+    "guard": false,
+    "totalEnemies": 54,
+    "worldTime": 83.91,
+    "realTime": 84.533,
+    "distance": 296.77,
+    "kills": 18,
+    "damage": {
+      "盾衛的劍": 27,
+      "弩手的弩矢": 4,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 57.676566475162005,
+      "incidental_combat": 11.401666666666097,
+      "interact": 2.45679012345665,
+      "fight": 12.375235474282459
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 31.312,
+        "distance": 109.05,
+        "kills": 8,
+        "enemies": 14,
+        "alive": 6,
+        "chests": 1,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 46.878,
+        "distance": 165.41,
+        "kills": 10,
+        "enemies": 19,
+        "alive": 9,
+        "chests": 2,
+        "hp": 1,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 5.719,
+        "distance": 22.31,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 21,
+        "chests": 2,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "heavy",
+    "guard": false,
+    "totalEnemies": 54,
+    "worldTime": 217.578,
+    "realTime": 220.35,
+    "distance": 835.63,
+    "kills": 38,
+    "damage": {
+      "弩手的弩矢": 6,
+      "盾衛的劍": 33
+    },
+    "phaseTimes": {
+      "walk": 129.9403706682628,
+      "incidental_combat": 17.812999999999036,
+      "interact": 4.911808083878713,
+      "fight": 64.91330694242235
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 98.683,
+        "distance": 384.84,
+        "kills": 14,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 1,
+        "hp": 11,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 106.855,
+        "distance": 412.26,
+        "kills": 19,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 2,
+        "hp": 5,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 12.04,
+        "distance": 38.53,
+        "kills": 5,
+        "enemies": 21,
+        "alive": 16,
+        "chests": 2,
+        "hp": 0,
+        "outcome": "dead",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "direct",
+    "guard": true,
+    "totalEnemies": 87,
+    "worldTime": 96.379,
+    "realTime": 451.667,
+    "distance": 247.78,
+    "kills": 2,
+    "damage": {
+      "盾衛的劍": 303,
+      "突進者的衝撞": 72,
+      "弩手的弩矢": 20
+    },
+    "phaseTimes": {
+      "walk": 94.5359080523547,
+      "interact": 1.8434160517458125
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 19.555,
+        "distance": 84.18,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 15,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 14.879,
+        "distance": 62.39,
+        "kills": 0,
+        "enemies": 21,
+        "alive": 21,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 13.683,
+        "distance": 57.78,
+        "kills": 0,
+        "enemies": 24,
+        "alive": 24,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 48.262,
+        "distance": 43.43,
+        "kills": 2,
+        "enemies": 27,
+        "alive": 25,
+        "chests": 0,
+        "hp": 16,
+        "outcome": "none",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "normal",
+    "guard": true,
+    "totalEnemies": 87,
+    "worldTime": 141.958,
+    "realTime": 143.183,
+    "distance": 436.68,
+    "kills": 41,
+    "damage": {
+      "弩手的弩矢": 12,
+      "盾衛的劍": 54,
+      "突進者的衝撞": 12
+    },
+    "phaseTimes": {
+      "walk": 91.30618967382316,
+      "incidental_combat": 28.701666666665325,
+      "interact": 5.300185185184873,
+      "fight": 16.649855686208767
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 41.821,
+        "distance": 153.54,
+        "kills": 9,
+        "enemies": 15,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 33.892,
+        "distance": 94.19,
+        "kills": 9,
+        "enemies": 21,
+        "alive": 12,
+        "chests": 2,
+        "hp": 22,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 32.114,
+        "distance": 92.36,
+        "kills": 10,
+        "enemies": 24,
+        "alive": 14,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 34.131,
+        "distance": 96.6,
+        "kills": 13,
+        "enemies": 27,
+        "alive": 14,
+        "chests": 4,
+        "hp": 26,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW1",
+    "policy": "heavy",
+    "guard": true,
+    "totalEnemies": 87,
+    "worldTime": 383.058,
+    "realTime": 387.267,
+    "distance": 1414.09,
+    "kills": 87,
+    "damage": {
+      "盾衛的劍": 87,
+      "弩手的弩矢": 22,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 217.6889068120484,
+      "incidental_combat": 43.24366666666438,
+      "interact": 9.824469613077966,
+      "fight": 112.30095833940636
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 100.677,
+        "distance": 388.16,
+        "kills": 15,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 1,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 90.507,
+        "distance": 327.41,
+        "kills": 21,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 2,
+        "hp": 30,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 96.761,
+        "distance": 360.3,
+        "kills": 24,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 3,
+        "hp": 34,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 95.114,
+        "distance": 338.23,
+        "kills": 27,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 4,
+        "hp": 36,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "direct",
+    "guard": true,
+    "totalEnemies": 15,
+    "worldTime": 52.488,
+    "realTime": 400.033,
+    "distance": 158.42,
+    "kills": 0,
+    "damage": {
+      "盾衛的劍": 228
+    },
+    "phaseTimes": {
+      "walk": 52.48428283363871,
+      "interact": 0.0033333333333303017
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 52.488,
+        "distance": 158.42,
+        "kills": 0,
+        "enemies": 15,
+        "alive": 15,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "none",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "normal",
+    "guard": true,
+    "totalEnemies": 83,
+    "worldTime": 178.92,
+    "realTime": 180.417,
+    "distance": 562.63,
+    "kills": 47,
+    "damage": {
+      "盾衛的劍": 78,
+      "弩手的弩矢": 16,
+      "突進者的衝撞": 4
+    },
+    "phaseTimes": {
+      "walk": 106.06366740744205,
+      "incidental_combat": 36.80666666666494,
+      "interact": 4.912716049382439,
+      "fight": 31.137202767186743
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 42.882,
+        "distance": 156.2,
+        "kills": 9,
+        "enemies": 15,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 50.352,
+        "distance": 158.84,
+        "kills": 13,
+        "enemies": 20,
+        "alive": 7,
+        "chests": 2,
+        "hp": 22,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 30.605,
+        "distance": 94.5,
+        "kills": 8,
+        "enemies": 24,
+        "alive": 16,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 55.08,
+        "distance": 153.09,
+        "kills": 17,
+        "enemies": 24,
+        "alive": 7,
+        "chests": 4,
+        "hp": 28,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "FLOW2",
+    "policy": "heavy",
+    "guard": true,
+    "totalEnemies": 83,
+    "worldTime": 428.819,
+    "realTime": 433.133,
+    "distance": 1607.54,
+    "kills": 83,
+    "damage": {
+      "盾衛的劍": 87,
+      "突進者的衝撞": 8,
+      "弩手的弩矢": 36
+    },
+    "phaseTimes": {
+      "walk": 236.55606968556833,
+      "incidental_combat": 45.3337283950593,
+      "interact": 9.822870239760022,
+      "fight": 137.10638227964273
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 101.95,
+        "distance": 400.14,
+        "kills": 15,
+        "enemies": 15,
+        "alive": 0,
+        "chests": 1,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 110.079,
+        "distance": 403.62,
+        "kills": 20,
+        "enemies": 20,
+        "alive": 0,
+        "chests": 2,
+        "hp": 28,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 105.148,
+        "distance": 382.43,
+        "kills": 24,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 3,
+        "hp": 34,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 111.643,
+        "distance": 421.35,
+        "kills": 24,
+        "enemies": 24,
+        "alive": 0,
+        "chests": 4,
+        "hp": 36,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "direct",
+    "guard": true,
+    "totalEnemies": 33,
+    "worldTime": 67.607,
+    "realTime": 414.317,
+    "distance": 126.28,
+    "kills": 4,
+    "damage": {
+      "盾衛的劍": 270,
+      "突進者的衝撞": 60
+    },
+    "phaseTimes": {
+      "walk": 66.9894788755181,
+      "interact": 0.6175308641974979
+    },
+    "complete": false,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 14.109,
+        "distance": 59.21,
+        "kills": 0,
+        "enemies": 14,
+        "alive": 14,
+        "chests": 0,
+        "hp": 10,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 53.498,
+        "distance": 67.07,
+        "kills": 4,
+        "enemies": 19,
+        "alive": 15,
+        "chests": 0,
+        "hp": 16,
+        "outcome": "none",
+        "ok": false
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "normal",
+    "guard": true,
+    "totalEnemies": 81,
+    "worldTime": 160.407,
+    "realTime": 161.717,
+    "distance": 515.97,
+    "kills": 41,
+    "damage": {
+      "盾衛的劍": 66,
+      "弩手的弩矢": 22,
+      "突進者的衝撞": 16
+    },
+    "phaseTimes": {
+      "walk": 99.21606489145745,
+      "incidental_combat": 32.55333333333184,
+      "interact": 4.913580246913291,
+      "fight": 23.72398327987424
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 29.259,
+        "distance": 106.61,
+        "kills": 8,
+        "enemies": 14,
+        "alive": 6,
+        "chests": 1,
+        "hp": 18,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 46.699,
+        "distance": 165.5,
+        "kills": 10,
+        "enemies": 19,
+        "alive": 9,
+        "chests": 2,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 47.517,
+        "distance": 148.24,
+        "kills": 12,
+        "enemies": 21,
+        "alive": 9,
+        "chests": 3,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 36.932,
+        "distance": 95.62,
+        "kills": 11,
+        "enemies": 27,
+        "alive": 16,
+        "chests": 4,
+        "hp": 26,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  },
+  {
+    "seed": "LIVING1",
+    "policy": "heavy",
+    "guard": true,
+    "totalEnemies": 81,
+    "worldTime": 403.459,
+    "realTime": 408.2,
+    "distance": 1532.89,
+    "kills": 81,
+    "damage": {
+      "弩手的弩矢": 36,
+      "盾衛的劍": 87
+    },
+    "phaseTimes": {
+      "walk": 235.54195586217713,
+      "incidental_combat": 37.48025925925714,
+      "interact": 9.82377200462426,
+      "fight": 120.61274693741987
+    },
+    "complete": true,
+    "floors": [
+      {
+        "floor": 1,
+        "worldTime": 98.156,
+        "distance": 389.39,
+        "kills": 14,
+        "enemies": 14,
+        "alive": 0,
+        "chests": 1,
+        "hp": 20,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 2,
+        "worldTime": 106.237,
+        "distance": 411.02,
+        "kills": 19,
+        "enemies": 19,
+        "alive": 0,
+        "chests": 2,
+        "hp": 24,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 3,
+        "worldTime": 104.291,
+        "distance": 389.8,
+        "kills": 21,
+        "enemies": 21,
+        "alive": 0,
+        "chests": 3,
+        "hp": 28,
+        "outcome": "descend",
+        "ok": true
+      },
+      {
+        "floor": 4,
+        "worldTime": 94.774,
+        "distance": 342.68,
+        "kills": 27,
+        "enemies": 27,
+        "alive": 0,
+        "chests": 4,
+        "hp": 32,
+        "outcome": "win",
+        "ok": true
+      }
+    ]
+  }
+]
