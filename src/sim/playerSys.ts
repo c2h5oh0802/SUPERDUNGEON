@@ -1,7 +1,8 @@
 import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, HEALING_POTION, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId, type WeaponId } from '../config';
 import { eatRation } from './hunger';
+import { consumeHuntingMark } from './huntingMark';
 import { meleeCandidates } from './meleeTargets';
-import { addItem, categoryOf, drinkPotion, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction } from './items';
+import { addItem, categoryOf, drinkPotion, completeConversion, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
@@ -32,7 +33,8 @@ export function weaponDamage(id: WeaponId, level: number): number {
 
 function startAction(w: World, kind: ActionKind, targetId = -1, timing: Timing = timingOf(w, kind)): void {
   const p = w.player;
-  const d = timing;
+  const marked = (kind === 'melee' || (kind === 'bow' && p.tool === 'tipped')) && consumeHuntingMark(w, kind === 'melee' ? 'melee' : 'tipped');
+  const d = marked ? { ...timing, windup: timing.windup * TALENT_FX.markWindupMul } : timing;
   let mul = 1;
   // 迅捷藥水：行動只花一半世界時間
   if (p.hasteT > 0) mul *= ITEM_FX.haste.timeMul;
@@ -67,6 +69,11 @@ function startPendingUse(w: World): void {
   const level = it.level;
   const id = takeForAction(w, u.index, u.mode);
   if (!id) return;
+  if (u.mode === 'convert') {
+    startAction(w, 'convert');
+    p.action!.item = id;
+    return;
+  }
   if (u.mode === 'throw') {
     startAction(w, 'bottle');
     p.action!.item = id;
@@ -106,15 +113,6 @@ function selectSlot(w: World, slot: number): void {
   p.desiredTool = tool;
   if (!p.action) p.tool = tool;
   w.emit({ type: 'toolSwitch', kind: tool });
-}
-
-/** 拉弓：狙擊標記天賦在命中後短時間內拉得比較快。 */
-function startBow(w: World): void {
-  const p = w.player;
-  if (hasTalent(p, 'mark') && p.markT > 0) {
-    p.markT = 0;
-    startAction(w, 'bow', -1, TALENT_FX.markBow);
-  } else startAction(w, 'bow');
 }
 
 /** 依輸入開始新行動（一次只能一個；切換工具不取消行動）。 */
@@ -163,11 +161,11 @@ export function startActions(w: World, input: FrameInput): void {
       return;
     case 'bow':
       if (p.arrows <= 0) return dry('沒有箭');
-      startBow(w);
+      startAction(w, 'bow');
       return;
     case 'tipped':
       if (p.tipped[p.tipKind] <= 0) return dry(`沒有${TIP_NAMES[p.tipKind]}`);
-      startBow(w);
+      startAction(w, 'bow');
       p.action!.tip = p.tipKind;
       return;
     case 'stone':
@@ -318,6 +316,12 @@ export function updatePlayerAction(w: World, dt: number): void {
       if (!a.fired && done && a.item) {
         a.fired = true;
         readScroll(w, a.item.split(':')[1] as ScrollId | 'upgrade');
+      }
+      break;
+    case 'convert':
+      if (!a.fired && done && a.item) {
+        a.fired = true;
+        completeConversion(w, a.item);
       }
       break;
     case 'equip':

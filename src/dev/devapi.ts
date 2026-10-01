@@ -1,8 +1,8 @@
-import { PLAYER, type ItemId } from '../config';
+import { PLAYER, TALENTS, type TalentId, type ItemId } from '../config';
 import { hungerState } from '../sim/hunger';
 import { addItem } from '../sim/items';
 import { damageEnemy } from '../sim/enemySys';
-import { gainXp } from '../sim/progress';
+import { applyTalent, gainXp } from '../sim/progress';
 import { activeLoopCount } from '../core/loop';
 import { levelSignature } from '../gen/generator';
 import { geometryCacheSize } from '../render/characters';
@@ -130,6 +130,7 @@ export function installDevApi(app: App): void {
           veteran: e.veteran,
           boss: e.boss,
           pendingSleep: e.pendingSleep,
+          huntingMarkRemaining: e.alive ? Math.max(0, (e.huntingMarkUntil ?? 0) - w.time) : 0,
           paralyzeT: e.paralyzeT,
           slowT: e.slowT,
           pushing: !!e.push,
@@ -150,6 +151,7 @@ export function installDevApi(app: App): void {
         })),
         /** 職業提示（與畫面上的「反擊」「盾推」提示、獵人之眼標記同一個判定）。 */
         cue: { counter: w.cue.counter, push: w.cue.push, eye: w.cue.eye.map((e) => ({ ...e })) },
+        soundCues: w.senses.map(c => ({ ...c })),
         lastAction: w.lastAction ? { ...w.lastAction } : null,
         cueText: document.getElementById('cue')?.textContent ?? '',
         smokes: w.smokes.map((s) => ({ id: s.id, x: s.x, y: s.y, z: s.z, radius: s.radius, age: s.age, air: s.air })),
@@ -251,6 +253,10 @@ export function installDevApi(app: App): void {
       giveItem(id: ItemId, level = 0) {
         const w = app.world;
         return w ? addItem(w, id, level) : false;
+      },
+      /** Focused talent fixtures only, not natural progression evidence. */
+      giveTalent(t: TalentId) {
+        if (app.world && Object.hasOwn(TALENTS, t)) applyTalent(app.world, t);
       },
       /** 狀態注入：給經驗。 */
       giveXp(n: number) {

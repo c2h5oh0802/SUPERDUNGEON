@@ -56,7 +56,7 @@ export function talentOptions(seed: string, p: Player, level: number): TalentId[
 
 function offerTalents(w: World, level: number): void {
   const options = talentOptions(w.level.seed, w.player, level);
-  if (options.length) queueChoice(w, { kind: 'talent', options });
+  if (options.length) queueChoice(w, { kind: 'talent', options, level });
 }
 
 export function applyTalent(w: World, t: TalentId): void {
@@ -68,15 +68,6 @@ export function applyTalent(w: World, t: TalentId): void {
     p.hp = Math.min(p.maxHp, p.hp + TALENT_FX.toughnessHp);
   }
   w.emit({ type: 'buff', kind: t, text: `天賦：${TALENTS[t].name}` });
-}
-
-/** 每層開始（從上一層帶下來時）套用的天賦效果。 */
-export function onFloorStart(w: World): void {
-  const p = w.player;
-  if (hasTalent(p, 'apothecary') && w.level.floor > 1) {
-    p.tipped.paralysis = Math.min(maxTipped(p), p.tipped.paralysis + 1);
-    p.tipped.chill = Math.min(maxTipped(p), p.tipped.chill + 1);
-  }
 }
 
 export const startWeapon = (p: Player) => CLASSES[p.cls].weapon;

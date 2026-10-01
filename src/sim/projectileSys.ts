@@ -1,3 +1,4 @@
+import { applyHuntingMark } from './huntingMark';
 import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS, UPGRADE } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
 import { segmentCylinder, segmentEnemy } from './characterHit';
@@ -249,10 +250,9 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
   if (e.kind === 'charger' && e.phase === 'charge' && fromFront) dmg = Math.ceil(dmg * ENEMIES.charger.frontArmorMul);
   if (e.kind === 'charger' && e.phase === 'stun') dmg *= ENEMIES.charger.stunDamageMul;
   if (!p.deflected) w.stats.shotHits++;
-  // 狙擊標記天賦：命中後短時間內下一次拉弓比較快
-  if (p.kind === 'arrow' && !p.deflected && hasTalent(w.player, 'mark')) w.player.markT = TALENT_FX.markWindow;
   p.hitSet.add(e.id);
   damageEnemy(w, e, dmg, { source: p.deflected ? 'deflect' : p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z });
+  if (p.kind === 'arrow' && !p.deflected && !p.tip) applyHuntingMark(w, e);
   w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 8, 'combat');
   // 藥劑箭：改變敵人的時間軸（藥劑碰到東西就用掉）
   if (p.tip) {

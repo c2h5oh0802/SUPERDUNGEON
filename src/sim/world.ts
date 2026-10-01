@@ -1,8 +1,9 @@
+import { recordSensesEvent, expireSenses, type SoundCue } from './senses';
 import { ARMORS, CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
-import { applyTalent, gainXp, killXp, onFloorStart } from './progress';
+import { applyTalent, gainXp, killXp, talentOptions } from './progress';
 import { segSphere, type V2, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
 import type { LevelData } from '../gen/generator';
@@ -87,6 +88,7 @@ export class World {
   readonly interactables: Interactable[] = [];
   /** 本幀事件（渲染、音效、介面讀取後清空）。 */
   events: GameEvent[] = [];
+  senses: SoundCue[] = [];
   time = 0;
   realTime = 0;
   lastWorldDt = 0;
@@ -184,7 +186,6 @@ export class World {
       invisT: 0,
       hasteT: 0,
       comboT: 0,
-      markT: 0,
       pendingUse: null,
       arrows: start.arrows,
       stones: start.stones,
@@ -225,7 +226,6 @@ export class World {
       this.baseWorldTime = opts.stats.worldTime;
       this.baseRealTime = opts.stats.realTime;
     }
-    onFloorStart(this);
     for (const e of level.enemies) this.enemies.push(createEnemy(this, e));
     for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level);
     level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set() }));
@@ -279,6 +279,7 @@ export class World {
 
   emit(e: GameEvent): void {
     this.events.push(e);
+    recordSensesEvent(this, e);
   }
 
   drainEvents(): GameEvent[] {
@@ -312,6 +313,7 @@ export class World {
       return 0;
     }
     this.realTime += realDt;
+    expireSenses(this);
     this.stats.realTime = this.baseRealTime + this.realTime;
     const p = this.player;
     p.yaw = input.yaw;
@@ -426,7 +428,7 @@ export class World {
   }
 
   emitNoise(x: number, y: number, z: number, radius: number, source: string, emitterId?: number): void {
-    this.emit({ type: 'noise', x, y, z, radius, source });
+    this.emit({ type: 'noise', x, y, z, radius, source, id: emitterId });
     onNoise(this, x, y, z, radius, emitterId);
   }
 
@@ -526,7 +528,18 @@ export class World {
       if (!t) return;
       applyUpgrade(this, t);
     }
-    this.pendingChoice = this.choiceQueue.shift() ?? null;
+    this.pendingChoice = null;
+    while (this.choiceQueue.length) {
+      const next = this.choiceQueue.shift()!;
+      if (next.kind === 'talent') {
+        // A multi-level XP award can queue choices before prior choices are owned.
+        // Re-evaluate at display time, preserving that level's deterministic shuffle.
+        next.options = talentOptions(this.level.seed, this.player, next.level ?? this.player.level);
+        if (!next.options.length) continue;
+      }
+      this.pendingChoice = next;
+      break;
+    }
   }
 
   statsCopy(): RunStats {

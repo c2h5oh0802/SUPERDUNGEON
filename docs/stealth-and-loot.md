@@ -1,5 +1,7 @@
 # 潛行難度與「撿東西、變強」
 
+最新 [Huntress Progression v2](huntress-progression-v2.md) 已取代歷史獵手天賦池：標記換工具、已知藥水調製、聲音方向感官、輕步；堅韌僅舊獵手持有者保留。
+
 最新 [Chapter 1 resources v1](chapter1-resources-v1.md) 已改為 4 探索層＋1 首領層、Food Economy v2（1/1/2/2/0）、職業初始知識、沉睡卷軸與兩種可選資源房；本文件其餘內容含歷史版本敘述，衝突時以上述最新規格為準。
 
 2026-10-01 刻印祭壇移除：目前成長由裝備／強化卷軸與 XP／Level／Talent 提供，消耗品與 Hunger／Food 保留；[範圍、舊存檔與驗證](rune-removal.md)。

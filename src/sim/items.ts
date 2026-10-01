@@ -11,18 +11,20 @@ import {
   SCROLLS,
   SCROLL_LOOKS,
   TALENT_FX,
+  TIP_NAMES,
   UPGRADE,
   WEAPONS,
   type ItemId,
   type PotionId,
   type ScrollId,
+  type TipKind,
 } from '../config';
 import { lullEnemy } from './enemySys';
 import { Rng } from '../core/rng';
 import { rollConsumable, rollItem } from '../gen/loot';
 import { Nav } from './nav';
-import { hasTalent, queueChoice } from './progress';
-import type { Area, Enemy, InvItem, UpgradeTarget } from './types';
+import { hasTalent, maxTipped, queueChoice } from './progress';
+import type { Area, Enemy, InvItem, PendingUse, UpgradeTarget } from './types';
 import type { World } from './world';
 
 // 物品：未鑑定的藥水與卷軸（每一局外觀不同）、背包、喝／讀／丟／裝備，以及效果。
@@ -144,10 +146,17 @@ function takeOne(w: World, index: number): InvItem | null {
 }
 
 /** 從背包排入一個動作（介面呼叫；世界恢復後的第一幀開始）。 */
-export function queueUse(w: World, index: number, mode: 'use' | 'throw'): void {
+export function queueUse(w: World, index: number, mode: PendingUse['mode']): void {
   const it = w.player.items[index];
   if (!it) return;
   if (mode === 'throw' && categoryOf(it.id) !== 'potion') return;
+  if (mode === 'convert') {
+    const reason = conversionReason(w, it.id);
+    if (reason) {
+      w.emit({ type: 'fullInventory', text: reason });
+      return;
+    }
+  }
   w.player.pendingUse = { index, mode };
 }
 
@@ -156,7 +165,16 @@ export function knownHealingCount(w: World): number {
   return isKnown(w, 'potion:healing') ? w.player.items.filter((it) => it.id === 'potion:healing').reduce((n, it) => n + it.count, 0) : 0;
 }
 
-export function takeForAction(w: World, index: number, mode: 'use' | 'throw' = 'use'): ItemId | null {
+export function takeForAction(w: World, index: number, mode: PendingUse['mode'] = 'use'): ItemId | null {
+  if (mode === 'convert') {
+    const id = w.player.items[index]?.id;
+    if (!id) return null;
+    const reason = conversionReason(w, id);
+    if (reason) {
+      w.emit({ type: 'fullInventory', text: reason });
+      return null;
+    }
+  }
   if (mode === 'use' && w.player.items[index]?.id === 'potion:healing' && isKnown(w, 'potion:healing') && w.player.hp >= w.player.maxHp) {
     w.emit({ type: 'fullInventory', text: '生命已滿，治療藥水已保留' });
     return null;
@@ -174,6 +192,34 @@ export function takeForAction(w: World, index: number, mode: 'use' | 'throw' = '
 }
 
 // ---------- 藥水 ----------
+
+/** Eligibility deliberately checks knowledge before exposing any recipe/type. */
+export function conversionKind(w: World, id: ItemId): TipKind | null {
+  if (w.player.cls !== 'huntress' || !hasTalent(w.player, 'apothecary') || !isKnown(w, id)) return null;
+  if (id === 'potion:frost') return 'chill';
+  if (id === 'potion:gas') return 'paralysis';
+  return null;
+}
+
+/** Null means the whole batch fits. Never consume a bottle for partial yield. */
+export function conversionReason(w: World, id: ItemId): string | null {
+  const kind = conversionKind(w, id);
+  if (!kind) return '無法轉化這項物品，物品已保留';
+  const count = w.player.tipped[kind], cap = maxTipped(w.player);
+  return cap - count >= TALENT_FX.apothecaryYield ? null
+    : `${TIP_NAMES[kind]}空間不足（目前 ${count} / ${cap}，需要 ${TALENT_FX.apothecaryYield} 格空間），藥水已保留`;
+}
+
+/** The normal action owns the reserved bottle. Interruptions have no refund.
+ * Tipped stock cannot grow during this committed action: ordinary pickups only
+ * grant normal arrows, while resupply is a separate, non-overlapping action. */
+export function completeConversion(w: World, id: ItemId): void {
+  const kind = conversionKind(w, id);
+  if (!kind) return;
+  w.player.tipped[kind] += TALENT_FX.apothecaryYield;
+  w.stats.itemsUsed++;
+  w.emit({ type: 'buff', kind: 'apothecary', text: `轉化完成：${TIP_NAMES[kind]} +${TALENT_FX.apothecaryYield}（${w.player.tipped[kind]} / ${maxTipped(w.player)}）` });
+}
 
 export function drinkPotion(w: World, id: PotionId): void {
   const p = w.player;
@@ -404,13 +450,12 @@ export function dropLoot(w: World, e: Enemy): void {
   w.addPickup('item', 1, e.x + 0.3, 0.15, e.z + 0.3, null, roll.id, roll.level);
 }
 
-/** 隱形、迅捷、連擊、狙擊標記的倒數（世界時間）。 */
+/** 隱形、迅捷、連擊的倒數（世界時間）。 */
 export function updateBuffs(w: World, dt: number): void {
   const p = w.player;
   p.invisT = Math.max(0, p.invisT - dt);
   p.hasteT = Math.max(0, p.hasteT - dt);
   p.comboT = Math.max(0, p.comboT - dt);
-  p.markT = Math.max(0, p.markT - dt);
 }
 
 /** 潛行步的速度與時間倍率（輕步天賦）。 */

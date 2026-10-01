@@ -4,7 +4,7 @@ import type { EnemyKind } from '../gen/rooms';
 import type { PickupKind } from '../gen/generator';
 
 export type { Tool, TipKind };
-export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'stunned';
+export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'convert' | 'stunned';
 
 export interface ActionState {
   kind: ActionKind;
@@ -38,12 +38,12 @@ export interface InvItem {
 /** 背包裡選的動作（由介面排入，下一幀開始行動）。 */
 export interface PendingUse {
   index: number;
-  mode: 'use' | 'throw';
+  mode: 'use' | 'throw' | 'convert';
 }
 
 /** 選擇畫面：升級選天賦、強化卷軸選裝備。 */
 export type UpgradeTarget = 'weapon' | 'armor' | 'bow' | 'shield';
-export type PendingChoice = { kind: 'talent'; options: TalentId[] } | { kind: 'upgrade'; options: UpgradeTarget[] };
+export type PendingChoice = { kind: 'talent'; options: TalentId[]; level?: number } | { kind: 'upgrade'; options: UpgradeTarget[] };
 
 /** 丟出的藥水碎開後留在地上的區域。 */
 export interface Area {
@@ -87,11 +87,10 @@ export interface Player {
   xp: number;
   level: number;
   talents: TalentId[];
-  /** 效果的剩餘世界秒：隱形、迅捷、連擊、狙擊標記。 */
+  /** 效果的剩餘世界秒：隱形、迅捷、連擊。 */
   invisT: number;
   hasteT: number;
   comboT: number;
-  markT: number;
   pendingUse: PendingUse | null;
   /** 一般箭（獵手）。 */
   arrows: number;
@@ -113,6 +112,8 @@ export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'investigate' | 'search' 
 export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger' | 'pushed';
 
 export interface Enemy {
+  /** Target-local temporary mark; absolute world time, not carried between floors. */
+  huntingMarkUntil?: number;
   id: number;
   kind: EnemyKind;
   x: number;
@@ -274,6 +275,7 @@ export type GameEventType =
   | 'hitEnemy'
   | 'shield'
   | 'hitWall'
+  | 'enemyStep'
   | 'enemyDeath'
   | 'playerHurt'
   | 'bottleBreak'

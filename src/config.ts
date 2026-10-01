@@ -63,6 +63,7 @@ export const ACTIONS = {
   door: { windup: 0.0, active: 0, recovery: 0.3 },
   use: { windup: 0.0, active: 0, recovery: 0.6 },
   read: { windup: 0.0, active: 0, recovery: 0.6 },
+  convert: { windup: 0.6, active: 0, recovery: 0 },
   equip: { windup: 0.0, active: 0, recovery: 0.5 },
   stunned: { windup: 0.0, active: 0, recovery: 1.5 },
 } as const;
@@ -621,15 +622,15 @@ export const TALENTS: Record<TalentId, { name: string; text: string }> = {
   bulwark: { name: '鐵壁（停用）', text: '舊版盾牌天賦停用；存檔資料保留' },
   slinger: { name: '投石手', text: '投擲石上限 +3，頭部傷害 +1' },
   toughness: { name: '堅韌', text: '最大生命 +4，並回復 4' },
-  mark: { name: '狙擊標記', text: '箭命中敵人後 2 秒內，下一次拉弓只要 0.4 秒' },
-  apothecary: { name: '藥劑師', text: '藥劑箭上限 +1；每往下一層，兩種各補 1 支' },
-  senses: { name: '敏銳感官', text: '12 m 內的敵人即使在牆後也會顯示' },
+  mark: { name: '狩獵標記', text: '一般箭命中存活敵人後標記 3 世界秒。對它使用近戰或藥劑箭，準備時間 ×0.6，出手即消耗；普通箭不能消耗' },
+  apothecary: { name: '藥劑師', text: '藥劑箭上限 +1；花 0.6 世界秒，把已鑑定冰霜／麻痺氣體藥水調製成 2 支冰寒／麻痺箭（需空出 2 支容量）' },
+  senses: { name: '敏銳感官', text: '12 m 內看不見的敵人製造聲音時，短暫提示大約方向；不持續顯示牆後位置' },
   lightstep: { name: '輕步', text: '潛行步速度 ×1.5，每公尺世界時間 2 → 1.33 倍' },
 };
 
 export const TALENT_POOLS: Record<PlayerClass, TalentId[]> = {
   warrior: ['combo', 'slinger', 'toughness'],
-  huntress: ['mark', 'apothecary', 'senses', 'lightstep', 'toughness'],
+  huntress: ['mark', 'apothecary', 'senses', 'lightstep'],
 };
 
 export const TALENT_FX = {
@@ -640,10 +641,13 @@ export const TALENT_FX = {
   slingerStones: 3,
   slingerHead: 1,
   toughnessHp: 4,
-  markWindow: 2,
-  markBow: { windup: 0.08, active: 0, recovery: 0.32 },
+  markWindow: 3,
+  markWindupMul: 0.6,
   apothecaryExtra: 1,
+  apothecaryYield: 2,
   sensesRange: 12,
+  sensesCueSeconds: 1.2,
+  sensesSectors: 8,
   lightstepSpeed: 1.5,
   lightstepTime: 1.33,
 } as const;

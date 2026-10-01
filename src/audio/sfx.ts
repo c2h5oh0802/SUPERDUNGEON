@@ -190,6 +190,9 @@ export class Sfx {
           // 自己的腳步聲：輕輕的悶響（提醒你正在出聲）
           if (e.source === 'step') this.noise(0.06, 0.12, 'lowpass', 380, 160, 1);
           break;
+        case 'enemyStep':
+          this.noise(0.06, 0.08, 'lowpass', 380, 160, 1, pos);
+          break;
         case 'levelUp':
           for (const [k, f] of [523, 659, 784, 1046].entries()) this.tone('triangle', f, f, 0.25, 0.18, null, k * 0.08);
           break;

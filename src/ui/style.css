@@ -1141,9 +1141,31 @@ button.ghost {
   outline: 2px solid var(--gold);
 }
 
-.eicon.sense {
-  opacity: 0.55;
+.eicon.marked {
+  min-width: 32px;
+  width: auto;
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(242, 193, 78, 0.8);
+}
+
+/* Coarse event-time sound direction only: deliberately detached from world projection. */
+.sense-cue {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 4px 8px;
+  border: 1px solid rgba(63, 224, 192, 0.4);
+  border-radius: 12px;
+  background: rgba(20, 18, 38, 0.72);
   color: var(--teal);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  animation: sense-fade 1.2s linear forwards;
+}
+
+@keyframes sense-fade {
+  0%, 25% { opacity: 0.9; }
+  100% { opacity: 0; }
 }
 
 /* Hunger v1: compact resource readout beside HP; explicit text as well as color. */

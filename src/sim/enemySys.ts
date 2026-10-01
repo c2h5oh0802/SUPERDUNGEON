@@ -8,6 +8,18 @@ import { setDoor } from './propSys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
+// Distance accumulation belongs to the actual movement path, not a second perception loop.
+const footstepDistance = new WeakMap<Enemy, number>();
+
+function enemyFootsteps(w: World, e: Enemy, moved: number): void {
+  if (moved <= 0 || !e.alive || e.state === 'sleep' || e.perched) return;
+  const distance = (footstepDistance.get(e) ?? 0) + moved;
+  footstepDistance.set(e, distance % STEALTH.footstepEvery);
+  if (distance < STEALTH.footstepEvery) return;
+  // Presentation sound event only: this must not wake the mover or chain-alert nearby AI.
+  w.emit({ type: 'enemyStep', id: e.id, x: e.x, y: e.y + 0.1, z: e.z });
+}
+
 export function createEnemy(w: World, s: EnemySpawn): Enemy {
   const spec = ENEMIES[s.kind];
   const patrol = s.perched || s.boss ? [] : [...w.roamPoints, ...s.patrol].map((p) => ({ ...p }));
@@ -205,7 +217,7 @@ export function becomeAlert(w: World, e: Enemy): void {
   if (was !== 'alert') {
     w.emit({ type: 'alert', id: e.id, x: e.x, y: e.y, z: e.z });
     // 呼喊：驚動附近尚未察覺的同伴
-    w.emitNoise(e.x, e.y + 1.6, e.z, NOISE.shout, 'shout');
+    w.emitNoise(e.x, e.y + 1.6, e.z, NOISE.shout, 'shout', e.id);
   }
 }
 
@@ -492,6 +504,7 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
   e.z = r.z;
   e.moving = moved > speed * dt * 0.2;
   e.walkPhase += moved * 2.2;
+  enemyFootsteps(w, e, moved);
   if (faceMove && moved > 1e-4) e.yaw = turnToward(e.yaw, yawFromDir(dx, dz), 7 * dt);
   // 卡住偵測
   if (moved < speed * dt * 0.15) {
@@ -529,6 +542,7 @@ function guardStep(w: World, e: Enemy, dt: number): void {
   e.z = r.z;
   e.moving = moved > 1e-4;
   e.walkPhase += moved * 2.2;
+  enemyFootsteps(w, e, moved);
 }
 
 function guardAlert(w: World, e: Enemy, dt: number): void {
@@ -808,6 +822,7 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       e.x = nx;
       e.z = nz;
       e.walkPhase += step * 1.5;
+      enemyFootsteps(w, e, step);
       e.chargeDist += step;
       if (e.chargeDist >= s.chargeDist) {
         e.phase = 'recovery';

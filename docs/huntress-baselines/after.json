@@ -1,0 +1,9257 @@
+{
+  "version": 1,
+  "source": "/workspace/scratch/8fd9c03827c2/superdungeon-huntress",
+  "config": {
+    "XP": {
+      "kill": {
+        "guard": 4,
+        "archer": 3,
+        "charger": 5
+      },
+      "veteranMul": 2,
+      "levels": [
+        0,
+        10,
+        25,
+        45,
+        70,
+        100,
+        135,
+        175,
+        220,
+        270
+      ],
+      "hpPerLevel": 2,
+      "talentEvery": 2
+    },
+    "huntressPool": [
+      "mark",
+      "apothecary",
+      "senses",
+      "lightstep"
+    ],
+    "huntressStart": {
+      "arrows": 8,
+      "stones": 0,
+      "paralysis": 2,
+      "chill": 2,
+      "bottles": 1
+    },
+    "bow": {
+      "windup": 0.12,
+      "active": 0,
+      "recovery": 0.68
+    },
+    "knife": {
+      "name": "獵刀",
+      "damage": 3,
+      "sneakMultiplier": 2,
+      "reach": 1.6,
+      "arcDeg": 90,
+      "windup": 0.08,
+      "active": 0.1,
+      "recovery": 0.22,
+      "perLevel": 1,
+      "stagger": 0,
+      "move": {
+        "windup": 0.85,
+        "active": 0.8,
+        "recovery": 0.95
+      },
+      "maxTargets": 1,
+      "secondaryDamage": 0,
+      "note": "單體、快、短；奇襲 ×2，最靈活"
+    }
+  },
+  "progression": [
+    {
+      "seed": "FLOW1",
+      "fraction": 0.3,
+      "generatedTotalXp": 258,
+      "xp": 95,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "mark",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 39,
+          "creditedKills": 4,
+          "creditedXp": 16,
+          "xp": 16,
+          "level": 2,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 5,
+          "creditedXp": 18,
+          "xp": 34,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 73,
+          "creditedKills": 6,
+          "creditedXp": 20,
+          "xp": 54,
+          "level": 4,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 79,
+          "creditedKills": 6,
+          "creditedXp": 32,
+          "xp": 86,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 95,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "FLOW1",
+      "fraction": 0.7,
+      "generatedTotalXp": 258,
+      "xp": 196,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "apothecary",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 39,
+          "creditedKills": 8,
+          "creditedXp": 30,
+          "xp": 30,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 11,
+          "creditedXp": 43,
+          "xp": 73,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 73,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 127,
+          "level": 6,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 79,
+          "creditedKills": 14,
+          "creditedXp": 60,
+          "xp": 187,
+          "level": 8,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 196,
+          "level": 8,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 73
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 138
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        }
+      ]
+    },
+    {
+      "seed": "FLOW1",
+      "fraction": 1,
+      "generatedTotalXp": 258,
+      "xp": 258,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "apothecary",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 39,
+          "creditedKills": 11,
+          "creditedXp": 39,
+          "xp": 39,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 15,
+          "creditedXp": 58,
+          "xp": 97,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 73,
+          "creditedKills": 19,
+          "creditedXp": 73,
+          "xp": 170,
+          "level": 7,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 79,
+          "creditedKills": 19,
+          "creditedXp": 79,
+          "xp": 249,
+          "level": 9,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 258,
+          "level": 9,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 100
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 181
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 221
+        }
+      ]
+    },
+    {
+      "seed": "FLOW2",
+      "fraction": 0.3,
+      "generatedTotalXp": 243,
+      "xp": 88,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 39,
+          "creditedKills": 3,
+          "creditedXp": 10,
+          "xp": 10,
+          "level": 2,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 46,
+          "creditedKills": 4,
+          "creditedXp": 17,
+          "xp": 27,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 74,
+          "creditedKills": 6,
+          "creditedXp": 27,
+          "xp": 54,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "senses"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 75,
+          "creditedKills": 6,
+          "creditedXp": 25,
+          "xp": 79,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "senses"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 88,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "senses"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 70
+        }
+      ]
+    },
+    {
+      "seed": "FLOW2",
+      "fraction": 0.7,
+      "generatedTotalXp": 243,
+      "xp": 183,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "senses",
+        "mark",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 39,
+          "creditedKills": 7,
+          "creditedXp": 27,
+          "xp": 27,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 46,
+          "creditedKills": 9,
+          "creditedXp": 36,
+          "xp": 63,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "senses"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 74,
+          "creditedKills": 14,
+          "creditedXp": 56,
+          "xp": 119,
+          "level": 6,
+          "talents": [
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 75,
+          "creditedKills": 13,
+          "creditedXp": 55,
+          "xp": 174,
+          "level": 7,
+          "talents": [
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 183,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "senses",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 5,
+          "level": 8,
+          "xp": 179
+        }
+      ]
+    },
+    {
+      "seed": "FLOW2",
+      "fraction": 1,
+      "generatedTotalXp": 243,
+      "xp": 243,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "senses",
+        "mark",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 39,
+          "creditedKills": 10,
+          "creditedXp": 39,
+          "xp": 39,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 46,
+          "creditedKills": 12,
+          "creditedXp": 46,
+          "xp": 85,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "senses"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 74,
+          "creditedKills": 19,
+          "creditedXp": 74,
+          "xp": 159,
+          "level": 7,
+          "talents": [
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 75,
+          "creditedKills": 18,
+          "creditedXp": 75,
+          "xp": 234,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "senses",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 243,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "senses",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 105
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 222
+        }
+      ]
+    },
+    {
+      "seed": "LIVING1",
+      "fraction": 0.3,
+      "generatedTotalXp": 262,
+      "xp": 88,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "lightstep",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 4,
+          "creditedXp": 13,
+          "xp": 13,
+          "level": 2,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 4,
+          "creditedXp": 15,
+          "xp": 28,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 71,
+          "creditedKills": 6,
+          "creditedXp": 23,
+          "xp": 51,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 84,
+          "creditedKills": 6,
+          "creditedXp": 28,
+          "xp": 79,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 88,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 28
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "LIVING1",
+      "fraction": 0.7,
+      "generatedTotalXp": 262,
+      "xp": 187,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 10,
+          "creditedXp": 37,
+          "xp": 37,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 10,
+          "creditedXp": 37,
+          "xp": 74,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 71,
+          "creditedKills": 13,
+          "creditedXp": 46,
+          "xp": 120,
+          "level": 6,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 84,
+          "creditedKills": 14,
+          "creditedXp": 58,
+          "xp": 178,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 187,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 74
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        }
+      ]
+    },
+    {
+      "seed": "LIVING1",
+      "fraction": 1,
+      "generatedTotalXp": 262,
+      "xp": 262,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 13,
+          "creditedXp": 49,
+          "xp": 49,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 13,
+          "creditedXp": 49,
+          "xp": 98,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 71,
+          "creditedKills": 18,
+          "creditedXp": 71,
+          "xp": 169,
+          "level": 7,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 84,
+          "creditedKills": 20,
+          "creditedXp": 84,
+          "xp": 253,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 262,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 1,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 138
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 176
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 221
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-01",
+      "fraction": 0.3,
+      "generatedTotalXp": 253,
+      "xp": 88,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "lightstep",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 39,
+          "creditedKills": 4,
+          "creditedXp": 14,
+          "xp": 14,
+          "level": 2,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 54,
+          "creditedKills": 5,
+          "creditedXp": 17,
+          "xp": 31,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 72,
+          "creditedKills": 6,
+          "creditedXp": 27,
+          "xp": 58,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 79,
+          "creditedKills": 6,
+          "creditedXp": 21,
+          "xp": 79,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 88,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-01",
+      "fraction": 0.7,
+      "generatedTotalXp": 253,
+      "xp": 182,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 39,
+          "creditedKills": 8,
+          "creditedXp": 29,
+          "xp": 29,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 54,
+          "creditedKills": 11,
+          "creditedXp": 39,
+          "xp": 68,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 72,
+          "creditedKills": 13,
+          "creditedXp": 53,
+          "xp": 121,
+          "level": 6,
+          "talents": [
+            "lightstep",
+            "mark",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 79,
+          "creditedKills": 14,
+          "creditedXp": 52,
+          "xp": 173,
+          "level": 7,
+          "talents": [
+            "lightstep",
+            "mark",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 182,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 78
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 100
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 5,
+          "level": 8,
+          "xp": 178
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-01",
+      "fraction": 1,
+      "generatedTotalXp": 253,
+      "xp": 253,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 39,
+          "creditedKills": 11,
+          "creditedXp": 39,
+          "xp": 39,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 54,
+          "creditedKills": 15,
+          "creditedXp": 54,
+          "xp": 93,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 72,
+          "creditedKills": 18,
+          "creditedXp": 72,
+          "xp": 165,
+          "level": 7,
+          "talents": [
+            "lightstep",
+            "mark",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 79,
+          "creditedKills": 20,
+          "creditedXp": 79,
+          "xp": 244,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 253,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 220
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-02",
+      "fraction": 0.3,
+      "generatedTotalXp": 248,
+      "xp": 81,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "apothecary",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 39,
+          "creditedKills": 3,
+          "creditedXp": 12,
+          "xp": 12,
+          "level": 2,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 5,
+          "creditedXp": 15,
+          "xp": 27,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 5,
+          "creditedXp": 22,
+          "xp": 49,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 87,
+          "creditedKills": 7,
+          "creditedXp": 23,
+          "xp": 72,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 81,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-02",
+      "fraction": 0.7,
+      "generatedTotalXp": 248,
+      "xp": 184,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "mark",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 39,
+          "creditedKills": 7,
+          "creditedXp": 27,
+          "xp": 27,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 11,
+          "creditedXp": 40,
+          "xp": 67,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 11,
+          "creditedXp": 43,
+          "xp": 110,
+          "level": 6,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 87,
+          "creditedKills": 16,
+          "creditedXp": 65,
+          "xp": 175,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 184,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 104
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-02",
+      "fraction": 1,
+      "generatedTotalXp": 248,
+      "xp": 248,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "mark",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 39,
+          "creditedKills": 10,
+          "creditedXp": 39,
+          "xp": 39,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 15,
+          "creditedXp": 55,
+          "xp": 94,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 15,
+          "creditedXp": 58,
+          "xp": 152,
+          "level": 7,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 87,
+          "creditedKills": 22,
+          "creditedXp": 87,
+          "xp": 239,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 248,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 106
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 221
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-03",
+      "fraction": 0.3,
+      "generatedTotalXp": 249,
+      "xp": 97,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 38,
+          "creditedKills": 3,
+          "creditedXp": 12,
+          "xp": 12,
+          "level": 2,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 5,
+          "creditedXp": 17,
+          "xp": 29,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 66,
+          "creditedKills": 6,
+          "creditedXp": 28,
+          "xp": 57,
+          "level": 4,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 81,
+          "creditedKills": 6,
+          "creditedXp": 31,
+          "xp": 88,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 97,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 74
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-03",
+      "fraction": 0.7,
+      "generatedTotalXp": 249,
+      "xp": 186,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "lightstep",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 38,
+          "creditedKills": 7,
+          "creditedXp": 27,
+          "xp": 27,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 11,
+          "creditedXp": 40,
+          "xp": 67,
+          "level": 4,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 66,
+          "creditedKills": 12,
+          "creditedXp": 49,
+          "xp": 116,
+          "level": 6,
+          "talents": [
+            "mark",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 81,
+          "creditedKills": 14,
+          "creditedXp": 61,
+          "xp": 177,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 186,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 49
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 141
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-03",
+      "fraction": 1,
+      "generatedTotalXp": 249,
+      "xp": 249,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "lightstep",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 38,
+          "creditedKills": 10,
+          "creditedXp": 38,
+          "xp": 38,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 15,
+          "creditedXp": 55,
+          "xp": 93,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 66,
+          "creditedKills": 17,
+          "creditedXp": 66,
+          "xp": 159,
+          "level": 7,
+          "talents": [
+            "mark",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 81,
+          "creditedKills": 19,
+          "creditedXp": 81,
+          "xp": 240,
+          "level": 9,
+          "talents": [
+            "mark",
+            "lightstep",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 249,
+          "level": 9,
+          "talents": [
+            "mark",
+            "lightstep",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 107
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 176
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 220
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-04",
+      "fraction": 0.3,
+      "generatedTotalXp": 261,
+      "xp": 94,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "senses",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 41,
+          "creditedKills": 4,
+          "creditedXp": 16,
+          "xp": 16,
+          "level": 2,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 54,
+          "creditedKills": 5,
+          "creditedXp": 18,
+          "xp": 34,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 21,
+          "generatedXp": 80,
+          "creditedKills": 7,
+          "creditedXp": 26,
+          "xp": 60,
+          "level": 4,
+          "talents": [
+            "senses",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 77,
+          "creditedKills": 6,
+          "creditedXp": 25,
+          "xp": 85,
+          "level": 5,
+          "talents": [
+            "senses",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 94,
+          "level": 5,
+          "talents": [
+            "senses",
+            "lightstep"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-04",
+      "fraction": 0.7,
+      "generatedTotalXp": 261,
+      "xp": 192,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "lightstep",
+        "apothecary",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 41,
+          "creditedKills": 8,
+          "creditedXp": 30,
+          "xp": 30,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 54,
+          "creditedKills": 10,
+          "creditedXp": 40,
+          "xp": 70,
+          "level": 5,
+          "talents": [
+            "senses",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 21,
+          "generatedXp": 80,
+          "creditedKills": 15,
+          "creditedXp": 54,
+          "xp": 124,
+          "level": 6,
+          "talents": [
+            "senses",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 77,
+          "creditedKills": 14,
+          "creditedXp": 59,
+          "xp": 183,
+          "level": 8,
+          "talents": [
+            "senses",
+            "lightstep",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 192,
+          "level": 8,
+          "talents": [
+            "senses",
+            "lightstep",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 104
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-04",
+      "fraction": 1,
+      "generatedTotalXp": 261,
+      "xp": 261,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "lightstep",
+        "apothecary",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 41,
+          "creditedKills": 11,
+          "creditedXp": 41,
+          "xp": 41,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 54,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 95,
+          "level": 5,
+          "talents": [
+            "senses",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 21,
+          "generatedXp": 80,
+          "creditedKills": 21,
+          "creditedXp": 80,
+          "xp": 175,
+          "level": 8,
+          "talents": [
+            "senses",
+            "lightstep",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 77,
+          "creditedKills": 19,
+          "creditedXp": 77,
+          "xp": 252,
+          "level": 9,
+          "talents": [
+            "senses",
+            "lightstep",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 261,
+          "level": 9,
+          "talents": [
+            "senses",
+            "lightstep",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 73
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 100
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 3,
+          "level": 8,
+          "xp": 175
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 220
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-05",
+      "fraction": 0.3,
+      "generatedTotalXp": 249,
+      "xp": 91,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "apothecary",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 44,
+          "creditedKills": 4,
+          "creditedXp": 16,
+          "xp": 16,
+          "level": 2,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 5,
+          "creditedXp": 19,
+          "xp": 35,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 71,
+          "creditedKills": 6,
+          "creditedXp": 23,
+          "xp": 58,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 70,
+          "creditedKills": 6,
+          "creditedXp": 24,
+          "xp": 82,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 91,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-05",
+      "fraction": 0.7,
+      "generatedTotalXp": 249,
+      "xp": 184,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "mark",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 44,
+          "creditedKills": 9,
+          "creditedXp": 34,
+          "xp": 34,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 11,
+          "creditedXp": 41,
+          "xp": 75,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 71,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 129,
+          "level": 6,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 70,
+          "creditedKills": 12,
+          "creditedXp": 46,
+          "xp": 175,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 184,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-05",
+      "fraction": 1,
+      "generatedTotalXp": 249,
+      "xp": 249,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "mark",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 44,
+          "creditedKills": 12,
+          "creditedXp": 44,
+          "xp": 44,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 15,
+          "creditedXp": 55,
+          "xp": 99,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 71,
+          "creditedKills": 19,
+          "creditedXp": 71,
+          "xp": 170,
+          "level": 7,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 70,
+          "creditedKills": 17,
+          "creditedXp": 70,
+          "xp": 240,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 249,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 178
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 226
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-06",
+      "fraction": 0.3,
+      "generatedTotalXp": 242,
+      "xp": 81,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "mark",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 38,
+          "creditedKills": 3,
+          "creditedXp": 10,
+          "xp": 10,
+          "level": 2,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 50,
+          "creditedKills": 5,
+          "creditedXp": 19,
+          "xp": 29,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 74,
+          "creditedKills": 6,
+          "creditedXp": 20,
+          "xp": 49,
+          "level": 4,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 71,
+          "creditedKills": 6,
+          "creditedXp": 23,
+          "xp": 72,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 81,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-06",
+      "fraction": 0.7,
+      "generatedTotalXp": 242,
+      "xp": 170,
+      "level": 7,
+      "talentChoices": 3,
+      "talents": [
+        "mark",
+        "apothecary",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 38,
+          "creditedKills": 7,
+          "creditedXp": 26,
+          "xp": 26,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 50,
+          "creditedKills": 10,
+          "creditedXp": 36,
+          "xp": 62,
+          "level": 4,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 74,
+          "creditedKills": 14,
+          "creditedXp": 50,
+          "xp": 112,
+          "level": 6,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 71,
+          "creditedKills": 12,
+          "creditedXp": 49,
+          "xp": 161,
+          "level": 7,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 170,
+          "level": 7,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-06",
+      "fraction": 1,
+      "generatedTotalXp": 242,
+      "xp": 242,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "apothecary",
+        "lightstep",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 38,
+          "creditedKills": 10,
+          "creditedXp": 38,
+          "xp": 38,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 50,
+          "creditedKills": 14,
+          "creditedXp": 50,
+          "xp": 88,
+          "level": 5,
+          "talents": [
+            "mark",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 74,
+          "creditedKills": 20,
+          "creditedXp": 74,
+          "xp": 162,
+          "level": 7,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 71,
+          "creditedKills": 17,
+          "creditedXp": 71,
+          "xp": 233,
+          "level": 9,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 242,
+          "level": 9,
+          "talents": [
+            "mark",
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 178
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 223
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-07",
+      "fraction": 0.3,
+      "generatedTotalXp": 257,
+      "xp": 92,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 4,
+          "creditedXp": 16,
+          "xp": 16,
+          "level": 2,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 5,
+          "creditedXp": 20,
+          "xp": 36,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 74,
+          "creditedKills": 6,
+          "creditedXp": 21,
+          "xp": 57,
+          "level": 4,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 76,
+          "creditedKills": 6,
+          "creditedXp": 26,
+          "xp": 83,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 92,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 72
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-07",
+      "fraction": 0.7,
+      "generatedTotalXp": 257,
+      "xp": 196,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "lightstep",
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 9,
+          "creditedXp": 33,
+          "xp": 33,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 11,
+          "creditedXp": 41,
+          "xp": 74,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 74,
+          "creditedKills": 14,
+          "creditedXp": 56,
+          "xp": 130,
+          "level": 6,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 76,
+          "creditedKills": 14,
+          "creditedXp": 57,
+          "xp": 187,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 196,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 100
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 181
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-07",
+      "fraction": 1,
+      "generatedTotalXp": 257,
+      "xp": 257,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "lightstep",
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 12,
+          "creditedXp": 43,
+          "xp": 43,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 15,
+          "creditedXp": 55,
+          "xp": 98,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 74,
+          "creditedKills": 19,
+          "creditedXp": 74,
+          "xp": 172,
+          "level": 7,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 76,
+          "creditedKills": 19,
+          "creditedXp": 76,
+          "xp": 248,
+          "level": 9,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 257,
+          "level": 9,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 223
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-08",
+      "fraction": 0.3,
+      "generatedTotalXp": 253,
+      "xp": 90,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "senses",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 45,
+          "creditedKills": 4,
+          "creditedXp": 16,
+          "xp": 16,
+          "level": 2,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 5,
+          "creditedXp": 20,
+          "xp": 36,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 63,
+          "creditedKills": 6,
+          "creditedXp": 25,
+          "xp": 61,
+          "level": 4,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 78,
+          "creditedKills": 6,
+          "creditedXp": 20,
+          "xp": 81,
+          "level": 5,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 90,
+          "level": 5,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-08",
+      "fraction": 0.7,
+      "generatedTotalXp": 253,
+      "xp": 187,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "mark",
+        "lightstep",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 45,
+          "creditedKills": 9,
+          "creditedXp": 35,
+          "xp": 35,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 11,
+          "creditedXp": 43,
+          "xp": 78,
+          "level": 5,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 63,
+          "creditedKills": 12,
+          "creditedXp": 45,
+          "xp": 123,
+          "level": 6,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 78,
+          "creditedKills": 14,
+          "creditedXp": 55,
+          "xp": 178,
+          "level": 8,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 187,
+          "level": 8,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 178
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-08",
+      "fraction": 1,
+      "generatedTotalXp": 253,
+      "xp": 253,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "mark",
+        "lightstep",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 45,
+          "creditedKills": 12,
+          "creditedXp": 45,
+          "xp": 45,
+          "level": 4,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 58,
+          "creditedKills": 15,
+          "creditedXp": 58,
+          "xp": 103,
+          "level": 6,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 63,
+          "creditedKills": 17,
+          "creditedXp": 63,
+          "xp": 166,
+          "level": 7,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 78,
+          "creditedKills": 20,
+          "creditedXp": 78,
+          "xp": 244,
+          "level": 9,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 253,
+          "level": 9,
+          "talents": [
+            "senses",
+            "mark",
+            "lightstep",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 1,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 2,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 176
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 221
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-09",
+      "fraction": 0.3,
+      "generatedTotalXp": 269,
+      "xp": 82,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 4,
+          "creditedXp": 15,
+          "xp": 15,
+          "level": 2,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 61,
+          "creditedKills": 5,
+          "creditedXp": 19,
+          "xp": 34,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 76,
+          "creditedKills": 6,
+          "creditedXp": 20,
+          "xp": 54,
+          "level": 4,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 80,
+          "creditedKills": 6,
+          "creditedXp": 19,
+          "xp": 73,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 82,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 11
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 73
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-09",
+      "fraction": 0.7,
+      "generatedTotalXp": 269,
+      "xp": 196,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "lightstep",
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 9,
+          "creditedXp": 32,
+          "xp": 32,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 61,
+          "creditedKills": 12,
+          "creditedXp": 47,
+          "xp": 79,
+          "level": 5,
+          "talents": [
+            "mark",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 76,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 133,
+          "level": 6,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 80,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 187,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 196,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 11
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 73
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 107
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-09",
+      "fraction": 1,
+      "generatedTotalXp": 269,
+      "xp": 269,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "mark",
+        "lightstep",
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 12,
+          "creditedXp": 43,
+          "xp": 43,
+          "level": 3,
+          "talents": [
+            "mark"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 61,
+          "creditedKills": 16,
+          "creditedXp": 61,
+          "xp": 104,
+          "level": 6,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 76,
+          "creditedKills": 20,
+          "creditedXp": 76,
+          "xp": 180,
+          "level": 8,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 80,
+          "creditedKills": 20,
+          "creditedXp": 80,
+          "xp": 260,
+          "level": 9,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 269,
+          "level": 9,
+          "talents": [
+            "mark",
+            "lightstep",
+            "senses",
+            "apothecary"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 11
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 2,
+          "level": 6,
+          "xp": 100
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 3,
+          "level": 8,
+          "xp": 177
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 222
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-10",
+      "fraction": 0.3,
+      "generatedTotalXp": 265,
+      "xp": 98,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "senses",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 48,
+          "creditedKills": 4,
+          "creditedXp": 14,
+          "xp": 14,
+          "level": 2,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 54,
+          "creditedKills": 5,
+          "creditedXp": 19,
+          "xp": 33,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 68,
+          "creditedKills": 6,
+          "creditedXp": 27,
+          "xp": 60,
+          "level": 4,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 86,
+          "creditedKills": 7,
+          "creditedXp": 29,
+          "xp": 89,
+          "level": 5,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 98,
+          "level": 5,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-10",
+      "fraction": 0.7,
+      "generatedTotalXp": 265,
+      "xp": 198,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "mark",
+        "apothecary",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 48,
+          "creditedKills": 10,
+          "creditedXp": 36,
+          "xp": 36,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 54,
+          "creditedKills": 10,
+          "creditedXp": 37,
+          "xp": 73,
+          "level": 5,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 68,
+          "creditedKills": 13,
+          "creditedXp": 51,
+          "xp": 124,
+          "level": 6,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 86,
+          "creditedKills": 16,
+          "creditedXp": 65,
+          "xp": 189,
+          "level": 8,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 198,
+          "level": 8,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 100
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 179
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-10",
+      "fraction": 1,
+      "generatedTotalXp": 265,
+      "xp": 265,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "mark",
+        "apothecary",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 48,
+          "creditedKills": 13,
+          "creditedXp": 48,
+          "xp": 48,
+          "level": 4,
+          "talents": [
+            "senses",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 54,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 102,
+          "level": 6,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 68,
+          "creditedKills": 18,
+          "creditedXp": 68,
+          "xp": 170,
+          "level": 7,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 86,
+          "creditedKills": 22,
+          "creditedXp": 86,
+          "xp": 256,
+          "level": 9,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 265,
+          "level": 9,
+          "talents": [
+            "senses",
+            "mark",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 1,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 2,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 220
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-11",
+      "fraction": 0.3,
+      "generatedTotalXp": 260,
+      "xp": 86,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "apothecary",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 41,
+          "creditedKills": 4,
+          "creditedXp": 15,
+          "xp": 15,
+          "level": 2,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 53,
+          "creditedKills": 5,
+          "creditedXp": 17,
+          "xp": 32,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 75,
+          "creditedKills": 6,
+          "creditedXp": 22,
+          "xp": 54,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 82,
+          "creditedKills": 6,
+          "creditedXp": 23,
+          "xp": 77,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 86,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 73
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-11",
+      "fraction": 0.7,
+      "generatedTotalXp": 260,
+      "xp": 190,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "mark",
+        "senses",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 41,
+          "creditedKills": 8,
+          "creditedXp": 29,
+          "xp": 29,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 53,
+          "creditedKills": 11,
+          "creditedXp": 38,
+          "xp": 67,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 75,
+          "creditedKills": 14,
+          "creditedXp": 55,
+          "xp": 122,
+          "level": 6,
+          "talents": [
+            "apothecary",
+            "mark",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 82,
+          "creditedKills": 14,
+          "creditedXp": 59,
+          "xp": 181,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "mark",
+            "senses",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 190,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "mark",
+            "senses",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 176
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-11",
+      "fraction": 1,
+      "generatedTotalXp": 260,
+      "xp": 260,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "mark",
+        "senses",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 41,
+          "creditedKills": 11,
+          "creditedXp": 41,
+          "xp": 41,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 53,
+          "creditedKills": 15,
+          "creditedXp": 53,
+          "xp": 94,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 75,
+          "creditedKills": 19,
+          "creditedXp": 75,
+          "xp": 169,
+          "level": 7,
+          "talents": [
+            "apothecary",
+            "mark",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 82,
+          "creditedKills": 20,
+          "creditedXp": 82,
+          "xp": 251,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "mark",
+            "senses",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 260,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "mark",
+            "senses",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 139
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 223
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-12",
+      "fraction": 0.3,
+      "generatedTotalXp": 257,
+      "xp": 89,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 44,
+          "creditedKills": 4,
+          "creditedXp": 15,
+          "xp": 15,
+          "level": 2,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 57,
+          "creditedKills": 5,
+          "creditedXp": 19,
+          "xp": 34,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 65,
+          "creditedKills": 6,
+          "creditedXp": 19,
+          "xp": 53,
+          "level": 4,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 21,
+          "generatedXp": 82,
+          "creditedKills": 7,
+          "creditedXp": 27,
+          "xp": 80,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 89,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-12",
+      "fraction": 0.7,
+      "generatedTotalXp": 257,
+      "xp": 195,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "apothecary",
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 44,
+          "creditedKills": 9,
+          "creditedXp": 34,
+          "xp": 34,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 57,
+          "creditedKills": 12,
+          "creditedXp": 44,
+          "xp": 78,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 65,
+          "creditedKills": 12,
+          "creditedXp": 46,
+          "xp": 124,
+          "level": 6,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 21,
+          "generatedXp": 82,
+          "creditedKills": 15,
+          "creditedXp": 62,
+          "xp": 186,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 195,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 178
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-12",
+      "fraction": 1,
+      "generatedTotalXp": 257,
+      "xp": 257,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "apothecary",
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 44,
+          "creditedKills": 12,
+          "creditedXp": 44,
+          "xp": 44,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 57,
+          "creditedKills": 16,
+          "creditedXp": 57,
+          "xp": 101,
+          "level": 6,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 65,
+          "creditedKills": 17,
+          "creditedXp": 65,
+          "xp": 166,
+          "level": 7,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 21,
+          "generatedXp": 82,
+          "creditedKills": 21,
+          "creditedXp": 82,
+          "xp": 248,
+          "level": 9,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 257,
+          "level": 9,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 2,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 220
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-13",
+      "fraction": 0.3,
+      "generatedTotalXp": 251,
+      "xp": 80,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "lightstep",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 40,
+          "creditedKills": 4,
+          "creditedXp": 14,
+          "xp": 14,
+          "level": 2,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 56,
+          "creditedKills": 5,
+          "creditedXp": 18,
+          "xp": 32,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 60,
+          "creditedKills": 5,
+          "creditedXp": 17,
+          "xp": 49,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 86,
+          "creditedKills": 7,
+          "creditedXp": 22,
+          "xp": 71,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 80,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-13",
+      "fraction": 0.7,
+      "generatedTotalXp": 251,
+      "xp": 186,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 40,
+          "creditedKills": 8,
+          "creditedXp": 28,
+          "xp": 28,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 56,
+          "creditedKills": 11,
+          "creditedXp": 40,
+          "xp": 68,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 60,
+          "creditedKills": 11,
+          "creditedXp": 46,
+          "xp": 114,
+          "level": 6,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 86,
+          "creditedKills": 16,
+          "creditedXp": 63,
+          "xp": 177,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 186,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 106
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 177
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-13",
+      "fraction": 1,
+      "generatedTotalXp": 251,
+      "xp": 251,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 40,
+          "creditedKills": 11,
+          "creditedXp": 40,
+          "xp": 40,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 56,
+          "creditedKills": 15,
+          "creditedXp": 56,
+          "xp": 96,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 60,
+          "creditedKills": 15,
+          "creditedXp": 60,
+          "xp": 156,
+          "level": 7,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 86,
+          "creditedKills": 22,
+          "creditedXp": 86,
+          "xp": 242,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 251,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 73
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 138
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 222
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-14",
+      "fraction": 0.3,
+      "generatedTotalXp": 268,
+      "xp": 89,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "lightstep",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 4,
+          "creditedXp": 13,
+          "xp": 13,
+          "level": 2,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 5,
+          "creditedXp": 20,
+          "xp": 33,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 82,
+          "creditedKills": 7,
+          "creditedXp": 26,
+          "xp": 59,
+          "level": 4,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 79,
+          "creditedKills": 6,
+          "creditedXp": 21,
+          "xp": 80,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 89,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 73
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-14",
+      "fraction": 0.7,
+      "generatedTotalXp": 268,
+      "xp": 191,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 9,
+          "creditedXp": 31,
+          "xp": 31,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 11,
+          "creditedXp": 41,
+          "xp": 72,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 82,
+          "creditedKills": 16,
+          "creditedXp": 57,
+          "xp": 129,
+          "level": 6,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 79,
+          "creditedKills": 14,
+          "creditedXp": 53,
+          "xp": 182,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 191,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 182
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-14",
+      "fraction": 1,
+      "generatedTotalXp": 268,
+      "xp": 268,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "lightstep",
+        "mark",
+        "apothecary",
+        "senses"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 12,
+          "generatedXp": 43,
+          "creditedKills": 12,
+          "creditedXp": 43,
+          "xp": 43,
+          "level": 3,
+          "talents": [
+            "lightstep"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 15,
+          "generatedXp": 55,
+          "creditedKills": 15,
+          "creditedXp": 55,
+          "xp": 98,
+          "level": 5,
+          "talents": [
+            "lightstep",
+            "mark"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 22,
+          "generatedXp": 82,
+          "creditedKills": 22,
+          "creditedXp": 82,
+          "xp": 180,
+          "level": 8,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 79,
+          "creditedKills": 20,
+          "creditedXp": 79,
+          "xp": 259,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 268,
+          "level": 9,
+          "talents": [
+            "lightstep",
+            "mark",
+            "apothecary",
+            "senses"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 73
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 138
+        },
+        {
+          "floor": 3,
+          "level": 8,
+          "xp": 177
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 222
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-15",
+      "fraction": 0.3,
+      "generatedTotalXp": 251,
+      "xp": 94,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "apothecary",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 40,
+          "creditedKills": 4,
+          "creditedXp": 17,
+          "xp": 17,
+          "level": 2,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 53,
+          "creditedKills": 5,
+          "creditedXp": 18,
+          "xp": 35,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 71,
+          "creditedKills": 6,
+          "creditedXp": 21,
+          "xp": 56,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 78,
+          "creditedKills": 6,
+          "creditedXp": 29,
+          "xp": 85,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 94,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 28
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-15",
+      "fraction": 0.7,
+      "generatedTotalXp": 251,
+      "xp": 184,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "lightstep",
+        "senses",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 40,
+          "creditedKills": 8,
+          "creditedXp": 30,
+          "xp": 30,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 53,
+          "creditedKills": 10,
+          "creditedXp": 36,
+          "xp": 66,
+          "level": 4,
+          "talents": [
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 71,
+          "creditedKills": 13,
+          "creditedXp": 53,
+          "xp": 119,
+          "level": 6,
+          "talents": [
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 78,
+          "creditedKills": 14,
+          "creditedXp": 56,
+          "xp": 175,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 184,
+          "level": 8,
+          "talents": [
+            "apothecary",
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 3,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 105
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 144
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-15",
+      "fraction": 1,
+      "generatedTotalXp": 251,
+      "xp": 251,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "apothecary",
+        "lightstep",
+        "senses",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 11,
+          "generatedXp": 40,
+          "creditedKills": 11,
+          "creditedXp": 40,
+          "xp": 40,
+          "level": 3,
+          "talents": [
+            "apothecary"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 14,
+          "generatedXp": 53,
+          "creditedKills": 14,
+          "creditedXp": 53,
+          "xp": 93,
+          "level": 5,
+          "talents": [
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 71,
+          "creditedKills": 18,
+          "creditedXp": 71,
+          "xp": 164,
+          "level": 7,
+          "talents": [
+            "apothecary",
+            "lightstep",
+            "senses"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 78,
+          "creditedKills": 19,
+          "creditedXp": 78,
+          "xp": 242,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 251,
+          "level": 9,
+          "talents": [
+            "apothecary",
+            "lightstep",
+            "senses",
+            "mark"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 13
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 27
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 101
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 135
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 175
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 220
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-16",
+      "fraction": 0.3,
+      "generatedTotalXp": 255,
+      "xp": 98,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 37,
+          "creditedKills": 3,
+          "creditedXp": 12,
+          "xp": 12,
+          "level": 2,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 62,
+          "creditedKills": 6,
+          "creditedXp": 23,
+          "xp": 35,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 73,
+          "creditedKills": 6,
+          "creditedXp": 25,
+          "xp": 60,
+          "level": 4,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 74,
+          "creditedKills": 6,
+          "creditedXp": 29,
+          "xp": 89,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 98,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 28
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 47
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 71
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-16",
+      "fraction": 0.7,
+      "generatedTotalXp": 255,
+      "xp": 192,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "apothecary",
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 37,
+          "creditedKills": 7,
+          "creditedXp": 26,
+          "xp": 26,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 62,
+          "creditedKills": 12,
+          "creditedXp": 44,
+          "xp": 70,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 73,
+          "creditedKills": 14,
+          "creditedXp": 56,
+          "xp": 126,
+          "level": 6,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 74,
+          "creditedKills": 13,
+          "creditedXp": 57,
+          "xp": 183,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 192,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 70
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 4,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 176
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-16",
+      "fraction": 1,
+      "generatedTotalXp": 255,
+      "xp": 255,
+      "level": 9,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "apothecary",
+        "mark",
+        "lightstep"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 10,
+          "generatedXp": 37,
+          "creditedKills": 10,
+          "creditedXp": 37,
+          "xp": 37,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 17,
+          "generatedXp": 62,
+          "creditedKills": 17,
+          "creditedXp": 62,
+          "xp": 99,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 19,
+          "generatedXp": 73,
+          "creditedKills": 19,
+          "creditedXp": 73,
+          "xp": 172,
+          "level": 7,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 18,
+          "generatedXp": 74,
+          "creditedKills": 18,
+          "creditedXp": 74,
+          "xp": 246,
+          "level": 9,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 255,
+          "level": 9,
+          "talents": [
+            "senses",
+            "apothecary",
+            "mark",
+            "lightstep"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 12
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 176
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 222
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-17",
+      "fraction": 0.3,
+      "generatedTotalXp": 274,
+      "xp": 87,
+      "level": 5,
+      "talentChoices": 2,
+      "talents": [
+        "senses",
+        "apothecary"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 4,
+          "creditedXp": 15,
+          "xp": 15,
+          "level": 2,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 59,
+          "creditedKills": 5,
+          "creditedXp": 18,
+          "xp": 33,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 75,
+          "creditedKills": 6,
+          "creditedXp": 21,
+          "xp": 54,
+          "level": 4,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 82,
+          "creditedKills": 6,
+          "creditedXp": 24,
+          "xp": 78,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 87,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 2,
+          "level": 3,
+          "xp": 26
+        },
+        {
+          "floor": 3,
+          "level": 4,
+          "xp": 46
+        },
+        {
+          "floor": 4,
+          "level": 5,
+          "xp": 73
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-17",
+      "fraction": 0.7,
+      "generatedTotalXp": 274,
+      "xp": 207,
+      "level": 8,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "apothecary",
+        "lightstep",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 10,
+          "creditedXp": 37,
+          "xp": 37,
+          "level": 3,
+          "talents": [
+            "senses"
+          ],
+          "choices": 1
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 59,
+          "creditedKills": 12,
+          "creditedXp": 45,
+          "xp": 82,
+          "level": 5,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 75,
+          "creditedKills": 14,
+          "creditedXp": 54,
+          "xp": 136,
+          "level": 7,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 82,
+          "creditedKills": 14,
+          "creditedXp": 62,
+          "xp": 198,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 207,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep",
+            "mark"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 2,
+          "level": 4,
+          "xp": 48
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 71
+        },
+        {
+          "floor": 3,
+          "level": 6,
+          "xp": 103
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 136
+        },
+        {
+          "floor": 4,
+          "level": 8,
+          "xp": 178
+        }
+      ]
+    },
+    {
+      "seed": "HUNTRESS-17",
+      "fraction": 1,
+      "generatedTotalXp": 274,
+      "xp": 274,
+      "level": 10,
+      "talentChoices": 4,
+      "talents": [
+        "senses",
+        "apothecary",
+        "lightstep",
+        "mark"
+      ],
+      "floors": [
+        {
+          "floor": 1,
+          "encounter": false,
+          "generatedEnemies": 13,
+          "generatedXp": 49,
+          "creditedKills": 13,
+          "creditedXp": 49,
+          "xp": 49,
+          "level": 4,
+          "talents": [
+            "senses",
+            "apothecary"
+          ],
+          "choices": 2
+        },
+        {
+          "floor": 2,
+          "encounter": false,
+          "generatedEnemies": 16,
+          "generatedXp": 59,
+          "creditedKills": 16,
+          "creditedXp": 59,
+          "xp": 108,
+          "level": 6,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep"
+          ],
+          "choices": 3
+        },
+        {
+          "floor": 3,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 75,
+          "creditedKills": 20,
+          "creditedXp": 75,
+          "xp": 183,
+          "level": 8,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 4,
+          "encounter": false,
+          "generatedEnemies": 20,
+          "generatedXp": 82,
+          "creditedKills": 20,
+          "creditedXp": 82,
+          "xp": 265,
+          "level": 9,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep",
+            "mark"
+          ],
+          "choices": 4
+        },
+        {
+          "floor": 5,
+          "encounter": true,
+          "generatedEnemies": 2,
+          "generatedXp": 9,
+          "creditedKills": 2,
+          "creditedXp": 9,
+          "xp": 274,
+          "level": 10,
+          "talents": [
+            "senses",
+            "apothecary",
+            "lightstep",
+            "mark"
+          ],
+          "choices": 4
+        }
+      ],
+      "thresholds": [
+        {
+          "floor": 1,
+          "level": 2,
+          "xp": 10
+        },
+        {
+          "floor": 1,
+          "level": 3,
+          "xp": 25
+        },
+        {
+          "floor": 1,
+          "level": 4,
+          "xp": 45
+        },
+        {
+          "floor": 2,
+          "level": 5,
+          "xp": 72
+        },
+        {
+          "floor": 2,
+          "level": 6,
+          "xp": 102
+        },
+        {
+          "floor": 3,
+          "level": 7,
+          "xp": 137
+        },
+        {
+          "floor": 3,
+          "level": 8,
+          "xp": 176
+        },
+        {
+          "floor": 4,
+          "level": 9,
+          "xp": 221
+        },
+        {
+          "floor": 5,
+          "level": 10,
+          "xp": 274
+        }
+      ]
+    }
+  ],
+  "exhaustion": [
+    {
+      "bulk": false,
+      "level": 10,
+      "xp": 270,
+      "talents": [
+        "mark",
+        "lightstep",
+        "apothecary",
+        "senses"
+      ],
+      "choiceCount": 4,
+      "log": [
+        {
+          "level": 2,
+          "options": [
+            "mark",
+            "senses"
+          ],
+          "ownedBefore": []
+        },
+        {
+          "level": 4,
+          "options": [
+            "lightstep",
+            "apothecary"
+          ],
+          "ownedBefore": [
+            "mark"
+          ]
+        },
+        {
+          "level": 6,
+          "options": [
+            "apothecary",
+            "senses"
+          ],
+          "ownedBefore": [
+            "mark",
+            "lightstep"
+          ]
+        },
+        {
+          "level": 8,
+          "options": [
+            "senses"
+          ],
+          "ownedBefore": [
+            "mark",
+            "lightstep",
+            "apothecary"
+          ]
+        }
+      ],
+      "pending": null,
+      "queue": 0
+    },
+    {
+      "bulk": true,
+      "level": 10,
+      "xp": 270,
+      "talents": [
+        "mark",
+        "lightstep",
+        "apothecary",
+        "senses"
+      ],
+      "choiceCount": 4,
+      "log": [
+        {
+          "level": 10,
+          "options": [
+            "mark",
+            "senses"
+          ],
+          "ownedBefore": []
+        },
+        {
+          "level": 10,
+          "options": [
+            "lightstep",
+            "apothecary"
+          ],
+          "ownedBefore": [
+            "mark"
+          ]
+        },
+        {
+          "level": 10,
+          "options": [
+            "apothecary",
+            "senses"
+          ],
+          "ownedBefore": [
+            "mark",
+            "lightstep"
+          ]
+        },
+        {
+          "level": 10,
+          "options": [
+            "senses"
+          ],
+          "ownedBefore": [
+            "mark",
+            "lightstep",
+            "apothecary"
+          ]
+        }
+      ],
+      "pending": null,
+      "queue": 0
+    }
+  ],
+  "encounters": [
+    {
+      "encounter": "guard",
+      "composition": [
+        "guard"
+      ],
+      "policy": "ranged",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 7.5583,
+      "realTime": 7.5667,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 15,
+      "damageBySource": {
+        "盾衛的劍": 15
+      },
+      "actions": {
+        "normal": 9,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 7.2,
+        "potion": 0.8
+      },
+      "shotsReleased": 9,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {},
+      "ammoRemaining": {
+        "arrows": 5,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "guard",
+      "composition": [
+        "guard"
+      ],
+      "policy": "ranged",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 7.5583,
+      "realTime": 7.5667,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 15,
+      "damageBySource": {
+        "盾衛的劍": 15
+      },
+      "actions": {
+        "normal": 9,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 7.2,
+        "potion": 0.8
+      },
+      "shotsReleased": 9,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {},
+      "ammoRemaining": {
+        "arrows": 5,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "guard",
+      "composition": [
+        "guard"
+      ],
+      "policy": "mixed",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 4.6833,
+      "realTime": 4.6833,
+      "hp": 9,
+      "maxHp": 10,
+      "damageTaken": 6,
+      "damageBySource": {
+        "盾衛的劍": 6
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 3,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 1.6,
+        "melee": 1.2,
+        "potion": 0.8
+      },
+      "shotsReleased": 3,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 9
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "potion",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "guard",
+      "composition": [
+        "guard"
+      ],
+      "policy": "mixed",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 4.6833,
+      "realTime": 4.6833,
+      "hp": 9,
+      "maxHp": 10,
+      "damageTaken": 6,
+      "damageBySource": {
+        "盾衛的劍": 6
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 3,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 1.6,
+        "melee": 1.2,
+        "potion": 0.8
+      },
+      "shotsReleased": 3,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 9
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "potion",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger",
+      "composition": [
+        "charger"
+      ],
+      "policy": "ranged",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 2.7333,
+      "realTime": 2.7333,
+      "hp": 6,
+      "maxHp": 10,
+      "damageTaken": 4,
+      "damageBySource": {
+        "突進者的衝撞": 4
+      },
+      "actions": {
+        "normal": 4,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 3.2
+      },
+      "shotsReleased": 4,
+      "shotHits": 4,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 11
+      },
+      "ammoRemaining": {
+        "arrows": 4,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger",
+      "composition": [
+        "charger"
+      ],
+      "policy": "ranged",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 2.7333,
+      "realTime": 2.7333,
+      "hp": 6,
+      "maxHp": 10,
+      "damageTaken": 4,
+      "damageBySource": {
+        "突進者的衝撞": 4
+      },
+      "actions": {
+        "normal": 4,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 3.2
+      },
+      "shotsReleased": 4,
+      "shotHits": 4,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 11
+      },
+      "ammoRemaining": {
+        "arrows": 4,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger",
+      "composition": [
+        "charger"
+      ],
+      "policy": "mixed",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 2.8833,
+      "realTime": 2.8833,
+      "hp": 6,
+      "maxHp": 10,
+      "damageTaken": 4,
+      "damageBySource": {
+        "突進者的衝撞": 4
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 0,
+        "chill": 1,
+        "melee": 2,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "chill": 0.8,
+        "melee": 0.8
+      },
+      "shotsReleased": 2,
+      "shotHits": 2,
+      "tipHits": 1,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 5,
+        "melee": 6
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 2,
+        "chill": 1
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger",
+      "composition": [
+        "charger"
+      ],
+      "policy": "mixed",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 2.8833,
+      "realTime": 2.8833,
+      "hp": 6,
+      "maxHp": 10,
+      "damageTaken": 4,
+      "damageBySource": {
+        "突進者的衝撞": 4
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 0,
+        "chill": 1,
+        "melee": 2,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "chill": 0.8,
+        "melee": 0.8
+      },
+      "shotsReleased": 2,
+      "shotHits": 2,
+      "tipHits": 1,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 5,
+        "melee": 6
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 2,
+        "chill": 1
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "archer",
+      "composition": [
+        "archer"
+      ],
+      "policy": "ranged",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 0.5333,
+      "realTime": 0.5333,
+      "hp": 10,
+      "maxHp": 10,
+      "damageTaken": 0,
+      "damageBySource": {},
+      "actions": {
+        "normal": 1,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 0.8
+      },
+      "shotsReleased": 1,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "archer",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": null
+    },
+    {
+      "encounter": "archer",
+      "composition": [
+        "archer"
+      ],
+      "policy": "ranged",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 2.9333,
+      "realTime": 2.9333,
+      "hp": 10,
+      "maxHp": 10,
+      "damageTaken": 0,
+      "damageBySource": {},
+      "actions": {
+        "normal": 4,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 3.2
+      },
+      "shotsReleased": 4,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 4,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "archer",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "archer",
+      "composition": [
+        "archer"
+      ],
+      "policy": "mixed",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 0.5333,
+      "realTime": 0.5333,
+      "hp": 10,
+      "maxHp": 10,
+      "damageTaken": 0,
+      "damageBySource": {},
+      "actions": {
+        "normal": 1,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 0.8
+      },
+      "shotsReleased": 1,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "archer",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": null
+    },
+    {
+      "encounter": "archer",
+      "composition": [
+        "archer"
+      ],
+      "policy": "mixed",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 2.3333,
+      "realTime": 2.3333,
+      "hp": 10,
+      "maxHp": 10,
+      "damageTaken": 0,
+      "damageBySource": {},
+      "actions": {
+        "normal": 1,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 0,
+        "potion": 0
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 1.6
+      },
+      "shotsReleased": 3,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 1,
+      "enemyHp": [
+        {
+          "kind": "archer",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": "paralysis"
+      }
+    },
+    {
+      "encounter": "guard_archer",
+      "composition": [
+        "guard",
+        "archer"
+      ],
+      "policy": "ranged",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 6.25,
+      "realTime": 6.25,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 16,
+      "damageBySource": {
+        "弩手的弩矢": 4,
+        "盾衛的劍": 12
+      },
+      "actions": {
+        "normal": 7,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 5.6,
+        "potion": 0.8
+      },
+      "shotsReleased": 7,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {},
+      "ammoRemaining": {
+        "arrows": 1,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        },
+        {
+          "kind": "archer",
+          "hp": 3,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "guard_archer",
+      "composition": [
+        "guard",
+        "archer"
+      ],
+      "policy": "ranged",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 6.25,
+      "realTime": 6.25,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 16,
+      "damageBySource": {
+        "弩手的弩矢": 4,
+        "盾衛的劍": 12
+      },
+      "actions": {
+        "normal": 7,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 5.6,
+        "potion": 0.8
+      },
+      "shotsReleased": 7,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {},
+      "ammoRemaining": {
+        "arrows": 1,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        },
+        {
+          "kind": "archer",
+          "hp": 3,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "guard_archer",
+      "composition": [
+        "guard",
+        "archer"
+      ],
+      "policy": "mixed",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 5.55,
+      "realTime": 5.55,
+      "hp": 5,
+      "maxHp": 10,
+      "damageTaken": 10,
+      "damageBySource": {
+        "弩手的弩矢": 4,
+        "盾衛的劍": 6
+      },
+      "actions": {
+        "normal": 2,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 3,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 1.6,
+        "paralysis": 1.6,
+        "potion": 0.8,
+        "melee": 1.2
+      },
+      "shotsReleased": 4,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 9,
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 6,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 0,
+          "alive": false
+        },
+        {
+          "kind": "archer",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "guard_archer",
+      "composition": [
+        "guard",
+        "archer"
+      ],
+      "policy": "mixed",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": true,
+      "dead": false,
+      "worldTime": 5.55,
+      "realTime": 5.55,
+      "hp": 5,
+      "maxHp": 10,
+      "damageTaken": 10,
+      "damageBySource": {
+        "弩手的弩矢": 4,
+        "盾衛的劍": 6
+      },
+      "actions": {
+        "normal": 2,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 3,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 1.6,
+        "paralysis": 1.6,
+        "potion": 0.8,
+        "melee": 1.2
+      },
+      "shotsReleased": 4,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 9,
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 6,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 0,
+          "alive": false
+        },
+        {
+          "kind": "archer",
+          "hp": 0,
+          "alive": false
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "two_guards",
+      "composition": [
+        "guard",
+        "guard"
+      ],
+      "policy": "ranged",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 4.9917,
+      "realTime": 5,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 15,
+      "damageBySource": {
+        "盾衛的劍": 15
+      },
+      "actions": {
+        "normal": 5,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 4,
+        "potion": 0.8
+      },
+      "shotsReleased": 5,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {},
+      "ammoRemaining": {
+        "arrows": 3,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "two_guards",
+      "composition": [
+        "guard",
+        "guard"
+      ],
+      "policy": "ranged",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 4.9917,
+      "realTime": 5,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 15,
+      "damageBySource": {
+        "盾衛的劍": 15
+      },
+      "actions": {
+        "normal": 5,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 4,
+        "potion": 0.8
+      },
+      "shotsReleased": 5,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {},
+      "ammoRemaining": {
+        "arrows": 3,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "two_guards",
+      "composition": [
+        "guard",
+        "guard"
+      ],
+      "policy": "mixed",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 5,
+      "realTime": 5,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 15,
+      "damageBySource": {
+        "盾衛的劍": 15
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 3,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 1.6,
+        "potion": 0.8,
+        "melee": 1.2
+      },
+      "shotsReleased": 3,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 9
+      },
+      "ammoRemaining": {
+        "arrows": 8,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 0,
+          "alive": false
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "two_guards",
+      "composition": [
+        "guard",
+        "guard"
+      ],
+      "policy": "mixed",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 5,
+      "realTime": 5,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 15,
+      "damageBySource": {
+        "盾衛的劍": 15
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 2,
+        "chill": 0,
+        "melee": 3,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 1.6,
+        "potion": 0.8,
+        "melee": 1.2
+      },
+      "shotsReleased": 3,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 1,
+      "healingRestored": 5,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 9
+      },
+      "ammoRemaining": {
+        "arrows": 8,
+        "paralysis": 0,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "guard",
+          "hp": 0,
+          "alive": false
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger_guard",
+      "composition": [
+        "charger",
+        "guard"
+      ],
+      "policy": "ranged",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 3.275,
+      "realTime": 3.2833,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 11,
+      "damageBySource": {
+        "突進者的衝撞": 8,
+        "盾衛的劍": 3
+      },
+      "actions": {
+        "normal": 3,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 2.4,
+        "potion": 0.8
+      },
+      "shotsReleased": 3,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 5,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 7,
+          "alive": true
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger_guard",
+      "composition": [
+        "charger",
+        "guard"
+      ],
+      "policy": "ranged",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 3.275,
+      "realTime": 3.2833,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 11,
+      "damageBySource": {
+        "突進者的衝撞": 8,
+        "盾衛的劍": 3
+      },
+      "actions": {
+        "normal": 3,
+        "paralysis": 0,
+        "chill": 0,
+        "melee": 0,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 2.4,
+        "potion": 0.8
+      },
+      "shotsReleased": 3,
+      "shotHits": 1,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "arrow": 3
+      },
+      "ammoRemaining": {
+        "arrows": 5,
+        "paralysis": 2,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 7,
+          "alive": true
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "bow",
+        "spent": 0.7999999999999996,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger_guard",
+      "composition": [
+        "charger",
+        "guard"
+      ],
+      "policy": "mixed",
+      "errorDeg": 1.5,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 3.275,
+      "realTime": 3.2833,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 11,
+      "damageBySource": {
+        "突進者的衝撞": 8,
+        "盾衛的劍": 3
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 1,
+        "chill": 0,
+        "melee": 1,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 0.8,
+        "melee": 0.4,
+        "potion": 0.8
+      },
+      "shotsReleased": 2,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 3
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 1,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 7,
+          "alive": true
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    },
+    {
+      "encounter": "charger_guard",
+      "composition": [
+        "charger",
+        "guard"
+      ],
+      "policy": "mixed",
+      "errorDeg": 4,
+      "reactionRealSeconds": 0.2,
+      "cleared": false,
+      "dead": true,
+      "worldTime": 3.275,
+      "realTime": 3.2833,
+      "hp": 0,
+      "maxHp": 10,
+      "damageTaken": 11,
+      "damageBySource": {
+        "突進者的衝撞": 8,
+        "盾衛的劍": 3
+      },
+      "actions": {
+        "normal": 1,
+        "paralysis": 1,
+        "chill": 0,
+        "melee": 1,
+        "potion": 1
+      },
+      "actionSeconds": {
+        "normal": 0.8,
+        "paralysis": 0.8,
+        "melee": 0.4,
+        "potion": 0.8
+      },
+      "shotsReleased": 2,
+      "shotHits": 0,
+      "tipHits": 0,
+      "healingUsed": 0,
+      "healingRestored": 0,
+      "healingWasted": 0,
+      "damageByTool": {
+        "melee": 3
+      },
+      "ammoRemaining": {
+        "arrows": 7,
+        "paralysis": 1,
+        "chill": 2
+      },
+      "healingRemaining": 0,
+      "enemyHp": [
+        {
+          "kind": "charger",
+          "hp": 7,
+          "alive": true
+        },
+        {
+          "kind": "guard",
+          "hp": 8,
+          "alive": true
+        }
+      ],
+      "choicesSkipped": 0,
+      "lastAction": {
+        "kind": "melee",
+        "spent": 0.4000000000000004,
+        "counter": false,
+        "countered": false,
+        "tip": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+ RUN  v3.2.7 /workspace/scratch/8fd9c03827c2/superdungeon-huntress
+
+ ✓ tests/senses.test.ts (21 tests) 73ms
+ ✓ tests/huntingMark.test.ts (14 tests) 103ms
+ ✓ tests/apothecary.test.ts (27 tests) 189ms
+
+ Test Files  3 passed (3)
+      Tests  62 passed (62)
+   Start at  17:22:21
+   Duration  821ms (transform 492ms, setup 0ms, collect 966ms, tests 366ms, environment 1ms, prepare 214ms)

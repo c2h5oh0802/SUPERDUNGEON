@@ -64,8 +64,8 @@ export class Hud {
   private lockBanner = $('lock-banner');
   private toolEls: HTMLElement[] = [];
   private iconEls = new Map<number, HTMLDivElement>();
+  private soundEls = new Map<number, { el: HTMLDivElement; expiresAt: number }>();
   private visible = new Set<number>();
-  private sensed = new Set<number>();
   private visT = 0;
   private last: Record<string, string | number | boolean> = {};
   private hintT = 0;
@@ -84,6 +84,8 @@ export class Hud {
   reset(): void {
     for (const el of this.iconEls.values()) el.remove();
     this.iconEls.clear();
+    for (const { el } of this.soundEls.values()) el.remove();
+    this.soundEls.clear();
     for (const el of this.tmarks.values()) el.remove();
     this.tmarks.clear();
     this.visible.clear();
@@ -340,7 +342,7 @@ export class Hud {
       this.xpFill.style.width = next === null ? '100%' : `${Math.round(((p.xp - cur) / (next - cur)) * 100)}%`;
     });
     // 增益
-    const buffs = [p.invisT > 0 ? `隱形 ${p.invisT.toFixed(1)}` : '', p.hasteT > 0 ? `迅捷 ${p.hasteT.toFixed(1)}` : '', p.comboT > 0 ? '連擊' : '', p.markT > 0 ? '標記' : '']
+    const buffs = [p.invisT > 0 ? `隱形 ${p.invisT.toFixed(1)}` : '', p.hasteT > 0 ? `迅捷 ${p.hasteT.toFixed(1)}` : '', p.comboT > 0 ? '連擊' : '']
       .filter(Boolean)
       .map((b) => `<span>${b}</span>`)
       .join('');
@@ -392,6 +394,7 @@ export class Hud {
     const lowHp = p.hp <= Math.max(3, p.maxHp * 0.3) && !p.dead ? 0.35 : 0;
     this.vignette.style.opacity = String(Math.max(lowHp, this.vignT * 1.2));
     this.updateIcons(w, r, realDt);
+    this.updateSenses(w);
     this.updateTargets(w, r);
   }
 
@@ -488,7 +491,6 @@ export class Hud {
     if (this.visT <= 0) {
       this.visT = 0.1;
       this.visible.clear();
-      this.sensed.clear();
       const eye = { x: p.x, y: PLAYER.eyeHeight, z: p.z };
       for (const e of w.enemies) {
         if (!e.alive) continue;
@@ -496,11 +498,6 @@ export class Hud {
         if (d > 26) continue;
         const head = { x: e.x, y: e.y + e.height - 0.2, z: e.z };
         if (w.canSee(eye, head)) this.visible.add(e.id);
-        // 敏銳感官：近處的敵人即使在牆後也顯示
-        else if (hasTalent(p, 'senses') && d <= TALENT_FX.sensesRange) {
-          this.visible.add(e.id);
-          this.sensed.add(e.id);
-        }
       }
     }
     const W = window.innerWidth;
@@ -525,11 +522,11 @@ export class Hud {
           text = '?';
           this.hint('aware', '敵人頭上的圈填滿就會發現你：退出牠的視線，或用煙霧遮住。');
         }
-      }
-      // 敏銳感官：牆後的敵人用淡色小點標出
-      if (!cls && e.alive && this.sensed.has(e.id)) {
-        cls = 'sense';
-        text = '•';
+        // Marks belong to a visible target, never a global buff or a through-wall marker.
+        if ((e.huntingMarkUntil ?? 0) > w.time) {
+          cls = `${cls} marked`.trim();
+          text += '◇';
+        }
       }
       if (!cls) {
         if (el) el.style.display = 'none';
@@ -548,8 +545,38 @@ export class Hud {
       el.style.display = 'flex';
       el.className = `eicon ${cls}${e.veteran ? ' vet' : ''}`;
       if (el.textContent !== text) el.textContent = text;
-      if (cls === 'aware') el.style.setProperty('--p', `${Math.round(e.awareness * 100)}%`);
+      if (cls.startsWith('aware')) el.style.setProperty('--p', `${Math.round(e.awareness * 100)}%`);
       el.style.transform = `translate(${Math.round(pos.x * W)}px, ${Math.round(pos.y * H)}px)`;
+    }
+  }
+
+  /** Sound memories sit at eight fixed HUD bearings; never project an enemy's position. */
+  private updateSenses(w: World): void {
+    const seen = new Set<number>();
+    const directions = ['前方', '左前方', '左方', '左後方', '後方', '右後方', '右方', '右前方'];
+    if (w.player.cls === 'huntress' && !w.player.dead && hasTalent(w.player, 'senses')) {
+      for (const cue of w.senses) {
+        if (cue.expiresAt <= w.realTime) continue;
+        seen.add(cue.sector);
+        const previous = this.soundEls.get(cue.sector);
+        if (previous?.expiresAt === cue.expiresAt) continue;
+        previous?.el.remove();
+        const el = document.createElement('div');
+        el.className = 'sense-cue';
+        el.textContent = `${directions[cue.sector]}聲響`;
+        const angle = cue.sector * Math.PI * 2 / TALENT_FX.sensesSectors;
+        el.style.left = `calc(50% + ${Math.round(-Math.sin(angle) * 145)}px)`;
+        el.style.top = `calc(50% + ${Math.round(-Math.cos(angle) * 100)}px)`;
+        // CSS uses wall-clock time, so pausing cannot leave a stale cue visible indefinitely.
+        el.style.animationDuration = `${Math.min(TALENT_FX.sensesCueSeconds, cue.expiresAt - w.realTime)}s`;
+        this.icons.appendChild(el);
+        this.soundEls.set(cue.sector, { el, expiresAt: cue.expiresAt });
+      }
+    }
+    for (const [sector, { el }] of this.soundEls) {
+      if (seen.has(sector)) continue;
+      el.remove();
+      this.soundEls.delete(sector);
     }
   }
 

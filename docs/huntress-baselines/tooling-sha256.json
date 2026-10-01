@@ -1,0 +1,5 @@
+{
+  "scripts/huntress-calibration/compare-results.mjs": "e677d8bb47d150dc923b4fe43ed6ecd9d4c94237855f9ebdca3630b6dcc1948f",
+  "scripts/huntress-calibration/harness.mjs": "64a81a6ee8e723e2685b80d7509666fa1d3508e51f0edfc60b862f7405e37d46",
+  "scripts/huntress-calibration/run-calibration.mjs": "1c1644d3b10958ad322b0df445ded663102395c1564eea5d998594032f0665d4"
+}
