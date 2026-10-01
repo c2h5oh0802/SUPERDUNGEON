@@ -65,6 +65,7 @@ export const ACTIONS = {
   read: { windup: 0.0, active: 0, recovery: 0.6 },
   convert: { windup: 0.6, active: 0, recovery: 0 },
   equip: { windup: 0.0, active: 0, recovery: 0.5 },
+  drop: { windup: 0.0, active: 0, recovery: 0.3 },
   stunned: { windup: 0.0, active: 0, recovery: 1.5 },
 } as const;
 

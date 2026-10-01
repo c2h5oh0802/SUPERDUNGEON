@@ -4,7 +4,7 @@ import type { EnemyKind } from '../gen/rooms';
 import type { PickupKind } from '../gen/generator';
 
 export type { Tool, TipKind };
-export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'convert' | 'stunned';
+export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'convert' | 'drop' | 'stunned';
 
 export interface ActionState {
   kind: ActionKind;
@@ -38,7 +38,9 @@ export interface InvItem {
 /** 背包裡選的動作（由介面排入，下一幀開始行動）。 */
 export interface PendingUse {
   index: number;
-  mode: 'use' | 'throw' | 'convert';
+  mode: 'use' | 'throw' | 'convert' | 'drop' | 'dropAll';
+  /** Runtime identity: queued actions must not target a replacement at the same index. */
+  stack?: InvItem;
 }
 
 /** 選擇畫面：升級選天賦、強化卷軸選裝備。 */
@@ -228,6 +230,10 @@ export interface Pickup {
   level?: number;
   /** 背包滿時已經提醒過。 */
   warned?: boolean;
+  /** A deliberate drop cannot be auto-picked until the player leaves its radius. */
+  pickupBlockedUntilExit?: boolean;
+  /** Re-acquisition is not new healing supply. */
+  playerDropped?: boolean;
   x: number;
   y: number;
   z: number;
@@ -287,6 +293,7 @@ export type GameEventType =
   | 'trapArm'
   | 'trapSpike'
   | 'pickup'
+  | 'dropItem'
   | 'chest'
   | 'heart'
   | 'needHeart'

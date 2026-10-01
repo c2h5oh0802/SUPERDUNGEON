@@ -122,6 +122,10 @@ export interface LevelData {
 
 const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };
 
+// Provisional chapter budget: keep F1's two fixed chest bottles, then one per
+// exploration floor. Chest order is template-stable (ember cache, sentry vault).
+const FIXED_CHEST_HEALING_PER_FLOOR = [2, 1, 1, 1, 0] as const;
+
 export const PILLAR_R = 0.42;
 export const PROP_SIZES = {
   chest: { r: 0.5, h: 0.9 },
@@ -610,6 +614,12 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   for (const room of d.rooms) roomTorches(d, room, rng);
 
   const pickups = opts.practice || floor === RUN.floors ? [] : placePickups(d, rng, floor);
+  if (!opts.practice) {
+    // Remove only the stamped fixed bottle, before any random chest loot exists.
+    // Keep every random roll and its order, including rolls that yield Healing.
+    const fixedHealing = FIXED_CHEST_HEALING_PER_FLOOR[fi] ?? 0;
+    for (const c of d.chests.slice(fixedHealing)) c.contents.items.shift();
+  }
   for (const c of d.chests) c.contents.items.push(rollItem(rng, floor));
   if (mirrored) {
     mirrorDraft(d);

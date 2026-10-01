@@ -138,7 +138,7 @@ export class Hud {
       switch (e.type) {
         case 'pickup':
           this.toast(e.kind === 'item' ? `撿到 ${e.text ?? ''}` : `+${e.amount} ${e.text ?? ''}`, 'good', 1.6);
-          if (e.kind === 'item') this.hint('bag', '撿到物品了：按 I 打開背包（世界暫停），可以吃、喝、讀、丟出或裝備。', 7);
+          if (e.kind === 'item') this.hint('bag', '撿到物品了：按 I 打開背包（世界暫停），可以使用、裝備或放下物品。', 7);
           break;
         case 'hungerState':
           if (e.text) this.toast(e.text, e.kind === 'normal' ? 'good' : 'bad', 3);
@@ -148,6 +148,7 @@ export class Hud {
           this.toast('吃下乾糧，飢餓減少', 'good', 1.8);
           break;
         case 'identify':
+        case 'dropItem':
         case 'equip':
         case 'buff':
           if (e.text) this.toast(e.text, 'good', 2.2);

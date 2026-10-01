@@ -162,7 +162,23 @@ export function queueUse(w: World, index: number, mode: PendingUse['mode']): voi
       return;
     }
   }
-  w.player.pendingUse = { index, mode };
+  w.player.pendingUse = { index, mode, stack: it };
+}
+
+/** Atomically place an intact bag item at the player's feet. The drop action
+ * owns the recovery time, but no item is held in limbo if it is interrupted. */
+export function dropFromBag(w: World, index: number, all: boolean): boolean {
+  const it = w.player.items[index];
+  if (!it || w.player.dead) return false;
+  const count = all ? it.count : 1;
+  const pickup = w.addPickup('item', count, w.player.x, 0.15, w.player.z, null, it.id, it.level);
+  pickup.pickupBlockedUntilExit = true;
+  pickup.playerDropped = true;
+  it.count -= count;
+  if (it.count === 0) w.player.items.splice(index, 1);
+  w.emit({ type: 'dropItem', kind: it.id, amount: count,
+    text: `放下 ${itemName(w, it.id, it.level)}${count > 1 ? ` ×${count}` : ''}；走開再靠近可撿回` });
+  return true;
 }
 
 /** 行動開始時從背包拿出來（避免排隊期間背包變動）。 */
@@ -171,6 +187,8 @@ export function knownHealingCount(w: World): number {
 }
 
 export function takeForAction(w: World, index: number, mode: PendingUse['mode'] = 'use'): ItemId | null {
+  // Intact drops have their own atomic transfer; they must never consume/use a bottle.
+  if (mode === 'drop' || mode === 'dropAll') return null;
   if (mode === 'convert') {
     const id = w.player.items[index]?.id;
     if (!id) return null;

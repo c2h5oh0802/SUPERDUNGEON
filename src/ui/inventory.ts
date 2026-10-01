@@ -17,12 +17,14 @@ export function renderInventory(w: World, onAction: (index: number, mode: Pendin
   const p = w.player;
   const wp = WEAPONS[p.weapon.id];
   const sneakSpeed = lightstep(w).speed;
+  const dropSeconds = ACTIONS.drop.windup + ACTIONS.drop.active + ACTIONS.drop.recovery;
   const gear = [
     `<div class="inv-equipment-heading">目前裝備 <span>角色等級 ${p.level}</span></div>`,
     equipped('武器', `${wp.name} +${p.weapon.level}`, weaponPresentation(p.weapon.id, p.weapon.level)),
     equipped('護甲', `${ARMORS[p.armor.id].name} +${p.armor.level}`, armorPresentation(p.armor.id, p.armor.level, sneakSpeed)),
     p.cls === 'huntress' ? equipped('獵弓', `+${p.bowLevel}`, bowPresentation(p.bowLevel)) : '',
     '<div class="equipment-baseline">傷害、時間為已計強化的裝備基準；未計臨時增益、奇襲、敵人弱點、狩獵標記或反擊。奇襲倍率另列；潛行移速含已選輕步。</div>',
+    `<div class="equipment-baseline">放下物品會關閉背包並花 ${dropSeconds} 世界秒（迅捷時減半）。物品完整留在腳邊，走開再靠近可撿回；全部放下才能騰出堆疊格。下樓前請撿回想帶走的物品。</div>`,
   ];
   if (p.shieldLevel > 0 || p.talents.some((t) => t === 'heavyShield' || t === 'bulwark')) gear.push('<span>舊版臂盾強化與盾牌天賦已停用；存檔資料保留。</span>');
   $('inv-gear').innerHTML = gear.join('');
@@ -56,6 +58,8 @@ export function renderInventory(w: World, onAction: (index: number, mode: Pendin
         acts += `<button data-k="${k}" data-m="convert"${reason ? ` disabled title="${esc(reason)}"` : ''}>轉化為${TIP_NAMES[kind]} ×${yieldCount}</button>`;
         conversion = `<div class="ds">${esc(`藥劑師：開始時消耗 1 瓶${itemName(w, it.id)}，花 ${seconds} 世界秒，完成後獲得 ${yieldCount} 支${TIP_NAMES[kind]}。目前 ${p.tipped[kind]} / ${maxTipped(p)}；需要 ${yieldCount} 格空間。${reason ?? ''}`)}</div>`;
       }
+      acts += `<button data-k="${k}" data-m="drop" aria-label="放下${esc(itemName(w, it.id, it.level))} 1 個">${it.count > 1 ? '放下 1 個' : '放下'}</button>`;
+      if (it.count > 1) acts += `<button data-k="${k}" data-m="dropAll">全部放下（${it.count}）</button>`;
       const count = it.count > 1 ? ` ×${it.count}` : '';
       let description: string;
       if (c === 'weapon' || c === 'armor') {

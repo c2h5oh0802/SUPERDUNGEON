@@ -120,7 +120,7 @@ describe('drink/H share reservation, completion, world time and statistics', () 
 });
 
 describe('healing supply is real inventory, never generic enemy stock', () => {
-  it('converts each chest and loose source, keeps arena empty and food/upgrade totals', () => {
+  it('budgets fixed chest and loose sources, keeps arena empty and food/upgrade totals', () => {
     for (const seed of ['FLOW1', 'FLOW2', 'LIVING1']) {
       let reliable = 0, foods = 0, upgrades = 0;
       for (let floor = 1; floor <= 5; floor++) {
@@ -128,14 +128,17 @@ describe('healing supply is real inventory, never generic enemy stock', () => {
         expect(l.pickups.every((p) => p.kind !== ('potion' as string))).toBe(true);
         if (floor === 5) { expect(l.chests).toHaveLength(0); expect(l.pickups).toHaveLength(0); continue; }
         expect(l.chests).toHaveLength(2);
-        for (const c of l.chests) {
-          expect(c.contents).not.toHaveProperty('potions'); expect(c.contents.items[0]?.id).toBe('potion:healing'); reliable++;
+        for (const [k, c] of l.chests.entries()) {
+          expect(c.contents).not.toHaveProperty('potions');
+          if (floor === 1 || k === 0) {
+            expect(c.contents.items[0]?.id).toBe('potion:healing'); reliable++;
+          }
         }
-        expect(l.pickups.some((p) => p.item === 'potion:healing')).toBe(true); reliable++;
+        expect(l.pickups[3]?.item).toBe('potion:healing'); reliable++;
         foods += l.pickups.filter((p) => p.item === 'food:ration').length;
         upgrades += l.pickups.filter((p) => p.item === 'scroll:upgrade').length;
       }
-      expect(reliable).toBe(12); expect(foods).toBe(6); expect(upgrades).toBe(4);
+      expect(reliable).toBe(9); expect(foods).toBe(6); expect(upgrades).toBe(4);
     }
   });
   it('floor roll can contain Healing, ordinary AND veteran enemy pools cannot', () => {

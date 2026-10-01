@@ -123,13 +123,22 @@ export function updatePickups(w: World): void {
   for (const k of w.pickups) {
     if (k.taken) continue;
     if (k.y > 2.4) continue;
-    if (Math.hypot(k.x - p.x, k.z - p.z) > PLAYER.pickupRadius) continue;
+    const distance = Math.hypot(k.x - p.x, k.z - p.z);
+    if (k.pickupBlockedUntilExit) {
+      if (distance > PLAYER.pickupRadius) k.pickupBlockedUntilExit = false;
+      continue;
+    }
+    if (distance > PLAYER.pickupRadius) continue;
     if (k.kind === 'item' && k.item) {
-      if (addItem(w, k.item, k.level ?? 0)) {
-        k.taken = true;
-        if (k.item === 'potion:healing') w.stats.healingFound++;
-        w.emit({ type: 'pickup', kind: 'item', amount: 1, x: k.x, z: k.z, text: itemName(w, k.item, k.level ?? 0) });
-      } else if (!k.warned) {
+      let taken = 0;
+      while (k.amount > 0 && addItem(w, k.item, k.level ?? 0)) { k.amount--; taken++; }
+      if (taken > 0) {
+        k.taken = k.amount === 0;
+        if (k.item === 'potion:healing' && !k.playerDropped) w.stats.healingFound += taken;
+        w.emit({ type: 'pickup', kind: 'item', amount: taken, x: k.x, z: k.z,
+          text: itemName(w, k.item, k.level ?? 0) + (taken > 1 ? ` ×${taken}` : '') });
+      }
+      if (!k.taken && !k.warned) {
         // 背包滿了：提醒一次
         k.warned = true;
         w.emit({ type: 'fullInventory', text: '背包滿了（I 打開背包）' });

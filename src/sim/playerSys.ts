@@ -4,7 +4,7 @@ export { weaponDamage } from './equipment';
 import { eatRation } from './hunger';
 import { consumeHuntingMark } from './huntingMark';
 import { meleeCandidates } from './meleeTargets';
-import { addItem, categoryOf, drinkPotion, completeConversion, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction } from './items';
+import { addItem, categoryOf, drinkPotion, completeConversion, dropFromBag, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
@@ -60,11 +60,16 @@ function startPendingUse(w: World): void {
   const p = w.player;
   const u = p.pendingUse!;
   p.pendingUse = null;
-  const it = p.items[u.index];
+  const index = u.stack ? p.items.indexOf(u.stack) : u.index;
+  const it = p.items[index];
   if (!it) return;
+  if (u.mode === 'drop' || u.mode === 'dropAll') {
+    if (dropFromBag(w, index, u.mode === 'dropAll')) startAction(w, 'drop');
+    return;
+  }
   const c = categoryOf(it.id);
   const level = it.level;
-  const id = takeForAction(w, u.index, u.mode);
+  const id = takeForAction(w, index, u.mode);
   if (!id) return;
   if (u.mode === 'convert') {
     startAction(w, 'convert');
@@ -327,6 +332,7 @@ export function updatePlayerAction(w: World, dt: number): void {
         equipFromBag(w, a.item, a.targetId);
       }
       break;
+    case 'drop': // The intact item was already placed when this committed action began.
     case 'stunned':
       break;
     case 'use':
