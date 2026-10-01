@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PERCEPTION, PLAYER, STEALTH } from '../src/config';
+import { PLAYER, STEALTH } from '../src/config';
 import { forwardFromYaw, yawFromDir } from '../src/core/math';
 import type { EnemyKind } from '../src/gen/rooms';
 import { Nav } from '../src/sim/nav';
@@ -8,8 +8,8 @@ import type { World } from '../src/sim/world';
 import { OPEN_ROOM, makeWorld } from './helpers';
 
 // 潛行模擬：一個「刺客」機器人試著在不被發現的情況下，從背後一個一個暗殺房間裡的敵人。
-// 比較舊規則（任何方向、搜索中也能背刺；沒有腳步聲；屍體不會引起戒備）與新規則。
-// 機器人讀得到精確狀態、路線是最短路，它不能代表真人；這裡看的是規則有沒有堵住「一路連殺」。
+// 比較同一版規則下直接接敵與繞背奇襲；不以局部參數模擬歷史版本。
+// 機器人讀得到精確狀態、路線是最短路，它不能代表真人；這裡看的是先手與正面作戰是否仍可用。
 
 interface Scenario {
   name: string;
@@ -45,6 +45,7 @@ const SCENARIOS: Scenario[] = [
 
 interface Outcome {
   backstabKills: number;
+  surprises: number;
   kills: number;
   total: number;
   damage: number;
@@ -104,53 +105,33 @@ function assassin(w: World, mode: 'direct' | 'careful'): Outcome {
     swing(yawT, sneak);
   }
   const damage = Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0);
-  return { backstabKills, kills: w.stats.kills, total: w.enemies.length, damage, worldTime: w.time };
+  return { backstabKills, surprises: w.stats.backstabs, kills: w.stats.kills, total: w.enemies.length, damage, worldTime: w.time };
 }
 
-function run(sc: Scenario, oldRules: boolean, mode: 'direct' | 'careful'): Outcome {
-  const S = STEALTH as unknown as Record<string, number | boolean>;
-  const P = PERCEPTION as unknown as Record<string, number>;
-  const saved = { ...S, searchFov: P.fovDeg };
-  if (oldRules) {
-    S.backArcDeg = 360;
-    S.footstepRadius = 0;
-    S.corpseSightRange = 0;
-    S.searchFovDeg = PERCEPTION.fovDeg;
-    S.searchFillMul = 0.8;
-    S.searchBackstab = true;
-  }
-  try {
-    const w = makeWorld(
-      OPEN_ROOM,
-      sc.enemies.map((e) => ({ ...e, patrol: e.patrol ?? [] })),
-      'warrior',
-    );
-    return assassin(w, mode);
-  } finally {
-    Object.assign(S, saved);
-  }
+function run(sc: Scenario, mode: 'direct' | 'careful'): Outcome {
+  const w = makeWorld(OPEN_ROOM, sc.enemies.map((e) => ({ ...e, patrol: e.patrol ?? [] })), 'warrior');
+  return assassin(w, mode);
 }
 
-describe('潛行模擬：刺客機器人（舊規則 vs 新規則）', () => {
+describe('奇襲模擬：直接接敵與繞背先手', () => {
   const rows = SCENARIOS.map((sc) => ({
     sc,
-    before: run(sc, true, 'direct'),
-    after: run(sc, false, 'direct'),
-    careful: run(sc, false, 'careful'),
+    after: run(sc, 'direct'),
+    careful: run(sc, 'careful'),
   }));
-  const fmt = (o: Outcome) => `背刺擊倒 ${o.backstabKills}/${o.total}，全部擊倒 ${o.kills}/${o.total}，受傷 ${o.damage}，${o.worldTime.toFixed(1)}s`;
+  const fmt = (o: Outcome) => `奇襲 ${o.surprises}，奇襲擊倒 ${o.backstabKills}/${o.total}，全部擊倒 ${o.kills}/${o.total}，受傷 ${o.damage}，${o.worldTime.toFixed(1)}s`;
 
   it('輸出結果表', () => {
-    const lines = ['| 情境 | 舊規則：直接走過去砍 | 新規則：直接走過去砍 | 新規則：繞背＋潛行步 |', '|---|---|---|---|'];
-    for (const r of rows) lines.push(`| ${r.sc.name} | ${fmt(r.before)} | ${fmt(r.after)} | ${fmt(r.careful)} |`);
+    const lines = ['| 情境 | 直接走過去砍 | 繞背＋潛行步 |', '|---|---|---|'];
+    for (const r of rows) lines.push(`| ${r.sc.name} | ${fmt(r.after)} | ${fmt(r.careful)} |`);
     console.log(lines.join('\n'));
     expect(rows.length).toBe(SCENARIOS.length);
   });
 
-  it('直接走過去砍：新規則下背刺擊倒比舊規則少、受的傷不比舊規則少；繞背潛行仍然拿得到背刺', () => {
-    const sum = (k: 'before' | 'after' | 'careful', f: (o: Outcome) => number) => rows.reduce((a, r) => a + f(r[k]), 0);
-    expect(sum('after', (o) => o.backstabKills)).toBeLessThan(sum('before', (o) => o.backstabKills));
-    expect(sum('after', (o) => o.damage)).toBeGreaterThanOrEqual(sum('before', (o) => o.damage));
-    expect(sum('careful', (o) => o.backstabKills)).toBeGreaterThan(sum('after', (o) => o.backstabKills));
+  it('長劍不再奇襲秒殺；繞背潛行仍能取得先手，正面作戰可擊倒敵人', () => {
+    const sum = (k: 'after' | 'careful', f: (o: Outcome) => number) => rows.reduce((a, r) => a + f(r[k]), 0);
+    expect(sum('careful', (o) => o.backstabKills)).toBe(0);
+    expect(sum('careful', (o) => o.surprises)).toBeGreaterThan(sum('after', (o) => o.surprises));
+    expect(sum('after', (o) => o.kills)).toBe(sum('after', (o) => o.total));
   });
 });

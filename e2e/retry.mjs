@@ -81,15 +81,20 @@ const statsText = await page.textContent('#res-stats');
 check('結算列出種子外的統計與受傷來源', statsText.includes('受到傷害') && statsText.includes('世界時間'), statsText.slice(0, 120));
 await page.screenshot({ path: `${OUT}results-death.png` });
 await page.click('#btn-retry');
-await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 30000 });
+// 在進入遊戲的同一個取樣固定重置證據，避免後續截圖／IPC 延遲被算成未重置。
+const resetSample = await page.waitForFunction(() => {
+  const s = window.__sd.state();
+  return s.mode === 'playing' ? s : null;
+}, null, { timeout: 30000 });
+const st2 = await resetSample.jsonValue();
 await page.waitForTimeout(400);
 const sig2 = await signature();
 const live2 = await liveSnapshot();
 check('同種子重試：生成結果完全相同（地形、門、敵人初始位置、補給、祭壇）', sig1 === sig2, `${sig1.length} 字元`);
 const sameLive = JSON.stringify(live1.enemies) === JSON.stringify(live2.enemies);
 if (!sameLive) console.log('（資訊）開局後的即時敵人狀態不同，原因是取樣時已經過的世界時間不同：', live1.time.toFixed(3), 'vs', live2.time.toFixed(3));
-const st2 = await bot.st();
-check('同種子重試：狀態重置（生命、時間、敵人）', st2.player.hp === st2.player.maxHp && st2.time < 0.5 && st2.enemies.every((e) => e.alive));
+check('同種子重試：狀態重置（生命、時間、敵人與 AI 記憶）', st2.player.hp === st2.player.maxHp && st2.time < 0.5 &&
+  st2.enemies.every((e) => e.alive && e.lastKnown === null && e.target === null && e.searchT === 0 && e.doorWaitT === 0));
 check('第二局死亡後進入結算', await dieNormally());
 await page.waitForTimeout(500);
 // 換職業、同種子：佈局不變，職業改變

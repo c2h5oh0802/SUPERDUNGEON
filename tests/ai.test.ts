@@ -169,13 +169,15 @@ describe('可讀性與公平性', () => {
     for (let k = 0; g.phase !== 'windup' && k < 3000; k++) w.frame(dt, emptyInput(0, 0));
     for (let i = 0; i < reactFrames; i++) w.frame(dt, emptyInput(0, 0));
     for (let i = 0; i < backFrames; i++) w.frame(dt, { ...emptyInput(0, 0), moveZ: -1 });
-    for (let i = 0; i < 60; i++) w.frame(dt, { ...emptyInput(0, 0), wait: true });
+    // 只結算這次揮擊，避免把成功躲過後停住、被下一次揮擊打中算成閃避失敗。
+    for (let i = 0; g.phase !== 'recovery' && i < 120; i++) w.frame(dt, { ...emptyInput(0, 0), wait: true });
     return w.player.hp;
   }
 
-  it('盾衛舉劍後，慢動作中 2 秒內往後退 1/6 秒就能躲開；站著不動會被打中', () => {
+  it('盾衛踏進時需及時拉開距離：站著、只退 1/6 秒或太晚退會中；及時退半秒仍可無傷', () => {
     expect(guardScenario(120, 0)).toBe(7);
-    expect(guardScenario(120, 10)).toBe(10);
-    expect(guardScenario(200, 10)).toBe(10);
+    expect(guardScenario(120, 10)).toBe(7);
+    expect(guardScenario(120, 30)).toBe(10);
+    expect(guardScenario(400, 30)).toBe(7);
   });
 });

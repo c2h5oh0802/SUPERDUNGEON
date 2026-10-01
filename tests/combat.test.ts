@@ -45,13 +45,13 @@ function inject(w: World, p: Partial<Projectile> & Pick<Projectile, 'kind' | 'po
 const hits = (w: World) => w.events.filter((e) => e.type === 'hitEnemy');
 
 describe('劍', () => {
-  it('一次揮擊對同一敵人最多命中一次；未察覺時背刺 ×3', () => {
+  it('一次揮擊對同一敵人最多命中一次；長劍奇襲不增加傷害', () => {
     const w = makeWorld(undefined, [{ kind: 'guard', x: 9.5, z: 13.0, state: 'sleep' }]);
     const e = w.enemies[0]!;
     e.hp = 100;
     swing(w);
     expect(hits(w).length).toBe(1);
-    expect(e.hp).toBe(100 - 4 * 3);
+    expect(e.hp).toBe(100 - 4);
   });
 
   it('已警戒的敵人只受基礎傷害', () => {
@@ -307,7 +307,7 @@ describe('感知', () => {
       { kind: 'guard', x: 15.5, z: 4.5, state: 'sleep' },
     ]);
     w.emitNoise(6.5, 1, 4.5, 8, 'stone');
-    expect(w.enemies[0]!.state).toBe('search');
+    expect(w.enemies[0]!.state).toBe('investigate');
     expect(w.enemies[1]!.state).toBe('sleep');
   });
 
@@ -318,7 +318,7 @@ describe('感知', () => {
     w.frame(dt, { ...emptyInput(0, 0), fire: true, firePressed: true });
     for (let k = 0; k < 400 && (w.player.action || w.projectiles.length); k++) w.frame(dt, { ...emptyInput(0, 0), wait: true });
     const e = w.enemies[0]!;
-    expect(e.state).toBe('search');
+    expect(e.state).toBe('investigate');
     expect(Math.hypot(e.target!.x - 9.6, e.target!.z - 1)).toBeLessThan(1.2);
   });
 

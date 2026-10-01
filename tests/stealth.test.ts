@@ -26,13 +26,14 @@ function guardAhead(yaw: number, state: 'idle' | 'sleep' | 'patrol' = 'idle'): W
 }
 
 describe('背刺規則', () => {
-  it('從背後偷襲閒置的敵人：×3（第 1 層長劍一擊倒下盾衛）', () => {
+  it('從背後奇襲閒置的敵人：長劍造成基礎傷害與先手踉蹌，盾衛仍存活', () => {
     const w = guardAhead(0);
     swing(w);
     const h = hits(w);
     expect(h[0]!.sneak).toBe(true);
-    expect(h[0]!.amount).toBe(WEAPONS.longsword.damage * 3);
-    expect(w.enemies[0]!.alive).toBe(false);
+    expect(h[0]!.amount).toBe(WEAPONS.longsword.damage);
+    expect(w.enemies[0]!.alive).toBe(true);
+    expect(w.enemies[0]!.phase).toBe('stagger');
   });
 
   it('從正面打閒置的敵人：沒有背刺加成，而且它立刻發現你', () => {
@@ -125,7 +126,7 @@ describe('屍體與戒備', () => {
     expect(ev.some((e) => e.type === 'corpseFound')).toBe(true);
     expect(ev.some((e) => e.type === 'alarm')).toBe(true);
     expect(w.alarm).toBe(true);
-    expect(b!.state).toBe('search');
+    expect(b!.state).toBe('investigate');
     expect(c!.awakened).toBe(true);
     expect(a!.corpseFound).toBe(true);
   });
@@ -142,7 +143,7 @@ describe('越深越硬', () => {
     const v = at(3, true);
     expect(v.enemies[0]!.hp).toBe(Math.round(ENEMIES.guard.hp * 1.3 * RUN.veteranHpMul));
     swing(v);
-    expect(hits(v)[0]!.amount).toBe(WEAPONS.longsword.damage * RUN.veteranSneakMul);
+    expect(hits(v)[0]!.amount).toBe(WEAPONS.longsword.damage);
     expect(v.enemies[0]!.alive).toBe(true);
   });
 

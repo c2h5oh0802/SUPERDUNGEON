@@ -79,6 +79,9 @@ export function installDevApi(app: App): void {
             ? {
                 kind: p.action.kind,
                 t: p.action.t,
+                windup: p.action.windup,
+                active: p.action.active,
+                recovery: p.action.recovery,
                 total: p.action.windup + p.action.active + p.action.recovery,
                 counter: p.action.counter,
                 countered: p.action.countered,
@@ -105,6 +108,14 @@ export function installDevApi(app: App): void {
           hp: e.hp,
           alive: e.alive,
           awareness: e.awareness,
+          seesPlayer: e.seesPlayer,
+          lastKnown: e.lastKnown ? { ...e.lastKnown } : null,
+          target: e.target ? { ...e.target } : null,
+          searchT: e.searchT,
+          moving: e.moving,
+          patrolIdx: e.patrolIdx,
+          doorWaitT: e.doorWaitT,
+          doorWaitId: e.doorWaitId,
           perched: e.perched,
           roomKey: e.roomKey,
           shieldUp: e.shieldUp,
@@ -190,6 +201,20 @@ export function installDevApi(app: App): void {
     audio: () => ({ active: app.sfx.active }),
     /** 狀態注入（僅供除錯定位，不可作為正常流程證據）。 */
     debug: {
+      /** 聚焦 AI 測試：狀態注入，不是玩家輸入或真人流程證據。 */
+      setInvisible(seconds: number) {
+        if (app.world) app.world.player.invisT = Math.max(0, seconds);
+      },
+      advance(seconds: number) {
+        if (app.world) app.world.advance(Math.max(0, Math.min(seconds, 120)));
+      },
+      noise(x: number, z: number, radius: number) {
+        app.world?.emitNoise(x, 1, z, radius, 'debug');
+      },
+      smoke(x: number, z: number) {
+        const w = app.world;
+        if (w) w.smokes.push({ id: w.nextId++, x, y: 1, z, age: 1, radius: 4, air: false });
+      },
       teleport(x: number, z: number) {
         const w = app.world;
         if (!w) return;

@@ -1,7 +1,7 @@
 import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, RUNES, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
-import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2 } from '../core/math';
+import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
 import type { EnemySpawn } from '../gen/generator';
 import { recoilPlayer, shieldBlocks } from './classSys';
 import { setDoor } from './propSys';
@@ -10,6 +10,7 @@ import type { Enemy, Projectile } from './types';
 
 export function createEnemy(w: World, s: EnemySpawn): Enemy {
   const spec = ENEMIES[s.kind];
+  const patrol = s.perched ? [] : [...w.roamPoints, ...s.patrol].map((p) => ({ ...p }));
   // 越深越硬；老兵再 ×1.5
   const hp = Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
   return {
@@ -25,19 +26,22 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     maxHp: hp,
     alive: true,
     deathT: 0,
-    state: s.state,
+    state: s.state === 'idle' && patrol.length > 0 ? 'patrol' : s.state,
     awareness: 0,
     suspicious: false,
     awakened: false,
     perched: s.perched,
     post: { x: s.x, z: s.z, yaw: s.yaw },
-    patrol: s.patrol.map((p) => ({ ...p })),
-    patrolIdx: 0,
+    patrol,
+    patrolIdx: w.nextId % Math.max(1, patrol.length),
     patrolWait: 0,
     target: null,
     lastKnown: null,
     loseT: 0,
     searchT: 0,
+    searchIdx: -1,
+    searchGoal: null,
+    roamT: 0,
     sleepProxT: 0,
     percT: (w.nextId % 7) * 0.007,
     seesPlayer: false,
@@ -84,6 +88,7 @@ export function interruptEnemy(e: Enemy): void {
 export function staggerEnemy(e: Enemy, dur: number): void {
   interruptEnemy(e);
   e.push = null;
+  e.shieldUp = false;
   e.phase = 'stagger';
   e.staggerDur = dur;
 }
@@ -120,7 +125,7 @@ function updatePush(w: World, e: Enemy, dt: number): void {
     if (Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius) {
       staggerEnemy(e, SHIELD.bumpStumble);
       staggerEnemy(o, SHIELD.bumpStumble);
-      if (o.state !== 'alert') becomeAlert(w, o);
+      if (o.state !== 'alert') investigate(w, o, { x: e.x, z: e.z });
       w.emit({ type: 'bump', id: e.id, kind: 'ally', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
       w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
       return;
@@ -169,12 +174,14 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     w.onKill(e);
     return;
   }
-  if (PLAYER_WEAPONS.has(info.source)) becomeAlert(w, e);
-  else if (e.state !== 'alert') {
-    e.state = 'search';
-    e.target = { x: e.x, z: e.z };
-    e.searchT = 0;
-  }
+  if (PLAYER_WEAPONS.has(info.source)) {
+    // 近戰接觸可確認攻擊者；遠程受擊只有實際可見才知道玩家在哪。
+    const p = w.player;
+    const visible = p.invisT <= 0 && Math.hypot(p.x - e.x, p.z - e.z) <= PERCEPTION.alertRange &&
+      w.canSee({ x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z }, { x: p.x, y: 1.25, z: p.z });
+    if (info.source === 'melee' || visible) becomeAlert(w, e);
+    else if (e.state !== 'alert') investigate(w, e, { x: e.x, z: e.z });
+  } else if (e.state !== 'alert') investigate(w, e, { x: e.x, z: e.z });
   if (e.kind === 'archer' && e.phase === 'aim') staggerEnemy(e, ENEMIES.archer.stagger);
 }
 
@@ -184,6 +191,10 @@ export function becomeAlert(w: World, e: Enemy): void {
   e.awareness = 1;
   e.lastKnown = { x: w.player.x, z: w.player.z };
   e.loseT = 0;
+  e.target = null;
+  e.searchT = 0;
+  e.searchIdx = -1;
+  e.searchGoal = null;
   e.path = null;
   if (was !== 'alert') {
     w.emit({ type: 'alert', id: e.id, x: e.x, y: e.y, z: e.z });
@@ -192,10 +203,47 @@ export function becomeAlert(w: World, e: Enemy): void {
   }
 }
 
+/** 可疑事件只記住事件位置，不取得玩家位置。門行動計時不隨狀態切換重設。 */
+function investigate(w: World, e: Enemy, target: V2): void {
+  if (e.state === 'sleep') w.emit({ type: 'wakeUp', id: e.id, x: e.x, y: e.y, z: e.z });
+  e.state = 'investigate';
+  e.target = { ...target };
+  e.searchT = 0;
+  e.searchIdx = -1;
+  e.searchGoal = null;
+  e.path = null;
+  e.awareness = Math.max(e.awareness, 0.3);
+  w.emit({ type: 'suspicious', id: e.id, x: e.x, y: e.y, z: e.z });
+}
+
+function beginSearch(e: Enemy): void {
+  e.state = 'search';
+  e.searchT = 0;
+  e.searchIdx = -1;
+  e.searchGoal = null;
+  e.path = null;
+  e.shieldUp = false;
+}
+
+function resumeWandering(e: Enemy): void {
+  e.state = !e.perched && e.patrol.length ? 'patrol' : 'idle';
+  e.suspicious = true;
+  e.target = null;
+  e.lastKnown = null;
+  e.searchGoal = null;
+  e.searchT = 0;
+  e.searchIdx = -1;
+  e.loseT = 0;
+  e.roamT = 0;
+  e.patrolWait = 0;
+  e.path = null;
+  e.awareness = 0;
+}
+
 /** 噪音：未察覺的敵人前往查看；睡眠中的敵人只對較近的噪音醒來。 */
-export function onNoise(w: World, x: number, y: number, z: number, radius: number): void {
+export function onNoise(w: World, x: number, y: number, z: number, radius: number, emitterId?: number): void {
   for (const e of w.enemies) {
-    if (!e.alive || e.state === 'alert') continue;
+    if (!e.alive || e.state === 'alert' || e.id === emitterId) continue;
     const d = Math.hypot(e.x - x, e.z - z);
     if (d > radius) continue;
     let r = radius;
@@ -203,13 +251,7 @@ export function onNoise(w: World, x: number, y: number, z: number, radius: numbe
     if (!w.grid.lineOfSight({ x, y: Math.max(0.5, y), z }, eye)) r *= NOISE.occludedFactor;
     if (e.state === 'sleep') r *= NOISE.sleepFactor;
     if (d > r) continue;
-    if (e.state === 'sleep') w.emit({ type: 'wakeUp', id: e.id, x: e.x, y: e.y, z: e.z });
-    e.state = 'search';
-    e.target = { x, z };
-    e.searchT = 0;
-    e.path = null;
-    e.awareness = Math.max(e.awareness, 0.3);
-    w.emit({ type: 'suspicious', id: e.id, x: e.x, y: e.y, z: e.z });
+    investigate(w, e, { x, z });
   }
 }
 
@@ -227,10 +269,7 @@ export function awakenDungeon(w: World): void {
     if (h && e.state !== 'alert' && !e.perched) {
       const len = w.enav.pathLength(e.x, e.z, h.x, h.z);
       if (len <= PERCEPTION.awakenedCallDist) {
-        e.state = 'search';
-        e.target = { x: h.x, z: h.z };
-        e.searchT = 0;
-        e.path = null;
+        investigate(w, e, h);
       }
     }
   }
@@ -242,7 +281,7 @@ export function awakenDungeon(w: World): void {
 function fovDeg(e: Enemy): number {
   let f: number = PERCEPTION.fovDeg;
   if (e.awakened) f = Math.max(f, PERCEPTION.awakenedFovDeg);
-  if (e.state === 'search') f = Math.max(f, STEALTH.searchFovDeg);
+  if (e.state === 'search' || e.state === 'investigate') f = Math.max(f, STEALTH.searchFovDeg);
   return f;
 }
 
@@ -260,13 +299,10 @@ function findCorpses(w: World, e: Enemy): void {
     if (!w.canSee(eye, { x: c.x, y: c.y + 0.3, z: c.z })) continue;
     c.corpseFound = true;
     if (e.state === 'sleep') continue;
-    e.state = 'search';
-    e.target = { x: c.x, z: c.z };
-    e.searchT = 0;
-    e.path = null;
+    investigate(w, e, c);
     e.awareness = Math.max(e.awareness, 0.5);
     w.emit({ type: 'corpseFound', id: e.id, x: e.x, y: e.y, z: e.z });
-    w.emitNoise(e.x, e.y + 1.6, e.z, NOISE.shout, 'shout');
+    w.emitNoise(e.x, e.y + 1.6, e.z, NOISE.shout, 'shout', e.id);
     raiseAlarm(w);
     return;
   }
@@ -288,14 +324,12 @@ function perceive(w: World, e: Enemy, interval: number): void {
   const dz = p.z - e.z;
   const d = Math.hypot(dx, dz);
   if (e.state === 'sleep') {
-    if (d < PERCEPTION.sleepWakeDist) {
+    if (d < PERCEPTION.sleepWakeDist && p.invisT <= 0 &&
+        w.canSee({ x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z }, { x: p.x, y: 1.25, z: p.z })) {
       e.sleepProxT += interval;
       if (e.sleepProxT >= PERCEPTION.sleepWakeTime) {
-        e.state = 'search';
-        e.target = { x: p.x, z: p.z };
-        e.searchT = 0;
+        investigate(w, e, { x: p.x, z: p.z });
         e.awareness = 0.6;
-        w.emit({ type: 'wakeUp', id: e.id, x: e.x, y: e.y, z: e.z });
       }
     } else e.sleepProxT = Math.max(0, e.sleepProxT - interval);
     return;
@@ -333,10 +367,12 @@ function updateAwareness(w: World, e: Enemy, interval: number): void {
     if (w.hasRune('shadow')) fill *= RUNES.shadow.detectMul;
     if (e.awakened) fill *= PERCEPTION.awakenedFillMul;
     if (e.veteran) fill *= RUN.veteranFillMul;
-    if (e.state === 'search') fill *= STEALTH.searchFillMul;
+    if (e.state === 'search' || e.state === 'investigate') fill *= STEALTH.searchFillMul;
+    if (e.state === 'idle' || e.state === 'patrol') e.target = { x: p.x, z: p.z };
     e.awareness += interval / fill;
     if (e.awareness >= 1) becomeAlert(w, e);
   } else if (e.state !== 'alert') {
+    if ((e.state === 'idle' || e.state === 'patrol') && e.awareness > 0 && e.target) investigate(w, e, e.target);
     e.awareness = Math.max(0, e.awareness - PERCEPTION.decay * interval);
   }
 }
@@ -400,7 +436,7 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
   if (!e.path || e.pathT <= 0 || goalMoved) {
     e.path = w.enav.findPath(e.x, e.z, goal.x, goal.z) ?? [];
     e.pathGoal = { ...goal };
-    e.pathT = 0.5 + (e.id % 5) * 0.05;
+    e.pathT = ENEMIES.repathInterval + (e.id % 5) * 0.05;
   }
   if (!e.path.length) {
     e.moving = false;
@@ -436,12 +472,13 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
         e.doorWaitT = 0;
       }
       e.doorWaitT += dt;
-      if (e.doorWaitT >= 0.6) setDoor(w, doorId, true, 'enemy');
+      if (e.doorWaitT >= ENEMIES.doorOpenTime && setDoor(w, doorId, true, 'enemy', e.id)) e.doorWaitT = 0;
     }
     e.yaw = turnToward(e.yaw, yawFromDir(dx, dz), 6 * dt);
     return false;
   }
   e.doorWaitId = -1;
+  e.doorWaitT = 0;
   let r = w.grid.resolveCircle(nx, nz, e.radius);
   r = separate(w, e, r.x, r.z);
   r = w.grid.resolveCircle(r.x, r.z, e.radius);
@@ -469,6 +506,26 @@ function facePlayer(w: World, e: Enemy, rate: number, dt: number): void {
 
 // ---------- 行為 ----------
 
+/** 盾衛實際踏步：鎖定後不再轉向；牆、門、角色仍擋住身體。 */
+function guardStep(w: World, e: Enemy, dt: number): void {
+  // 已在劍的內側就不繼續擠進身體；近距離原有反擊／盾推窗口保持穩定。
+  if (e.push || e.perched || Math.hypot(w.player.x - e.x, w.player.z - e.z) <= ENEMIES.guard.attackStopDist) {
+    e.moving = false;
+    return;
+  }
+  const f = forwardFromYaw(e.locked ? e.lockedYaw : e.yaw);
+  const step = ENEMIES.guard.attackStepSpeed * dt;
+  const nx = e.x + f.x * step, nz = e.z + f.z * step;
+  if (w.grid.circleBlocked(nx, nz, e.radius)) { e.moving = false; return; }
+  const r = separate(w, e, nx, nz);
+  if (w.grid.circleBlocked(r.x, r.z, e.radius)) { e.moving = false; return; }
+  const moved = Math.hypot(r.x - e.x, r.z - e.z);
+  e.x = r.x;
+  e.z = r.z;
+  e.moving = moved > 1e-4;
+  e.walkPhase += moved * 2.2;
+}
+
 function guardAlert(w: World, e: Enemy, dt: number): void {
   const s = ENEMIES.guard;
   const p = w.player;
@@ -488,11 +545,13 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
       return;
     case 'windup':
       e.phaseT += dt;
-      if (e.phaseT < s.trackUntil) facePlayer(w, e, 8, dt);
-      else if (!e.locked) {
+      if (e.phaseT < s.trackUntil) {
+        if (e.seesPlayer) facePlayer(w, e, 8, dt);
+      } else if (!e.locked) {
         e.locked = true;
         e.lockedYaw = e.yaw;
       }
+      e.moving = false;
       if (e.phaseT >= s.windup) {
         e.phase = 'active';
         e.phaseT = 0;
@@ -501,6 +560,8 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
       return;
     case 'active': {
       e.phaseT += dt;
+      // 只支付作用期剩餘時間，避免跨 phase 的最後子步多踏一段。
+      guardStep(w, e, Math.min(dt, Math.max(0, s.active - (e.phaseT - dt))));
       if (!e.hitDone && !p.dead) {
         const dx = p.x - e.x;
         const dz = p.z - e.z;
@@ -524,6 +585,7 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
       return;
     }
     case 'recovery':
+      e.moving = false;
       e.phaseT += dt;
       if (e.phaseT >= s.recovery) e.phase = 'none';
       return;
@@ -575,7 +637,7 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       return;
     case 'aim': {
       // Recheck even on the tick crossing lockAt; after lock the aim point is immutable.
-      if (!e.locked && (!e.seesPlayer || !archerLineClear(w, e))) {
+      if (!e.locked && (!e.seesPlayer || !archerLineClear(w, e) || (e.aimPoint && !archerLineClear(w, e, e.aimPoint)))) {
         e.phase = 'none';
         e.phaseT = 0;
         e.aimPoint = null;
@@ -595,7 +657,7 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       } else if (!e.locked) {
         e.locked = true;
         e.lockedYaw = e.yaw;
-        e.aimPoint = { x: p.x, y: 1.2, z: p.z };
+        if (!e.aimPoint) { e.phase = 'none'; return; }
         w.emit({ type: 'enemyLock', id: e.id, kind: e.kind, x: e.x, y: e.y + 1.45, z: e.z });
       }
       if (e.phaseT >= s.aim) fireBolt(w, e);
@@ -607,10 +669,10 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
 }
 
 /** Current muzzle-to-player path, checked only before commitment. */
-export function archerLineClear(w: World, e: Enemy): boolean {
+export function archerLineClear(w: World, e: Enemy, target: V3 = { x: w.player.x, y: 1.2, z: w.player.z }): boolean {
   const f = forwardFromYaw(e.yaw);
   const from = { x: e.x + f.x * 0.5, y: e.y + 1.45, z: e.z + f.z * 0.5 };
-  const to = { x: w.player.x, y: 1.2, z: w.player.z };
+  const to = target;
   if (w.grid.segmentHit(from, to, false, PROJECTILES.bolt.radius)) return false;
   return !w.enemies.some((o) => o !== e && o.alive && segmentEnemy(from, to, o, PROJECTILES.bolt.radius));
 }
@@ -681,8 +743,9 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       return;
     case 'windup':
       e.phaseT += dt;
-      if (e.phaseT < s.windup - s.lockBefore) facePlayer(w, e, 5, dt);
-      else if (!e.locked) {
+      if (e.phaseT < s.windup - s.lockBefore) {
+        if (e.seesPlayer) facePlayer(w, e, 5, dt);
+      } else if (!e.locked) {
         e.locked = true;
         e.lockedYaw = e.yaw;
       }
@@ -785,33 +848,59 @@ function unawareBehavior(w: World, e: Enemy, dt: number): void {
         return;
       }
       const tgt = e.patrol[e.patrolIdx % e.patrol.length]!;
+      e.roamT += dt;
       const arrived = moveTo(w, e, tgt, ENEMIES.patrolSpeed, dt, 0.4);
-      if (arrived) {
+      // 不可達／擁塞的路段有限放棄；既有門閂仍由導航決定是否可通行。
+      if (arrived || e.roamT >= ENEMIES.roamLegTime || (e.path && !e.path.length)) {
         e.moving = false;
         e.patrolWait += dt;
-        if (e.patrolWait > 1.5) {
+        if (e.patrolWait >= ENEMIES.roamWait) {
           e.patrolWait = 0;
+          e.roamT = 0;
           e.patrolIdx = (e.patrolIdx + 1) % e.patrol.length;
+          e.path = null;
         }
       }
       return;
     }
-    case 'search': {
+    case 'investigate': {
+      e.searchT += dt;
       const tgt = e.target ?? { x: e.x, z: e.z };
       const arrived = e.perched || moveTo(w, e, tgt, ENEMIES.searchSpeed, dt, 0.8);
       if (e.perched) e.yaw = turnToward(e.yaw, yawFromDir(tgt.x - e.x, tgt.z - e.z), 3 * dt);
+      if (arrived) beginSearch(e);
+      else if (e.searchT >= PERCEPTION.investigateTime) resumeWandering(e);
+      return;
+    }
+    case 'search': {
+      e.searchT += dt;
+      const origin = e.target ?? { x: e.x, z: e.z };
+      const tgt = e.searchGoal ?? origin;
+      const arrived = e.perched || moveTo(w, e, tgt, ENEMIES.searchSpeed, dt, 0.6);
+      if (e.perched) e.yaw = turnToward(e.yaw, yawFromDir(origin.x - e.x, origin.z - e.z), 3 * dt);
       if (arrived) {
         e.moving = false;
-        e.searchT += dt;
-        // 左右張望（範圍大到會轉身看背後）
-        if (!e.perched) e.yaw = wrapAngle(e.yaw + Math.sin(e.searchT * 1.3) * 2.4 * dt);
-        if (e.searchT >= PERCEPTION.searchTime * (e.awakened ? 2 : 1)) {
-          e.state = e.patrol.length ? 'patrol' : 'idle';
-          e.suspicious = true;
-          e.target = null;
-          e.searchT = 0;
+        if (e.searchIdx < 0) { e.searchIdx = 0; e.searchT = 0; }
+        // 搜索只取事件／最後已知位置附近的導航點，完全不讀玩家目前座標。
+        const next = Math.floor(e.searchT / 2);
+        if (!e.perched && next > e.searchIdx && next <= 4) {
+          e.searchIdx = next;
+          const angle = (next + e.id % 4) * Math.PI / 2;
+          const c = w.enav.nearestPassable(origin.x + Math.cos(angle) * PERCEPTION.searchRadius,
+            origin.z + Math.sin(angle) * PERCEPTION.searchRadius, 2);
+          if (c >= 0) {
+            const q = w.enav.center(c);
+            if (Math.hypot(q.x - origin.x, q.z - origin.z) <= PERCEPTION.searchRadius + 1 &&
+                w.enav.pathLength(origin.x, origin.z, q.x, q.z) <= PERCEPTION.searchRadius * 3) {
+              e.searchGoal = q;
+              e.path = null;
+            }
+          }
         }
+        if (!e.perched) e.yaw = wrapAngle(e.yaw + Math.sin(e.searchT * 1.3) * 2.4 * dt);
       }
+      const limit = e.searchIdx < 0 ? PERCEPTION.searchTravelTime : PERCEPTION.searchTime * (e.awakened ? 2 : 1);
+      if (e.searchT >= limit) resumeWandering(e);
       return;
     }
     default:
@@ -862,12 +951,12 @@ export function updateEnemies(w: World, dt: number): void {
       if (!e.seesPlayer && !attacking) {
         e.loseT += edt;
         if (e.loseT >= PERCEPTION.loseTime) {
-          e.state = 'search';
           e.target = e.lastKnown ? { ...e.lastKnown } : { x: e.x, z: e.z };
-          e.searchT = 0;
+          beginSearch(e);
           e.awareness = 0.5;
-          e.path = null;
-          e.shieldUp = false;
+          e.phase = 'none';
+          e.aimPoint = null;
+          e.locked = false;
           continue;
         }
       }

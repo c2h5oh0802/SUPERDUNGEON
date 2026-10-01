@@ -107,7 +107,7 @@ export interface Player {
   lastMoveDist: number;
 }
 
-export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'search' | 'alert';
+export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'investigate' | 'search' | 'alert';
 export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger' | 'pushed';
 
 export interface Enemy {
@@ -136,6 +136,9 @@ export interface Enemy {
   lastKnown: V2 | null;
   loseT: number;
   searchT: number;
+  searchIdx: number;
+  searchGoal: V2 | null;
+  roamT: number;
   sleepProxT: number;
   percT: number;
   seesPlayer: boolean;

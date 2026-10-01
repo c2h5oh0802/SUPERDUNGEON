@@ -548,7 +548,7 @@ export class EnemyVisual {
     this.rig.uFlash.value = e.hurtT > 0 ? (e.hurtT / 0.3) * 0.75 : 0;
     this.rig.uDim.value = 1;
     this.eyes.visible = e.state !== 'sleep';
-    const ec = e.state === 'alert' ? 0xff5a1e : e.state === 'search' ? 0xffc040 : 0xb08a50;
+    const ec = e.state === 'alert' ? 0xff5a1e : e.state === 'search' || e.state === 'investigate' ? 0xffc040 : 0xb08a50;
     this.eyeMat.color.setHex(ec);
   }
 

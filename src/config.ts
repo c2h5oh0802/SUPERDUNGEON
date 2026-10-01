@@ -80,10 +80,10 @@ export interface WeaponSpec {
 }
 
 export const WEAPONS: Record<WeaponId, WeaponSpec> = {
-  longsword: { name: '長劍', damage: 4, sneakMultiplier: 3, reach: 2.0, arcDeg: 100, windup: 0.15, active: 0.12, recovery: 0.33, perLevel: 1, stagger: 0, move: { windup: 0.65, active: 0.55, recovery: 0.8 }, maxTargets: 1, secondaryDamage: 0, note: '單體、均衡；揮擊時移速降低' },
-  knife: { name: '獵刀', damage: 3, sneakMultiplier: 3, reach: 1.6, arcDeg: 90, windup: 0.08, active: 0.1, recovery: 0.22, perLevel: 1, stagger: 0, move: { windup: 0.85, active: 0.8, recovery: 0.95 }, maxTargets: 1, secondaryDamage: 0, note: '單體、快、短；最靈活' },
-  axe: { name: '重斧', damage: 7, sneakMultiplier: 2, reach: 2.1, arcDeg: 110, windup: 0.35, active: 0.14, recovery: 0.51, perLevel: 2, stagger: 0.6, move: { windup: 0.35, active: 0.2, recovery: 0.45 }, maxTargets: 2, secondaryDamage: 0.5, note: '高承諾；最多兩敵，次敵半傷、普通失衡減半' },
-  spear: { name: '長矛', damage: 4, sneakMultiplier: 2, reach: 2.8, arcDeg: 40, windup: 0.18, active: 0.12, recovery: 0.4, perLevel: 1, stagger: 0, move: { windup: 0.4, active: 0.25, recovery: 0.65 }, maxTargets: 1, secondaryDamage: 0, note: '最遠、窄；首個身體擋下刺擊，出手時減速' },
+  longsword: { name: '長劍', damage: 4, sneakMultiplier: 1, reach: 2.0, arcDeg: 100, windup: 0.15, active: 0.12, recovery: 0.33, perLevel: 1, stagger: 0, move: { windup: 0.65, active: 0.55, recovery: 0.8 }, maxTargets: 1, secondaryDamage: 0, note: '單體、均衡；揮擊時移速降低' },
+  knife: { name: '獵刀', damage: 3, sneakMultiplier: 2, reach: 1.6, arcDeg: 90, windup: 0.08, active: 0.1, recovery: 0.22, perLevel: 1, stagger: 0, move: { windup: 0.85, active: 0.8, recovery: 0.95 }, maxTargets: 1, secondaryDamage: 0, note: '單體、快、短；奇襲 ×2，最靈活' },
+  axe: { name: '重斧', damage: 7, sneakMultiplier: 1, reach: 2.1, arcDeg: 110, windup: 0.35, active: 0.14, recovery: 0.51, perLevel: 2, stagger: 0.6, move: { windup: 0.35, active: 0.2, recovery: 0.45 }, maxTargets: 2, secondaryDamage: 0.5, note: '高承諾；最多兩敵，次敵半傷、失衡減半' },
+  spear: { name: '長矛', damage: 4, sneakMultiplier: 1, reach: 2.8, arcDeg: 40, windup: 0.18, active: 0.12, recovery: 0.55, perLevel: 1, stagger: 0, move: { windup: 0.4, active: 0.25, recovery: 0.65 }, maxTargets: 1, secondaryDamage: 0, note: '最遠、窄；刺擊 0.85 秒，首個身體擋下刺擊，分階段減速' },
 };
 
 export const ALL_WEAPONS: WeaponId[] = ['longsword', 'knife', 'axe', 'spear'];
@@ -189,6 +189,8 @@ export const STEALTH = {
   corpseSightRange: 14,
   /** 搜索中的敵人能不能被背刺（目前的規則：不能）。 */
   searchBackstab: false,
+  /** 奇襲留下先手窗口；用世界秒計時，不增加一般武器傷害。 */
+  surpriseStagger: 0.8,
 } as const;
 
 export const NOISE = {
@@ -213,6 +215,9 @@ export const PERCEPTION = {
   suspiciousRangeMul: 1.25,
   loseTime: 4,
   searchTime: 8,
+  investigateTime: 20,
+  searchTravelTime: 12,
+  searchRadius: 2,
   sleepWakeDist: 2,
   sleepWakeTime: 1,
   eyeHeight: 1.55,
@@ -232,7 +237,11 @@ export const ENEMIES = {
     headY: 1.72,
     headR: 0.2,
     speed: 3.0,
-    attackRange: 2.0,
+    attackRange: 2.4,
+    /** 舉劍時保持位置；作用期沿鎖定方向踏進 0.9 m。 */
+    attackStepSpeed: 6.0,
+    /** 已在劍內側時不再貼進；不是額外命中範圍。 */
+    attackStopDist: 2.15,
     windup: 0.55,
     trackUntil: 0.35,
     active: 0.15,
@@ -284,6 +293,8 @@ export const ENEMIES = {
     allyStumble: 0.5,
   },
   patrolSpeed: 1.4,
+  roamWait: 1.5,
+  roamLegTime: 60,
   searchSpeed: 1.8,
   doorOpenTime: 0.6,
   repathInterval: 0.5,
@@ -301,7 +312,7 @@ export const RUN = {
   guardians: ['guard', 'charger'] as const,
   /** 敵人生命每深一層的加成。 */
   hpPerFloor: 0.15,
-  /** 每層的老兵數量（戴頭盔：背刺只 ×2、生命 ×1.5、發現速度 ×1.3）。 */
+  /** 每層的老兵數量（戴頭盔：奇襲倍率上限 ×2、生命 ×1.5、發現速度 ×1.3）。 */
   veterans: [0, 0, 1, 2],
   veteranHpMul: 1.5,
   veteranFillMul: 1 / 1.3,
@@ -467,7 +478,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
         {
           key: '1',
           name: '長劍',
-          text: `${sw.damage} 傷害、${fmt(weaponTotal('longsword'))} 秒；從背後偷襲沒發現你的敵人（或睡著的敵人）×${sw.sneakMultiplier}。`,
+          text: `${sw.damage} 傷害、${fmt(weaponTotal('longsword'))} 秒；從背後奇襲未目擊你的敵人（或睡著的敵人），讓它踉蹌 ${STEALTH.surpriseStagger} 世界秒。`,
         },
         {
           key: '右鍵／F',
@@ -520,7 +531,7 @@ export function classInfo(id: PlayerClass): ClassInfo {
       {
         key: '1',
         name: '獵刀',
-        text: `${kn.damage} 傷害、${fmt(weaponTotal('knife'))} 秒；從背後偷襲沒發現你的敵人（或睡著的敵人）×${kn.sneakMultiplier}（${kn.damage * kn.sneakMultiplier}，第 1 層可以一擊背刺盾衛）。`,
+        text: `${kn.damage} 傷害、${fmt(weaponTotal('knife'))} 秒；從背後奇襲未目擊你的敵人（或睡著的敵人）×${kn.sneakMultiplier}（${kn.damage * kn.sneakMultiplier}），另讓它踉蹌 ${STEALTH.surpriseStagger} 世界秒。`,
       },
       {
         key: '2',

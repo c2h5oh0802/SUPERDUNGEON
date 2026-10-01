@@ -1,5 +1,7 @@
 # Combat Action Economy v1
 
+> Historical report for commit 600e681, before the uploaded local work was available. Its measurements and 178-test/browser status describe that commit only. The reconciled version restores living AI, surprise rules and guard stepping; spear recovery is 0.55 s (total 0.85 s), and axe secondary surprise stagger is 0.4 s. Current rules and verification are in [the reconciliation report](reconciliation.md).
+
 Status: Ready for Human Review (browser validation blocked by this execution environment)
 
 Base: `claude/wizardly-lamport-dlnz24`, verified remote HEAD `69120d99003ac8e7412e68cc19c0f04ede859eee`. Isolated dot cloud checkout, initially clean. No AGENTS.md / AGENTS.override.md / repo-local skills present. No push or deployment.

@@ -253,6 +253,9 @@ await startPractice('warrior');
 {
   // 推擊：把睡著的盾衛往最近的牆推。一次推 1 m；還沒撞到牆，就繞回它與牆的反方向再推一次
   await resetPractice('戰士推擊');
+  // 活動 AI 不保證計算站位／走過去後敵人仍在原處。只在準備階段暫停並注入玩家站位；
+  // 恢復後仍用正常 F、移動與世界時間驗證推擊，不能宣稱這段是正常導航流程。
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   const s0 = await st();
   const g = s0.enemies.find((e) => e.kind === 'guard' && e.alive && e.state === 'sleep');
   let dir = null;
@@ -269,7 +272,13 @@ await startPractice('warrior');
   if (!g || !dir) check('戰士：把盾衛推去撞牆', false, '找不到牆');
   else {
     console.log('INFO 推向牆', JSON.stringify(dir));
-    await walkTo(g.x - dir.dx * 1.45, g.z - dir.dz * 1.45, 0.3);
+    const setup = { x: g.x - dir.dx * 1.45, z: g.z - dir.dz * 1.45 };
+    await page.evaluate(({ x, z }) => window.__sd.debug.teleport(x, z), setup);
+    await page.evaluate((yaw) => window.__sd.debug.setView(yaw, 0), yawTo(setup.x, setup.z, g.x, g.z));
+    await page.click('#btn-resume');
+    await page.waitForTimeout(1100);
+    if ((await st()).mode === 'paused') await page.click('#btn-resume');
+    await page.waitForFunction(() => window.__sd.state().mode === 'playing', null, { timeout: 10000 });
     let first = true;
     const t0 = Date.now();
     while (Date.now() - t0 < 50000) {
@@ -313,6 +322,7 @@ await startPractice('warrior');
     const la = s.lastAction;
     check('戰士：推擊花完整行動時間（0.4 秒）', !!la && la.kind === 'shield' && Math.abs(la.spent - 0.4) < 0.02, JSON.stringify(la));
   }
+  if ((await st()).mode === 'paused') await page.click('#btn-resume');
 }
 {
   // 高台弩手：站在它的視野內；有「反擊」提示就揮劍（弩矢或衝過來的突進者）

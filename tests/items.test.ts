@@ -149,7 +149,7 @@ describe('卷軸', () => {
     const l = makeWorld(OPEN_ROOM, [{ kind: 'guard', x: 9.5, z: 3.5, yaw: Math.PI / 2, state: 'idle' }], 'warrior');
     l.player.yaw = 0;
     readScroll(l, 'lure');
-    expect(l.enemies[0]!.state).toBe('search');
+    expect(l.enemies[0]!.state).toBe('investigate');
   });
 
   it('強化卷軸：選一件裝備強化（選擇時世界暫停），武器傷害 +1', () => {

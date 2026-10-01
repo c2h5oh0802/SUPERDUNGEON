@@ -23,7 +23,7 @@ describe('地城生成', () => {
     expect(mirrors.size).toBe(2);
     // 手工佈局應幾乎不需要重試
     expect(retries).toBeLessThan(20);
-  });
+  }, 30000); // 200 個種子的批量正確性檢查，不以預設 5 秒當效能門檻。
 
   it('同種子重建出完全相同的初始內容；不同種子會不同', () => {
     const a = levelSignature(generateLevel('SAME1'));

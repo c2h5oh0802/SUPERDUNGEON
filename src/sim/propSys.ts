@@ -20,7 +20,7 @@ function doorOccupied(w: World, doorId: number): boolean {
 }
 
 /** 開關門（玩家或敵人）。門被角色擋住時拒絕關閉，不夾人、不推人。 */
-export function setDoor(w: World, doorId: number, open: boolean, by: 'player' | 'enemy'): boolean {
+export function setDoor(w: World, doorId: number, open: boolean, by: 'player' | 'enemy', emitterId?: number): boolean {
   const d = w.grid.doors[doorId]!;
   if (d.arch) return false;
   if (!open && doorOccupied(w, doorId)) {
@@ -30,7 +30,7 @@ export function setDoor(w: World, doorId: number, open: boolean, by: 'player' | 
   if (d.target === (open ? 1 : 0)) return false;
   d.target = open ? 1 : 0;
   w.emit({ type: 'door', id: doorId, open, x: d.cx, z: d.cz, source: by });
-  w.emitNoise(d.cx, 1.5, d.cz, NOISE.door, 'door');
+  w.emitNoise(d.cx, 1.5, d.cz, NOISE.door, 'door', emitterId);
   return true;
 }
 

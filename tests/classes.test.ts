@@ -424,7 +424,7 @@ describe('戰士：擊開弩矢', () => {
 
 
 describe('戰士：位置推擊', () => {
-  it('推擊位移 1 m，保留已鎖定的攻擊與時間軸', () => {
+  it('推擊保留已鎖定的攻擊與時間軸；淨位移包含盾衛作用期踏步', () => {
     const w = alertGuardAhead('warrior');
     const g = w.enemies[0]!;
     g.z = w.player.z - 1.4;
@@ -436,7 +436,8 @@ describe('戰士：位置推擊', () => {
     for (let k = 0; k < 600 && (w.player.action || g.push); k++) {
       w.frame(dt, input(w)); minZ = Math.min(minZ, g.z);
     }
-    expect(z0 - minZ).toBeCloseTo(SHOVE.pushDist, 1);
+    expect(z0 - minZ).toBeGreaterThan(SHOVE.pushDist - ENEMIES.guard.attackStepSpeed * dt);
+    expect(z0 - minZ).toBeLessThanOrEqual(SHOVE.pushDist + 1e-9);
     expect(w.lastAction?.spent).toBeCloseTo(total(ACTIONS.shield), 2);
     expect(w.events.some(e => e.type === 'enemyStrike')).toBe(true);
     expect(w.stats.blocks).toBe(0);

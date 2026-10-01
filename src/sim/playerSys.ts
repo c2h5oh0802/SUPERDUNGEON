@@ -362,10 +362,10 @@ function meleeHits(w: World): void {
     if (a.hitSet.has(e.id)) continue;
     const hitMul = a.hitSet.size === 0 ? 1 : spec.secondaryDamage;
     a.hitSet.add(e.id);
-    // 背刺：睡著的敵人任何方向都算；閒置、巡邏中的敵人要從背後出手；搜索中、已發現你的敵人都不算
+    // 奇襲：睡眠不限方向；未目擊玩家的閒置／巡邏敵人須從背後。調查／搜索不算。
     const fromBehind = Math.abs(angleDiff(yawFromDir(p.x - e.x, p.z - e.z), e.yaw)) >= Math.PI - backHalf;
     const unaware = e.state === 'idle' || e.state === 'patrol' || (e.state === 'search' && STEALTH.searchBackstab);
-    const sneak = e.state === 'sleep' || (unaware && fromBehind);
+    const sneak = e.state === 'sleep' || (unaware && !e.seesPlayer && fromBehind);
     let dmg = weaponDamage(a.weapon, p.weapon.level);
     if (sneak) dmg *= e.veteran ? Math.min(spec.sneakMultiplier, RUN.veteranSneakMul) : spec.sneakMultiplier;
     if (e.kind === 'charger' && e.phase === 'stun') dmg *= 2;
@@ -378,6 +378,7 @@ function meleeHits(w: World): void {
     // 戰士：命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
     if (applyCounter(w, e)) a.countered = true;
     damageEnemy(w, e, dmg, { source: 'melee', sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
+    if (sneak && e.alive) staggerEnemy(e, Math.max(STEALTH.surpriseStagger, spec.stagger) * hitMul);
     // 重武器：命中沒倒下的敵人會失衡（打斷它的出手）
     if (spec.stagger > 0 && e.alive && e.phase !== 'stun' && e.phase !== 'stagger') staggerEnemy(e, spec.stagger * hitMul);
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'combat');

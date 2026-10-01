@@ -2,7 +2,7 @@ import { ARMORS, CLASSES, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, UPGRADE, type A
 import { Rng } from '../core/rng';
 import { applyUpgrade, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
 import { applyTalent, gainXp, killXp, onFloorStart } from './progress';
-import { segSphere, type V3 } from '../core/math';
+import { segSphere, type V2, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
 import type { LevelData } from '../gen/generator';
 import { Grid } from './grid';
@@ -76,6 +76,7 @@ export class World {
   readonly level: LevelData;
   readonly grid: Grid;
   readonly enav: Nav;
+  readonly roamPoints: V2[];
   readonly player: Player;
   readonly enemies: Enemy[] = [];
   readonly projectiles: Projectile[] = [];
@@ -142,6 +143,11 @@ export class World {
     this.level = level;
     this.grid = level.grid;
     this.enav = new Nav(this.grid, Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius));
+    // 房間中心投影到既有導航格；入口不列入目的地，不改生成與可達性規則。
+    this.roamPoints = level.rooms.filter((r) => r.role !== 'entrance').flatMap((r) => {
+      const c = this.enav.nearestPassable(r.x0 + r.w / 2, r.z0 + r.h / 2);
+      return c < 0 ? [] : [this.enav.center(c)];
+    });
     this.explored = new Uint8Array(this.grid.w * this.grid.h);
     this.rng = new Rng(`${level.seed}#drops#${level.floor}`);
     const cls = opts.cls ?? 'warrior';
@@ -411,9 +417,9 @@ export class World {
     return false;
   }
 
-  emitNoise(x: number, y: number, z: number, radius: number, source: string): void {
+  emitNoise(x: number, y: number, z: number, radius: number, source: string, emitterId?: number): void {
     this.emit({ type: 'noise', x, y, z, radius, source });
-    onNoise(this, x, y, z, radius);
+    onNoise(this, x, y, z, radius, emitterId);
   }
 
   damagePlayer(amount: number, source: string, fromX: number, fromZ: number): void {

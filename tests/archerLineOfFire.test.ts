@@ -62,7 +62,7 @@ describe('Archer commitment and physical first hit', () => {
     const pos={x:9.5,y:1.2,z:8}; g.x=9.5;
     const b: Projectile={id:w.nextId++,kind:'bolt',owner:a.id,pos,vel:{x:0,y:0,z:18},radius:.06,gravity:0,age:0,alive:true,pierceLeft:0,hitSet:new Set(),next:{...pos},avgVel:{x:0,y:0,z:18},deflected:false,tip:null,payload:'smoke'};
     w.projectiles.push(b); updateProjectiles(w,.3);
-    expect(g.state).toBe('search'); expect(g.lastKnown).toBeNull(); expect(w.stats.shotHits).toBe(0);
+    expect(g.state).toBe('investigate'); expect(g.lastKnown).toBeNull(); expect(w.stats.shotHits).toBe(0);
   });
   it('shield upgrades/talents are unavailable while legacy save fields remain inert', () => {
     const {w}=corridor(); w.player.shieldLevel=5; w.player.talents=['bulwark','heavyShield'];

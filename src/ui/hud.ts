@@ -240,7 +240,7 @@ export class Hud {
           if (e.kind === 'guard') this.hint('guard', '盾衛舉劍後，揮擊方向會鎖定：側移或後退就能躲開。');
           break;
         case 'hitEnemy':
-          if (e.sneak) this.toast('背刺 ×3', 'good', 1.2);
+          if (e.sneak) this.toast('奇襲：取得先手', 'good', 1.2);
           break;
         default:
       }
@@ -498,13 +498,13 @@ export class Hud {
         if (e.state === 'sleep') {
           cls = 'sleep';
           text = 'Zz';
-          this.hint('sleep', '睡著的敵人：從旁邊或背後用近戰武器攻擊，造成 3 倍傷害。太靠近太久會吵醒它。');
+          this.hint('sleep', '睡著的敵人：近戰奇襲讓它踉蹌；獵刀另有雙倍傷害。聲音或靠近太久會吵醒它。');
         } else if (e.state === 'alert') {
           cls = 'alert';
           text = '!';
-        } else if (e.state === 'search') {
+        } else if (e.state === 'search' || e.state === 'investigate') {
           cls = 'search';
-          text = '?';
+          text = e.state === 'investigate' ? '?' : '…';
         } else if (e.awareness > 0.02) {
           cls = 'aware';
           text = '?';

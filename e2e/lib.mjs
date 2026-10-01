@@ -2,9 +2,10 @@
 // 注意：自動化以「正常操作」輸入（WASD、方向鍵轉向、滑鼠左鍵、E/H/Q/空白），
 // 但透過 ?dev=1 的 window.__sd 讀取狀態來決定路線與瞄準（狀態讀取輔助，不是真人操作）。
 import { chromium } from 'playwright';
+import { fileURLToPath } from 'node:url';
 
 export const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173/';
-export const OUT = new URL('./out/', import.meta.url).pathname;
+export const OUT = fileURLToPath(new URL('./out/', import.meta.url));
 
 export async function launch({ headless = true, viewport = { width: 1280, height: 720 } } = {}) {
   const browser = await chromium.launch({
