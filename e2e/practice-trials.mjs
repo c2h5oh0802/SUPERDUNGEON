@@ -1,0 +1,59 @@
+// Menu/retry/save regressions using real controls. No debug state injection.
+import assert from 'node:assert/strict';
+import { launch, BASE, Bot, startRun } from './lib.mjs';
+const { browser, page, errors } = await launch();
+const bot = new Bot(page);
+const playing = () => page.waitForFunction(() => window.__sd?.state().mode === 'playing');
+const pause = async () => { await bot.tap('Escape'); await page.waitForFunction(() => window.__sd.state().mode === 'paused'); };
+const menu = async () => { await pause(); await page.click('#btn-quit'); };
+try {
+  await page.goto(`${BASE}?dev=1&gfx=low`);
+  await page.click('.class-card[data-cls="huntress"]');
+  await startRun(page, 'TRIAL-SAVE');
+  await menu();
+  const saved = await page.evaluate(() => localStorage.getItem('superdungeon.run.v1'));
+  assert.ok(saved, 'campaign save exists before entering trials');
+  for (const id of ['shield-crossfire', 'charger-window', 'cluster-bypass']) {
+    await page.click('#btn-trials');
+    await page.click(`#btn-${id}`); await playing();
+    let s = await bot.st();
+    assert.equal(s.practiceTrial, id); assert.equal(s.run, null);
+    assert.equal(s.player.hp, s.player.maxHp);
+    assert.deepEqual(s.player.talents, ['mark', 'apothecary']);
+    const signature = await page.evaluate(() => window.__sd.level().signature);
+    await bot.tap('KeyI');
+    await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
+    s = await bot.st();
+    const index = s.player.items.findIndex(i => i.id === 'potion:gas');
+    const before = s.time;
+    const convert = page.locator(`#inv-list button[data-k="${index}"][data-m="convert"]`);
+    assert.equal(await convert.isDisabled(), false);
+    await convert.click();
+    await page.waitForFunction(() => window.__sd.state().player.tipped.paralysis === 3);
+    s = await bot.st();
+    assert.ok(s.time >= before + .59);
+    assert.equal(s.player.items.some(i => i.id === 'potion:gas'), false);
+    await pause(); await page.click('#btn-restart'); await playing();
+    s = await bot.st();
+    assert.equal(s.practiceTrial, id);
+    assert.equal(await page.evaluate(() => window.__sd.level().signature), signature);
+    assert.deepEqual(s.player.tipped, { paralysis: 1, chill: 1 });
+    assert.equal(s.player.items.find(i => i.id === 'potion:gas').count, 1);
+    await menu();
+    assert.equal(await page.evaluate(() => localStorage.getItem('superdungeon.run.v1')), saved);
+  }
+  await page.click('#btn-trials');
+  await page.click('#screen-trials .back');
+  await page.click('#btn-continue'); await playing();
+  let s = await bot.st();
+  assert.equal(s.seed, 'TRIAL-SAVE'); assert.equal(s.practice, false); assert.equal(s.practiceTrial, null);
+  assert.deepEqual(s.player.talents, []);
+  assert.equal(s.player.known.includes('potion:gas'), false);
+  assert.equal(s.player.known.includes('potion:frost'), false);
+  await menu();
+  await page.click('#btn-practice'); await playing();
+  s = await bot.st(); assert.equal(s.practiceTrial, null);
+  assert.ok(s.interactables.some(i => i.kind === 'resupply'));
+  assert.deepEqual(errors, []);
+  console.log('PASS three trial entries, paid conversion, fixed reset, Back, campaign save/knowledge isolation, ordinary practice');
+} finally { await browser.close(); }

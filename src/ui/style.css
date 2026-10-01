@@ -1174,3 +1174,9 @@ button.ghost {
 #hunger.starving { color: var(--threat); }
 .hungerbar { height: 4px; margin-top: 4px; background: #393246; border-radius: 2px; overflow: hidden; }
 #hunger-fill { display: block; height: 100%; background: currentColor; width: 0; }
+
+/* The trial picker stays usable on short desktop windows. */
+#screen-trials .panel {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}

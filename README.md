@@ -35,6 +35,8 @@ npm run preview    # http://127.0.0.1:4173/ 預覽打包結果
 
 ## 玩法
 
+新增 **固定遭遇試玩**：主選單選職業後，可分別進入「盾衛與弩手」「撞暈後的空檔」「窄道與繞路」。沿用現有戰鬥，Esc 可看時間／承傷並重置；只在練習中提供明示工具包，不影響正式存檔或隨機樓層。詳見 [入口、觀察項目與驗證限制](docs/encounter-choice-trials.md)。
+
 本次僅移除[刻印祭壇成長層](docs/rune-removal.md)；強化卷軸、裝備等級、XP／Level／Talent 與 Hunger／Food 完整保留。
 
 新增 [Hunger v1：規則、實測與人工檢查](docs/hunger-v1.md)。狀態為 Ready for Human Review；數值是暫定校準，尚未經真人試玩，瀏覽器驗證受執行環境限制。

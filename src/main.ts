@@ -7,6 +7,8 @@ import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
 import { installDevApi } from './dev/devapi';
+import { PRACTICE_TRIALS, trialForSeed } from './gen/practiceTrials';
+import { createTrialWorld } from './sim/practiceTrials';
 import { generateLevel } from './gen/validate';
 import { Input } from './input/input';
 import { GameRenderer } from './render/renderer';
@@ -21,7 +23,7 @@ type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inve
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const SCREENS = ['screen-menu', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
+const SCREENS = ['screen-menu', 'screen-trials', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
 
 export class App {
   readonly canvas = $<HTMLCanvasElement>('game');
@@ -157,6 +159,8 @@ export class App {
     });
     click('btn-seed-random', () => (($('seed-input') as HTMLInputElement).value = randomSeed()));
     click('btn-practice', () => this.startRun('PRACTICE', true));
+    click('btn-trials', () => this.show('screen-trials'));
+    for (const trial of PRACTICE_TRIALS) click(`btn-${trial.id}`, () => this.startRun(trial.seed, true));
     click('btn-settings', () => this.openSettings('menu'));
     click('btn-help', () => this.show('screen-help'));
     for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>('button.back')))
@@ -271,6 +275,8 @@ export class App {
     if (practice) {
       this.run = null;
       this.startWorld(seed, true, fromGesture, () => {
+        const trial = trialForSeed(seed);
+        if (trial) return createTrialWorld(trial.id, this.cls);
         const w = new World(generateLevel(seed, { practice: true }), { cls: this.cls });
         identify(w, 'potion:healing');
         for (let k = 0; k < HEALING_POTION.practiceCount; k++) addItem(w, 'potion:healing');
@@ -302,7 +308,7 @@ export class App {
     this.hud.show(false);
     const info = classInfo(this.cls);
     const floor = this.run?.floor ?? 1;
-    $('loading-seed').textContent = `${info.name} · ${practice ? '練習場' : `種子 ${seed} · 第 ${floor} / ${RUN.floors} 層`}`;
+    $('loading-seed').textContent = `${info.name} · ${practice ? (trialForSeed(seed)?.name ?? '練習場') : `種子 ${seed} · 第 ${floor} / ${RUN.floors} 層`}`;
     this.show('screen-loading');
     window.setTimeout(() => {
       this.renderer.clearWorld();
@@ -337,7 +343,8 @@ export class App {
           this.cls === 'warrior'
             ? '戰士（1 長劍、2 投擲石、右鍵/F 推擊）：敵人的攻擊鎖定、就在眼前時準星下出現「反擊」；敵人貼身時出現「推擊」。'
             : '獵手（1 獵刀、2 獵弓、3 藥劑箭）：麻痺箭讓敵人的時間軸暫停，冰寒箭讓它變慢；再按一次 3 切換。暫停選單有完整職業說明。';
-        const hint = practice
+        const trial = practice ? trialForSeed(seed) : undefined;
+        const hint = trial ? `${trial.name}：${trial.hint} Esc 可重置。` : practice
           ? '練習場：左邊有睡著與巡邏的盾衛，右邊房間有高台弩手與突進者，補給台（E）可補滿物資。'
           : `地城共 ${RUN.floors} 層：前四層探索補給，第五層擊倒守心者後取得沉眠之心。靜止時世界以慢動作流動。`;
         this.hud.hint(`start${this.runCount}`, hint, 6);
@@ -367,7 +374,12 @@ export class App {
     if (this.mode !== 'playing' && this.mode !== 'map') return;
     this.mode = 'paused';
     this.input.clear();
-    $('pause-info').textContent = `${classInfo(this.cls).name} · ${this.practice ? '練習場' : `種子 ${this.seed} · 第 ${this.run?.floor ?? 1} / ${RUN.floors} 層`} ${reason}`;
+    $('pause-info').textContent = `${classInfo(this.cls).name} · ${this.practice ? (trialForSeed(this.seed)?.name ?? '練習場') : `種子 ${this.seed} · 第 ${this.run?.floor ?? 1} / ${RUN.floors} 層`} ${reason}`;
+    if (this.world?.level.practiceTrial) {
+      const w = this.world;
+      const damage = Object.values(w.stats.damageTaken).reduce((sum, n) => sum + n, 0);
+      $('pause-info').textContent += ` · 世界 ${w.time.toFixed(1)} 秒 · 承傷 ${damage} · 射擊 ${w.stats.shots} · 道具 ${w.stats.itemsUsed}`;
+    }
     $('resume-msg').classList.add('hidden');
     $('btn-restart').textContent = this.practice ? '重置練習' : '重新開始（同種子）';
     this.show('screen-pause');
@@ -508,7 +520,7 @@ export class App {
     $('res-title').textContent = win ? '取得沉眠之心！' : '你倒下了';
     const tpl = `${w.level.templateName}${w.level.mirrored ? '（鏡像）' : ''}`;
     const info = classInfo(w.player.cls);
-    $('res-sub').textContent = `${info.name} · ${this.practice ? '練習場' : `種子 ${this.seed} · 地城「${tpl}」`}`;
+    $('res-sub').textContent = `${info.name} · ${this.practice ? (trialForSeed(this.seed)?.name ?? '練習場') : `種子 ${this.seed} · 地城「${tpl}」`}`;
     const s = w.stats;
     const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
     const dmg = Object.entries(s.damageTaken)

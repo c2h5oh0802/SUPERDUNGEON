@@ -1,3 +1,4 @@
+import { trialInfo } from '../gen/practiceTrials';
 import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type TipKind, type Tool } from '../config';
 import { knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
@@ -285,9 +286,13 @@ export class Hud {
       this.hungerEl.title = `飢餓只隨世界時間增加；${HUNGER.hungryAt} 秒提醒，${HUNGER.starvingAt} 秒瀕餓，每 ${HUNGER.damageEvery} 秒損失 1 生命`;
     });
     // 目標
-    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}`, () => {
+    const trial = w.level.practiceTrial ? trialInfo(w.level.practiceTrial) : null;
+    const trialDone = trial && (trial.id === 'cluster-bypass' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
+    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
-      this.objective.textContent = w.level.practice
+      this.objective.textContent = trial
+        ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trial.objective + ' Esc 可重置。'}`
+        : w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
         : w.level.goal === 'descend'
           ? `${f}：找到往下的階梯`

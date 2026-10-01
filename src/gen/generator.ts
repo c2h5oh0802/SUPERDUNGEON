@@ -1,3 +1,4 @@
+import type { PracticeTrialId } from './practiceTrials';
 import { HUNGER, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
@@ -113,6 +114,8 @@ export interface LevelData {
   traps: Array<{ i: number; j: number }>;
   torches: TorchSpawn[];
   practice: boolean;
+  /** Fixed encounter trial; absent from campaign and ordinary practice. */
+  practiceTrial?: PracticeTrialId;
   encounter?: { roomKey: string };
   specialRooms?: SpecialRoom[];
 }
