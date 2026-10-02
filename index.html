@@ -90,6 +90,10 @@
 
     <section id="screen-menu" class="screen">
       <div class="menu-card">
+        <div class="fullscreen-actions touch-instructions">
+          <button data-fullscreen type="button" aria-pressed="false" aria-describedby="menu-fullscreen-note">全螢幕</button>
+          <p id="menu-fullscreen-note" data-fullscreen-note role="status"></p>
+        </div>
         <h1>沉眠之心</h1>
         <p class="sub">SUPERDUNGEON · 第一人稱慢動作地城潛入</p>
         <p class="pitch">潛入一座沉睡的地城，用慢動作讀懂每一個危險；深入四層探索區，在第五層擊倒守心者，取得沉眠之心。</p>
@@ -225,6 +229,10 @@
       <div class="panel">
         <h2>暫停</h2>
         <p class="muted" id="pause-info"></p>
+        <div class="fullscreen-actions touch-instructions">
+          <button data-fullscreen type="button" aria-pressed="false" aria-describedby="pause-fullscreen-note">全螢幕</button>
+          <p id="pause-fullscreen-note" data-fullscreen-note role="status"></p>
+        </div>
         <button id="btn-resume" class="primary">繼續</button>
         <p class="warn hidden" id="resume-msg"></p>
         <button id="btn-restart">重新開始（同種子）</button>
@@ -296,7 +304,7 @@
           <div><span class="touch-intro-mark" aria-hidden="true">◎</span><b>左手移動</b><p>拖曳左下搖桿<br />推得越遠，走得越快</p></div>
           <div><span class="touch-intro-mark" aria-hidden="true">◇</span><b>右手瞄準・攻擊</b><p>滑動畫面轉視角<br />攻擊鍵也能按住拖曳</p></div>
         </div>
-        <p class="touch-intro-note">點攻擊即開始出手；弓準備完成會自動射出，鬆手不會取消。背包、地圖與暫停都會停止世界。</p>
+        <p class="touch-intro-note">開始時會嘗試全螢幕；可在主選單或暫停選單切換。點攻擊即出手，弓會自動射出；鬆手不取消。</p>
         <button id="btn-mobile-continue" class="primary">開始觸控遊玩</button>
         <button id="btn-mobile-keyboard" class="ghost">使用鍵盤滑鼠</button>
       </div>

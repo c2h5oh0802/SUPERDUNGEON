@@ -50,3 +50,25 @@ Browser execution in this cloud is blocked before navigation by Chromium's proce
 - Rotate during an action, switch apps/lock screen, return and resume: the world remains paused and the committed action resumes normally
 - Check warm-device sustained frame pacing; lower pixel-ratio quality or use `?gfx=low` if necessary. Emulation and unit tests do not establish phone performance
 - Desktop mouse lock, fallback right-drag, keyboard movement, bag keyboard focus and existing save/continue still work
+
+
+## 手機全螢幕與網址列（2026-10-02）
+
+- 重新整理後，點「開始觸控遊玩」會在該次點擊內嘗試全螢幕。若直接從主選單開始／繼續／重試，也會在第一次觸控遊玩手勢中嘗試。
+- 主選單上方與暫停選單都有「全螢幕／退出全螢幕」。退出後不會因「繼續」、換層或重置自動再次全螢幕；想再次進入時請點按鈕。
+- 全螢幕包含整個頁面，HUD、背包和選單都保留。退出時清除鍵鼠與觸控按住狀態，正在遊玩的世界會暫停；載入途中退出也會在載入完成後停在暫停畫面。
+- 使用標準 Fullscreen API 與 `navigationUI: 'hide'`。Android Chrome 可嘗試；是否准許隱藏網址列仍由瀏覽器決定。部分內嵌瀏覽器／WebView 不支援，會顯示提示並繼續一般模式，不會卡住遊戲。沒有鎖定螢幕方向、PWA 安裝或原生 App。
+- 非全螢幕也讓畫布、HUD、控制與選單共用可見視窗尺寸；保留 `100vh`／`100dvh` 回退、安全邊界與選單捲動。觸控模式在未縮放時回應 VisualViewport 高度和位移，避免網址列或鍵盤縮小可見區域時裁切。捏合縮放時保留正常瀏覽器縮放。
+
+### 本輪驗證
+
+- 26 個新增測試：支援／不支援／權限封鎖、拒絕／同步錯誤／取消、重複點擊、真實狀態標籤、外部退出、載入途中退出、繼續、背包／地圖／選擇畫面、鍵鼠模式、非手勢重置、旋轉、可見視窗尺寸與安全邊界樣式契約。
+- App 整合測試使用真實世界生成，渲染、音效與輸入適配器是替身；不代表真機測試。既有觸控輸入清除測試繼續執行。
+- `node e2e/fullscreen.mjs` 增加真實瀏覽器按鈕路徑與 667×280 短視窗、圖層對齊、支援／不支援、退出及旋轉檢查。此雲端的預設 Playwright 瀏覽器缺失，系統 Chromium 在開頁前因 process socket EPERM 中止；瀏覽器腳本未通過執行，不能當成 Android 驗收。
+- 真機檢查：Android Chrome 重新整理 → 橫放 → 開始觸控遊玩 → 確認網址列收起、頂部 HUD 可見 → 兩手移動／攻擊 → 瀏覽器返回退出 → 確認暫停且無殘留輸入 → 繼續一般模式 → 暫停選單再次全螢幕。另檢查直立旋轉、瀏海／手勢安全區、短螢幕選單捲動與內嵌瀏覽器回退。
+
+API 與版面依據：
+- [Fullscreen 標準](https://fullscreen.spec.whatwg.org/)：瞬時使用者啟用、非同步結果與外部退出事件
+- [Chrome：動態 viewport 單位](https://web.dev/blog/viewport-units)：`dvh` 配合動態工具列，鍵盤與縮放需分別處理
+- [VisualViewport](https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport)：可見區域尺寸與位移事件
+- [WebKit 安全邊界](https://webkit.org/blog/7929/designing-websites-for-iphone-x/)：`viewport-fit=cover` 與四邊安全區

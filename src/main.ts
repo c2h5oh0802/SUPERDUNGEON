@@ -20,6 +20,8 @@ import { createFloorWorld, newRun, nextFloor, parseRun, serializeRun, type RunSt
 import { Hud } from './ui/hud';
 import { drawMap } from './ui/mapView';
 import { SettingsStore } from './ui/settings';
+import { FullscreenControls } from './ui/fullscreen';
+import { gameViewport } from './ui/viewport';
 
 type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results';
 
@@ -36,6 +38,8 @@ export class App {
   readonly renderer: GameRenderer;
   readonly input: Input;
   readonly touch: TouchInput;
+  readonly fullscreen: FullscreenControls;
+  private pauseAfterLoading = false;
   touchMode = false;
   private rotateBlocked = false;
   private rotateDismissed = false;
@@ -75,6 +79,15 @@ export class App {
     });
     this.input.attach();
     this.touch.attach();
+    this.fullscreen = new FullscreenControls((active) => {
+      this.clearInput();
+      this.resize();
+      if (!active) {
+        if (this.mode === 'loading') this.pauseAfterLoading = true;
+        else this.pause('（已退出全螢幕）');
+      }
+      this.checkOrientation();
+    });
     this.applySettings();
     this.cls = this.settings.value.cls;
     this.fillClassTexts();
@@ -85,6 +98,15 @@ export class App {
       this.resize();
       this.checkOrientation();
     });
+    // Mobile chrome and keyboards can resize only the visual viewport.
+    const visibleResize = () => {
+      if (!this.touchMode) return;
+      this.clearInput();
+      this.resize();
+      this.checkOrientation();
+    };
+    window.visualViewport?.addEventListener('resize', visibleResize);
+    window.visualViewport?.addEventListener('scroll', visibleResize);
     // 遊戲中滑鼠未鎖定（也不是備用模式）時，點畫面就重新要求鎖定（點擊本身是使用者手勢）
     this.canvas.addEventListener('mousedown', () => {
       if (!this.touchMode && this.mode === 'playing' && !this.input.locked && !this.input.fallback) void this.input.requestLock();
@@ -114,6 +136,7 @@ export class App {
     this.settings.update({ touchControls: enabled });
     document.body.classList.toggle('touch-mode', enabled);
     this.hud.setTouchMode(enabled);
+    this.resize();
     if (enabled && this.input.locked) {
       this.intentionalUnlock = true;
       this.input.exitLock();
@@ -262,7 +285,7 @@ export class App {
     });
     click('btn-new', () => this.startRun(randomSeed(), false));
     click('btn-menu', () => this.toMenu());
-    click('btn-mobile-continue', () => { this.setTouchMode(true); this.show('screen-menu'); });
+    click('btn-mobile-continue', () => { this.setTouchMode(true); void this.fullscreen.enter(true); this.show('screen-menu'); });
     click('btn-mobile-keyboard', () => { this.setTouchMode(false); this.show('screen-menu'); });
     click('btn-rotate-menu', () => this.toMenu());
     click('btn-rotate-pause', () => { this.rotateDismissed = true; this.checkOrientation(); });
@@ -322,7 +345,12 @@ export class App {
   }
 
   private resize(): void {
-    this.renderer.resize(window.innerWidth, window.innerHeight);
+    const viewport = gameViewport(window, this.touchMode);
+    for (const key of ['width', 'height', 'left', 'top'] as const) {
+      if (this.touchMode) document.body.style.setProperty(`--view-${key}`, `${viewport[key]}px`);
+      else document.body.style.removeProperty(`--view-${key}`);
+    }
+    this.renderer.resize(viewport.width, viewport.height);
   }
 
   // ---------- 流程 ----------
@@ -386,6 +414,8 @@ export class App {
   private startWorld(seed: string, practice: boolean, fromGesture: boolean, make: () => World): void {
     this.sfx.unlock();
     this.intentionalUnlock = false;
+    this.pauseAfterLoading = false;
+    if (this.touchMode && fromGesture) void this.fullscreen.enter(true);
     // 沒有使用者手勢時（練習場自動重置、走下階梯）不要求鎖定，也不改變目前的操作模式
     const lockP = this.touchMode ? Promise.resolve(true) : fromGesture ? this.input.requestLock() : Promise.resolve(this.input.locked || !this.input.fallback);
     this.seed = seed;
@@ -460,6 +490,10 @@ export class App {
     this.canvas.focus();
     this.updateTouchHud();
     this.checkOrientation();
+    if (this.pauseAfterLoading) {
+      this.pauseAfterLoading = false;
+      this.pause('（已退出全螢幕）');
+    }
   }
 
   pause(reason: string): void {

@@ -521,8 +521,8 @@ export class Hud {
   private updateTargets(w: World, r: GameRenderer): void {
     const p = w.player;
     const seen = new Set<number>();
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const W = this.root.clientWidth;
+    const H = this.root.clientHeight;
     for (const e of w.cue.eye) {
       if (!e.aim) continue;
       const d = dirFromYawPitch(e.aim.yaw, e.aim.pitch);
@@ -561,8 +561,8 @@ export class Hud {
         if (w.canSee(eye, head)) this.visible.add(e.id);
       }
     }
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const W = this.root.clientWidth;
+    const H = this.root.clientHeight;
     for (const e of w.enemies) {
       let el = this.iconEls.get(e.id);
       let cls = '';
