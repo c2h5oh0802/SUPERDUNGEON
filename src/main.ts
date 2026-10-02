@@ -330,6 +330,12 @@ export class App {
         else this.show(this.playtestActive ? 'screen-playtest' : 'screen-menu');
       });
     click('btn-resume', () => this.resume());
+    click('btn-relock', () => {
+      if (this.mode !== 'playing' || this.touchMode) return;
+      this.clearInput();
+      // Keep this request inside the actual button gesture, even in fallback.
+      void this.input.requestLock();
+    });
     click('btn-restart', () => this.retryWorld());
     click('btn-pause-settings', () => this.openSettings('pause'));
     click('btn-pause-class', () => { if (!this.playtestActive) this.openClassScreen(); });
@@ -523,11 +529,13 @@ export class App {
     this.intentionalUnlock = false;
     this.pauseAfterLoading = false;
     if (this.touchMode && fromGesture) void this.fullscreen.enter(true);
+    // Set the destination before requesting: a synchronous lock event must not
+    // be mistaken for a late request on the old result/menu screen.
+    this.mode = 'loading';
     // 沒有使用者手勢時（練習場自動重置、走下階梯）不要求鎖定，也不改變目前的操作模式
     const lockP = this.touchMode ? Promise.resolve(true) : fromGesture ? this.input.requestLock() : Promise.resolve(this.input.locked || !this.input.fallback);
     this.seed = seed;
     this.practice = practice;
-    this.mode = 'loading';
     this.hud.show(false);
     const info = classInfo(this.cls);
     const floor = this.run?.floor ?? 1;
@@ -596,7 +604,7 @@ export class App {
 
   private flashLockFail(): void {
     const el = $('lock-fail');
-    el.textContent = '無法鎖定滑鼠（瀏覽器或內嵌環境限制）。已切換為備用操作：按住右鍵拖曳或用方向鍵轉視角，左鍵攻擊。';
+    el.textContent = '滑鼠暫未鎖定。可點「重新鎖定滑鼠」再試；也可按住右鍵拖曳或用方向鍵轉視角，左鍵攻擊。';
     el.classList.remove('hidden');
     window.setTimeout(() => el.classList.add('hidden'), 6000);
   }
@@ -648,18 +656,14 @@ export class App {
 
   private resume(): void {
     if (this.mode !== 'paused' || !this.world) return;
-    if (this.touchMode || this.input.fallback || this.input.locked) {
+    if (this.touchMode) {
       this.enterPlaying();
       return;
     }
     void this.input.requestLock().then((ok) => {
       if (this.mode !== 'paused') return;
       if (ok) this.enterPlaying();
-      else if (this.input.lockEverWorked) {
-        const m = $('resume-msg');
-        m.textContent = '瀏覽器剛解除滑鼠鎖定，需要約一秒才能再次鎖定，請再按一次「繼續」。';
-        m.classList.remove('hidden');
-      } else {
+      else {
         this.input.fallback = true;
         this.hud.setLockBanner(true);
         this.flashLockFail();
@@ -704,7 +708,11 @@ export class App {
   }
 
   private onLockChange(locked: boolean): void {
+    this.clearInput();
     if (locked) {
+      this.intentionalUnlock = false;
+      this.hud.setLockBanner(false);
+      $('lock-fail').classList.add('hidden');
       // A cancelled asynchronous start must not capture the menu/picker later.
       if (this.mode === 'menu' || this.mode === 'results') {
         this.intentionalUnlock = true;
@@ -990,10 +998,25 @@ export class App {
   private refreshPlaytestCue(): void {
     if (this.playtestStage === 'core') return;
     const state = this.calibration.state;
-    const controls = this.touchMode ? '左側搖桿移動，右側滑動轉視角；攻擊鍵出手。' : 'WASD 移動，滑鼠轉視角，左鍵攻擊。';
-    $('playtest-cue').textContent = state.restartRecommended
-      ? `這次尚未完成兩次循環。${this.touchMode ? '按暫停' : '按 Esc'}，再選「重新試一次」。`
-      : !state.moved || !state.looked ? controls : state.cue;
+    const moveIn = this.touchMode ? '搖桿往前' : '按 W 往前';
+    const retreat = this.touchMode ? '搖桿往後' : '按住 S 後退';
+    const attack = this.touchMode ? '點一下攻擊鍵' : '點一下滑鼠左鍵';
+    const guard = this.world?.enemies.find(e => e.kind === 'guard');
+    const closeEnough = guard && this.world && Math.hypot(guard.x - this.world.player.x, guard.z - this.world.player.z)
+      <= WEAPONS[this.world.player.weapon.id].reach + guard.radius;
+    const action = state.restartRecommended
+      ? `${this.touchMode ? '按暫停' : '按 Esc'}，再選「重新試一次」。`
+      : state.phase === 'move-look' ? state.cue
+      : state.phase === 'approach' ? `${moveIn}小步靠近盾衛；先別攻擊。`
+      : state.phase === 'dodge' ? `${retreat}！退到整劍揮完，先別攻擊。`
+      : state.phase === 'resolve' ? state.cue.replace('繼續往後退', `繼續${retreat}`).replace('繼續退開', `繼續${retreat}`)
+      : state.phase === 'hit-recovery' ? this.world?.player.action
+        ? '已經出手，先放開攻擊；保持面向盾衛，等這一劍命中。'
+        : closeEnough
+        ? `現在攻擊：${attack}！然後放開攻擊、往後退開。`
+        : `躲開了！${moveIn}靠近；看到「現在攻擊」再出手。`
+      : state.cue;
+    $('playtest-cue').textContent = `練習 ${state.successes}/2：停下觀察 → 避刀 → 靠近命中\n${state.feedback ? `${state.feedback}\n` : ''}${action}`;
   }
 
   private observePlaytest(w: World, input: FrameInput, events: ReturnType<World['drainEvents']>, before: ReturnType<CalibrationObserver['beforeFrame']> | null): void {

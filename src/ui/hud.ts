@@ -325,7 +325,7 @@ export class Hud {
     this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = controlText(w.level.publicPlaytest
-        ? (w.level.publicPlaytest === 'core' ? '核心遭遇：清除兩名敵人' : '先試著讀懂一次攻防')
+        ? (w.level.publicPlaytest === 'core' ? '核心遭遇：清除兩名敵人' : '練習兩次：停下觀察 → 避刀 → 命中')
         : trial
         ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
         : w.level.practice

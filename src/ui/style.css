@@ -1624,3 +1624,6 @@ html:fullscreen { background: var(--bg); }
 #playtest-feedback select { display: block; width: 100%; min-height: 44px; color: var(--ink); background: var(--bg); border: 1px solid #7778; border-radius: 6px; font: inherit; padding: 8px; }
 #btn-playtest-feedback { margin-top: 12px; }
 @media (max-height: 500px) { .touch-mode #playtest-cue { bottom: 74px; width: min(390px, 46vw); font-size: 12px; padding: 6px 10px; } }
+
+#btn-relock { pointer-events: auto; margin-left: 6px; padding: 4px 10px; font-size: 13px; }
+#playtest-cue { white-space: pre-line; }

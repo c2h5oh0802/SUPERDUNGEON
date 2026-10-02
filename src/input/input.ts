@@ -171,14 +171,12 @@ export class Input {
       }
       if (this.pendingLock) {
         this.pendingLock(now);
-        this.pendingLock = null;
       }
       this.h.onLockChange(now);
     });
     on(document, 'pointerlockerror', () => {
       if (this.pendingLock) {
         this.pendingLock(false);
-        this.pendingLock = null;
       }
       this.h.onLockError();
     });
@@ -193,12 +191,17 @@ export class Input {
   /** 需在使用者手勢中呼叫。回傳是否成功鎖定。 */
   requestLock(): Promise<boolean> {
     if (this.h.touchMode?.()) return Promise.resolve(false);
+    // The document is authoritative. exitPointerLock may precede its change
+    // event, so a cached `locked` flag can incorrectly skip a restart request.
+    this.locked = document.pointerLockElement === this.canvas;
     if (this.locked) return Promise.resolve(true);
+    this.pendingLock?.(false);
     return new Promise((resolve) => {
       let done = false;
       const finish = (ok: boolean) => {
         if (done) return;
         done = true;
+        if (this.pendingLock === finish) this.pendingLock = null;
         resolve(ok);
       };
       this.pendingLock = finish;

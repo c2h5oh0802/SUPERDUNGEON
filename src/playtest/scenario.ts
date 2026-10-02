@@ -22,7 +22,7 @@ export function createCalibrationLevel(): LevelData {
   return {
     seed: 'REMOTE-VALIDATION-V1-CALIBRATION', floor: 1, goal: 'heart',
     templateId: 'practice', templateName: '操作校準', mirrored: false, attempt: 0,
-    grid, spawn: { x: 7, z: 10.5, yaw: 0 },
+    grid, spawn: { x: 7, z: 9.5, yaw: 0 },
     rooms: [{ key: 'C', role: 'practice', tier: 0, optional: false,
       layoutId: 'public-calibration', name: '操作校準', x0: 1, z0: 1, w: 12, h: 13 }],
     enemies: [{ kind: 'guard', x: 7, z: 6.5, y: 0, yaw: Math.PI,

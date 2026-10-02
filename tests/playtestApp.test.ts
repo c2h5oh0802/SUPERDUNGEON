@@ -184,15 +184,15 @@ function playCalibration(h: Harness, stopAfterFirst = false) {
     const yaw = yawFromDir(enemy.x - p.x, enemy.z - p.z) + (f < 12 ? .2 : 0);
     const distance = Math.hypot(enemy.x - p.x, enemy.z - p.z);
     const input: Partial<RawFrame> = { lookDX: -angleDiff(yaw, p.yaw) / .0022 };
-    if (enemy.phase === 'none') input.moveZ = distance > 2.5 ? 1 : 0;
+    if (enemy.phase === 'none') input.moveZ = distance > 3.2 ? 1 : 0;
     if ((enemy.phase === 'windup' && enemy.locked) || enemy.phase === 'active') input.moveZ = -1;
     if (enemy.phase === 'recovery' && !p.action) {
       input.moveZ = 1;
-      if (distance <= 2.75 && !firedThisCycle) {
+      if (distance <= 2.45 && !firedThisCycle) {
         input.fire = true; input.firePressed = true; firedThisCycle = true;
       }
     }
-    if (p.action?.kind === 'melee') input.moveZ = p.action.fired ? (distance < 2.5 ? -1 : 0) : (distance > 2.1 ? 1 : 0);
+    if (p.action?.kind === 'melee') input.moveZ = p.action.hitSet.has(enemy.id) ? (distance < 2.6 ? -1 : 0) : (distance > 2.1 ? 1 : 0);
     h.frame(input);
     if (eventCount('recovery_hit_equivalent') === initialHits + 1) independentCues.add(h.node('playtest-cue').textContent);
     if (stopAfterFirst && eventCount('recovery_hit_equivalent') > initialHits) break;
@@ -257,7 +257,8 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
       expect(eventCount(name), name).toBe(2);
     for (const name of ['first_move', 'first_look', 'core_loop_learned', 'core_start'] as const)
       expect(eventCount(name), name).toBe(1);
-    expect([...independentCues]).toEqual(['再獨立完成一次。這次不提供解法提示。']);
+    expect([...independentCues].every(cue => cue.includes('練習 1/2') && cue.includes('再獨立完成一次'))).toBe(true);
+    expect([...independentCues].some(cue => cue.includes('現在攻擊'))).toBe(false);
     expect(calibrationWorld.player.hp).toBe(calibrationWorld.player.maxHp);
     expect(calibrationWorld.enemies[0]!.alive).toBe(false);
     expect(h.world().carry()).toEqual(createPublicPlaytestWorld('core').carry());
@@ -276,7 +277,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(h.node('playtest-cue').textContent).toContain('再獨立完成一次');
     h.frame({ escape: true }); h.node('btn-restart').click(); await tickLoad();
     expect(h.world()).not.toBe(calibrationWorld);
-    expect(h.node('playtest-cue').textContent).toContain('WASD');
+    expect(h.node('playtest-cue').textContent).toContain('先放開按鍵');
     expect(h.world().carry()).toEqual(createPublicPlaytestWorld('calibration').carry());
     await completeCalibration(h);
     expect(eventCount('recovery_hit_equivalent')).toBe(3);

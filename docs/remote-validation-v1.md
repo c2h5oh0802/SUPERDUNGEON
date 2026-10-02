@@ -15,7 +15,7 @@ Status: **Ready for Human Review**. This is an implementation and deterministic 
 
 Landing → GuidedCalibration → two evidenced cycles → CoreEncounterWarrior → completion/death results → optional feedback and explicit retry.
 
-Calibration uses a lit, open authored arena with one **ordinary shield guard**. Its native 8 HP permits two ordinary 4-damage sword hits. The first cycle has context-sensitive prompts; after a successful cycle, the second asks for another independent cycle without a solution hint. If the player defeats the guard prematurely, the game recommends an explicit restart through Pause. It does not respawn, refill health, mark learning, or silently advance. Player death retains results.
+Calibration uses a lit, open authored arena with one **ordinary shield guard**. Its native 8 HP permits two ordinary 4-damage sword hits. The first cycle has context-sensitive prompts; after a successful cycle, the second retains the goal and progress without step-by-step timing hints. If the player defeats the guard prematurely, the game recommends an explicit restart through Pause. It does not respawn, refill health, mark learning, or silently advance. Player death retains results.
 
 CoreEncounterWarrior uses the existing `shield-crossfire` level, including its cover, two approaches, guard, perched archer and safe dog-leg spawn. It is built directly through `World` with the normal Warrior starting loadout, avoiding the fixed trial's bonus consumables. This is a compact position/priority problem after a single-threat calibration. No enemy, weapon, class or combat-balance values were changed. Core completion means both existing enemies are defeated.
 
@@ -27,10 +27,10 @@ Results show only outcome, active real play time, damage and kills. Time uses th
 
 `CalibrationObserver` snapshots the real World before each frame and observes actual post-frame state and `GameEvent`s. It requires all of these, twice on distinct guard attack cycles:
 
-1. At least 0.3 m of actual player displacement from movement input and 0.12 radians of cumulative camera change
+1. Ordinary movement/look are measured for diagnostics only. Facing the centered guard already counts as looking; there is no extra camera-wiggle or approach-distance prerequisite. Actual movement after commitment remains required below.
 2. Guard windup within the player's camera frustum and unobstructed world line of sight (shared `observesPoint` geometry)
 3. At least 0.3 continuous real seconds stopped, with no movement/wait/action, while the visible threat advances at the actual idle slow-time ratio
-4. The guard's real `locked` state while observed; guard combat does not emit an `enemyLock` event, so that state is the evidence
+4. The guard's real `locked` state while observed and at its actual false-to-true lock transition and within native sword reach plus forward step; starting outside that threat envelope does not count as evasion
 5. At least 0.5 m actual movement after lock
 6. The full attack active phase reaches recovery, with no player damage, block, hit, counter, push, stun, or interruption invalidating the chain
 7. A fresh non-counter melee action begins during recovery and produces positive `hitEnemy` damage on that guard within the same recovery window
@@ -121,7 +121,7 @@ The installed npm artifact was inspected in addition to the docs to resolve the 
 
 ## Verification and limits
 
-Final cloud checks: **1,196 / 1,196 tests across 62 files**, including 22 new App, 10 calibration/core and 36 adapter tests. Typecheck, full lint, production build and whitespace checks all passed. Commands: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, and `git diff --check`.
+Initial release cloud checks: **1,196 / 1,196 tests across 62 files**, including 22 new App, 10 calibration/core and 36 adapter tests. Typecheck, full lint, production build and whitespace checks all passed. Commands: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`, and `git diff --check`.
 
 A state-informed bot completed the unchanged core with native gear in 4.967 active real seconds / 4.899 world seconds, taking 2 damage and defeating both enemies with three melee hits. This establishes reachability, not a human duration target.
 
@@ -132,7 +132,7 @@ Cloud-browser local preview was attempted: Vite runs at `http://127.0.0.1:5173/`
 ## Human review route
 
 1. Keep an existing ordinary adventure save, open `?playtest=1&src=direct` in a new tab, and verify the single start action and correct analytics notice
-2. Move and look; complete the guided stop/read/dodge/recovery cycle, then independently repeat; confirm automatic transition into the two-enemy core
+2. Start facing the guard at a safe stand-off. Follow the explicit stop/read, S backward through the full sword swing, W approach, then left-click-once cue; no extra camera motion is required. Independently repeat; confirm automatic transition into the two-enemy core
 3. Try holding attack or killing the calibration guard early; confirm no false learned event and an explicit restart path
 4. In the core, decide position and target priority without ordered solution hints; test both death and clear
 5. Check minimal results, optional feedback, explicit Retry, pause/resume/settings, focus/rotation interruption and mobile landscape layout
@@ -140,3 +140,15 @@ Cloud-browser local preview was attempted: Vite runs at `http://127.0.0.1:5173/`
 7. Only with approved provider configuration: use a separate test analytics game, inspect design/progression funnels and stage suffixes, source/device/build dimensions and optional feedback; also block provider traffic and verify the full game remains playable
 
 Do not mark this version Accepted until real-player observation establishes the target duration, readable cues, self-directed core behavior and enjoyment.
+
+## Restart and guidance fix (2026-10-02)
+
+- Root cause: a single pointer-lock failure on restart set fallback permanently; Resume skipped future lock requests. The result/menu mode could also reject a synchronously delivered successful lock, and the cached lock flag could outlive the document lock.
+- Start/retry changes mode before the gesture-owned request; Input checks document truth, settles stale pending requests, and Resume retries even from fallback. A clickable “重新鎖定滑鼠” control offers recovery without restarting. Explicit button clicks do not queue combat input. Lock changes/blur clear held input. Restricted environments retain right-drag/arrow fallback.
+- Safe front-facing starter: player z=9.5, guard z=6.5. The first instruction is to release controls and observe the approaching guard. The previous “walk until he raises his sword” instruction could carry the player too close for a full backward evade.
+- Tutorial shows 0/2 and 1/2 progress, one current action with desktop/touch controls, continuous backward retreat until the whole active swing ends, proximity-gated return-hit instructions, and immediate success/failure feedback. Failed cycles retry on the next attack without resetting earned progress. Only an actual death/early defeated guard needs a full retry.
+- No extra camera turn or pre-combat walk is required. A previously credited melee action's remaining active tail does not invalidate the next cycle by itself; new/held attacks, pre-recovery damage, countering, blocking, hurt, off-camera evidence and non-threatening distant dodges remain rejected. Neither backward movement nor sideways movement is mandatory in the evidence rule.
+- Regression coverage includes real App + real Input over fake browser pointer-lock events (success, rejection, error, timeout, synchronous delivery, retries, focus and cached-state races). Seven of nine tests fail against the pre-fix source and pass with the fix. Actual-World zero-camera backward-evade/return-hit runs at 30/60/120 fps exercise the natural starter. These are deterministic state-informed tests, not human usability or enjoyment validation.
+- Live cloud-browser retry still cannot create WebGL (`GL_RENDERER = Disabled`) on the pre-fix published baseline. No browser restriction was bypassed and no user computer was used.
+
+Fix validation: **1,214 / 1,214 tests across 64 files**, typecheck, full lint, production build and whitespace check passed. The final added edge cases retain a valid late-recovery action tail without granting missing next-cycle observation, and reject retreat already outside threat at commitment even if the player re-enters during locked windup. Combat config/simulation and telemetry code/package settings are unchanged.

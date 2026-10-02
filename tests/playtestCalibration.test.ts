@@ -38,15 +38,15 @@ function performCycles(d: ReturnType<typeof driver>, options: { dodge?: boolean;
     if (options.lookAway) yaw += Math.PI;
     const input: Partial<FrameInput> = { yaw };
     const distance = Math.hypot(e.x - p.x, e.z - p.z);
-    if (e.phase === 'none') input.moveZ = distance > 2.5 ? (options.lookAway ? -1 : 1) : 0;
+    if (e.phase === 'none') input.moveZ = distance > 3.2 ? (options.lookAway ? -1 : 1) : 0;
     if ((e.phase === 'windup' && e.locked) || e.phase === 'active') input.moveZ = options.dodge === false ? 0 : (options.lookAway ? 1 : -1);
     if (e.phase === 'recovery' && !p.action) {
       input.moveZ = options.lookAway ? -1 : 1;
-      if (distance <= 2.75 && attackCycle !== d.observer.state.cycle) {
+      if (distance <= 2.45 && attackCycle !== d.observer.state.cycle) {
         input.fire = true; input.firePressed = options.freshPress !== false; attackCycle = d.observer.state.cycle;
       }
     }
-    if (p.action?.kind === 'melee') input.moveZ = p.action.fired ? (distance < 2.5 ? -1 : 0) : (distance > 2.1 ? 1 : 0);
+    if (p.action?.kind === 'melee') input.moveZ = p.action.hitSet.has(e.id) ? (distance < 2.6 ? -1 : 0) : (distance > 2.1 ? 1 : 0);
     if (options.holdAttack) { input.fire = true; input.firePressed = f === 0; }
     d.frame(input);
     const phase = `${e.phase}/${d.observer.state.phase}/${d.observer.state.successes}`;
@@ -151,7 +151,7 @@ describe('calibration evidence from real World frames', () => {
     expect(d.world.player.hunger).toBe(0);
     expect(d.world.player.xp).toBe(0);
     expect(d.world.pickups).toEqual([]);
-    expect([...d.independentCues]).toEqual(['再獨立完成一次。這次不提供解法提示。']);
+    expect([...d.independentCues]).toEqual(['再獨立完成一次：停下觀察 → 避開整劍 → 收招時命中。']);
     expect(d.evidence.filter(e => e.type === 'recovery_hit').map(e => e.cycle)).toEqual([1, 2]);
     expect(d.evidence.filter(e => e.type === 'stop_slow_seen')).toHaveLength(2);
     expect(d.evidence.filter(e => e.type === 'dodge_seen')).toHaveLength(2);
