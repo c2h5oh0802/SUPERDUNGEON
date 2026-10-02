@@ -2,7 +2,8 @@ import './ui/style.css';
 import { Sfx } from './audio/sfx';
 import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
-import { focusInventory, renderInventory } from './ui/inventory';
+import { focusChoice, focusInventory, renderIdentifyChoice, renderInventory } from './ui/inventory';
+import { canPresentChoice } from './ui/inventoryPresentation';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -70,7 +71,7 @@ export class App {
       onLockError: () => {},
       onFocusLost: () => this.onFocusLost(),
       capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'choice' || this.mode === 'inventory',
-      inventoryOpen: () => this.mode === 'inventory',
+      inventoryOpen: () => this.mode === 'inventory' || this.mode === 'choice',
       playing: () => this.mode === 'playing',
       touchMode: () => this.touchMode,
     });
@@ -566,37 +567,57 @@ export class App {
     if (this.mode === 'playing' || this.mode === 'map') this.pause('（視窗失去焦點）');
   }
 
-  /** 天賦或強化的選擇畫面（世界暫停）。 */
+  /** 天賦、強化或鑑定的選擇畫面（世界暫停）。 */
   private openChoice(): void {
     const w = this.world!;
     const c = w.pendingChoice;
-    if (!c) return;
-    const cards =
-      c.kind === 'talent'
+    if (!c || !canPresentChoice(w, c)) return;
+    // A queued choice may replace this one immediately. Stale clicks never choose its target.
+    const choose = (index: number) => { if (canPresentChoice(w, c)) this.choose(index); };
+    const cancel = c.kind === 'identify' ? () => { if (canPresentChoice(w, c)) this.cancelIdentify(); } : undefined;
+    if (c.kind === 'identify') {
+      $('choice-title').textContent = '選一件未知物品鑑定';
+      $('choice-sub').textContent = '只選一疊，物品不會消耗。本局同種類一起變已知，其他種類不受影響。世界與飢餓暫停。按數字鍵或點選；取消／Esc 保留卷軸。';
+      renderIdentifyChoice(w, c.options, choose, cancel!);
+    } else {
+      const cards = c.kind === 'talent'
         ? c.options.map((t) => ({ name: TALENTS[t].name, text: TALENTS[t].text }))
         : c.options.map((t) => upgradeLabel(w, t));
-    $('choice-title').textContent = c.kind === 'talent' ? `升到第 ${w.player.level} 級：選一個天賦` : '強化卷軸：選一件裝備強化';
-    $('choice-sub').textContent = c.kind === 'talent' ? '天賦本局有效。按數字鍵或直接點選。' : '只列出仍有實際收益的裝備；封頂後不再消耗卷軸。強化跟著裝備保留並跨層。按數字鍵或直接點選。';
-    const box = $('choice-cards');
-    box.innerHTML = cards
-      .map((_, k) => `<button class="choice-card" data-idx="${k}"><kbd>${k + 1}</kbd><h3></h3><p></p></button>`)
-      .join('');
-    const btns = Array.from(box.querySelectorAll<HTMLButtonElement>('.choice-card'));
-    btns.forEach((b, k) => {
-      b.querySelector('h3')!.textContent = cards[k]!.name;
-      b.querySelector('p')!.textContent = cards[k]!.text;
-      b.addEventListener('click', () => this.choose(k));
-    });
+      $('choice-title').textContent = c.kind === 'talent' ? `升到第 ${w.player.level} 級：選一個天賦` : '強化卷軸：選一件裝備強化';
+      $('choice-sub').textContent = c.kind === 'talent' ? '天賦本局有效。按數字鍵或直接點選。' : '只列出仍有實際收益的裝備；封頂後不再消耗卷軸。強化跟著裝備保留並跨層。按數字鍵或直接點選。';
+      const box = $('choice-cards');
+      box.innerHTML = cards
+        .map((_, k) => `<button class="choice-card" data-idx="${k}"><kbd>${k + 1}</kbd><h3></h3><p></p></button>`)
+        .join('');
+      const btns = Array.from(box.querySelectorAll<HTMLButtonElement>('.choice-card'));
+      btns.forEach((b, k) => {
+        b.querySelector('h3')!.textContent = cards[k]!.name;
+        b.querySelector('p')!.textContent = cards[k]!.text;
+        b.addEventListener('click', () => choose(k));
+      });
+    }
     this.releaseForUi();
     this.mode = 'choice';
     this.show('screen-choice');
+    focusChoice(c.options.length, choose, cancel);
     this.sfx.ui('open');
+  }
+
+  private cancelIdentify(): void {
+    const w = this.world;
+    if (this.mode !== 'choice' || !w || w.pendingChoice?.kind !== 'identify') return;
+    w.cancelIdentifyChoice();
+    const events = w.drainEvents();
+    this.sfx.onEvents(events);
+    this.hud.onEvents(events, w);
+    if (w.pendingChoice) this.openChoice();
+    else this.backToPlay();
   }
 
   private choose(idx: number): void {
     if (this.mode !== 'choice' || !this.world) return;
     const w = this.world;
-    if (!w.pendingChoice || idx >= w.pendingChoice.options.length) return;
+    if (!w.pendingChoice || !Number.isInteger(idx) || idx < 0 || idx >= w.pendingChoice.options.length) return;
     w.resolveChoice(idx);
     const ev = w.drainEvents();
     this.sfx.onEvents(ev);
@@ -737,7 +758,7 @@ export class App {
         this.sfx.onEvents(events);
         this.hud.onEvents(events, w);
         this.devLog(events);
-        if (w.pendingChoice !== null) this.openChoice();
+        if (canPresentChoice(w)) this.openChoice();
         if (w.outcome !== 'none') {
           this.outcomeT += realDt;
           const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
@@ -751,7 +772,8 @@ export class App {
     } else if (w && this.mode === 'map') {
       if (raw.map || raw.escape) this.backToPlay();
     } else if (w && this.mode === 'choice') {
-      if (raw.digit) this.choose(raw.digit - 1);
+      if (raw.escape && w.pendingChoice?.kind === 'identify') this.cancelIdentify();
+      else if (raw.digit) this.choose(raw.digit - 1);
     } else if (w && this.mode === 'inventory') {
       if (raw.inventory || raw.escape) this.closeInventory();
     }

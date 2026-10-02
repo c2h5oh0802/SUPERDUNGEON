@@ -1,11 +1,11 @@
 import { ACTIONS, ARMORS, HUNGER, ITEM_FX, PLAYER, TALENT_FX, TIP_NAMES, WEAPONS, type ArmorId, type WeaponId } from '../config';
-import { categoryOf, conversionKind, conversionReason, isKnown, itemColor, itemDesc, itemName, lightstep, upgradeTargets } from '../sim/items';
+import { categoryOf, conversionKind, conversionReason, identifyTargets, isKnown, itemColor, itemDesc, itemName, lightstep, upgradeTargets } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { maxStones, maxTipped } from '../sim/progress';
 import type { InvItem, PendingUse } from '../sim/types';
 import type { World } from '../sim/world';
 import { armorPresentation, bowPresentation, compareArmors, compareWeapons, weaponPresentation, type EquipmentPresentation } from './equipment';
-import { inventoryArtUrl, itemAppearance, itemArt, itemCategoryLabel, type InventoryArt } from './inventoryPresentation';
+import { identifyChoiceMarkup, inventoryArtUrl, itemAppearance, itemArt, itemCategoryLabel, type InventoryArt } from './inventoryPresentation';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -23,10 +23,13 @@ function itemActions(w: World, it: InvItem, k: number): string {
   const p = w.player, c = categoryOf(it.id);
   const upgradeBlocked = it.id === 'scroll:upgrade' && upgradeTargets(w).length === 0;
   const upgradeReason = '目前沒有能提升效果的已裝備目標，卷軸已保留。可先換上仍能強化的裝備。';
+  const identifyBlocked = it.id === 'scroll:identify' && identifyTargets(w).length === 0;
+  const identifyReason = '背包沒有未知的藥水或卷軸可鑑定；鑑定卷軸已保留。';
+  const readReason = upgradeBlocked ? upgradeReason : identifyBlocked ? identifyReason : '';
   let acts = c === 'potion'
     ? `<button data-k="${k}" data-m="use"${it.id === 'potion:healing' && isKnown(w, it.id) && p.hp >= p.maxHp ? ' disabled' : ''}>喝</button><button data-k="${k}" data-m="throw">丟出</button>`
     : c === 'food' ? `<button data-k="${k}" data-m="use"${p.hunger <= 0 ? ' disabled' : ''}>${p.hunger <= 0 ? '已飽食' : '吃'}</button>`
-      : c === 'scroll' ? `<button data-k="${k}" data-m="use"${upgradeBlocked ? ` disabled title="${upgradeReason}"` : ''}>讀</button>`
+      : c === 'scroll' ? `<button data-k="${k}" data-m="use"${readReason ? ` disabled title="${readReason}"` : ''}>讀</button>`
         : `<button data-k="${k}" data-m="use" aria-label="裝備${esc(itemName(w, it.id, it.level))}">裝備</button>`;
   const kind = conversionKind(w, it.id);
   let conversion = '';
@@ -37,9 +40,61 @@ function itemActions(w: World, it: InvItem, k: number): string {
     conversion = `<p class="inv-recipe">${esc(`藥劑師：開始時消耗 1 瓶${itemName(w, it.id)}，花 ${seconds} 世界秒，完成後獲得 ${yieldCount} 支${TIP_NAMES[kind]}。目前 ${p.tipped[kind]} / ${maxTipped(p)}；需要 ${yieldCount} 格空間。${reason ?? ''}`)}</p>`;
   }
   const drop = `<button data-k="${k}" data-m="drop" aria-label="放下${esc(itemName(w, it.id, it.level))} 1 個">${it.count > 1 ? '放下 1 個' : '放下'}</button>${it.count > 1 ? `<button data-k="${k}" data-m="dropAll">全部放下（${it.count}）</button>` : ''}`;
-  const blocked = upgradeBlocked ? `<p class="equipment-blocked">${upgradeReason}</p>`
+  const blocked = readReason ? `<p class="equipment-blocked">${readReason}</p>`
     : it.id === 'potion:healing' && isKnown(w, it.id) && p.hp >= p.maxHp ? '<p class="equipment-blocked">生命已滿，治療藥水已保留。</p>' : '';
   return `${conversion}${blocked}<div class="acts inv-use-actions">${acts}</div><div class="inv-drop-area"><span>完整留在腳邊</span><div class="acts inv-drop-actions">${drop}</div></div>`;
+}
+
+/** No item IDs or effect descriptions are embedded in choice controls. */
+export function renderIdentifyChoice(w: World, options: readonly InvItem[], onChoose: (index: number) => void, onCancel: () => void): void {
+  const box = $('choice-cards')!;
+  box.innerHTML = identifyChoiceMarkup(w, options);
+  let dispatched = false;
+  for (const button of Array.from(box.querySelectorAll<HTMLButtonElement>('.choice-card'))) {
+    button.addEventListener('click', () => {
+      if (dispatched) return;
+      dispatched = true;
+      onChoose(Number(button.dataset.idx));
+    });
+  }
+  $('btn-identify-cancel')!.addEventListener('click', () => {
+    if (dispatched) return;
+    dispatched = true;
+    onCancel();
+  });
+}
+
+/** Choices keep native Tab/Enter/Space and never leave held gameplay input behind. */
+export function focusChoice(optionCount: number, onChoose: (index: number) => void, onCancel?: () => void): void {
+  const screen = $('screen-choice');
+  if (!screen) return;
+  screen.setAttribute('role', 'dialog');
+  screen.setAttribute('aria-modal', 'true');
+  screen.setAttribute('aria-labelledby', 'choice-title');
+  screen.setAttribute('aria-describedby', 'choice-sub');
+  (screen.querySelector<HTMLElement>('.choice-card') ?? $('btn-identify-cancel'))?.focus();
+  screen.onkeyup = (e) => e.stopPropagation();
+  screen.onkeydown = (e) => {
+    e.stopPropagation();
+    const digit = /^(?:Digit|Numpad)([0-9])$/.exec(e.code)?.[1];
+    if (digit !== undefined) {
+      e.preventDefault();
+      const index = (Number(digit) || 10) - 1;
+      if (!e.repeat && index < optionCount) onChoose(index);
+    } else if (e.code === 'Escape') {
+      e.preventDefault();
+      if (!e.repeat) onCancel?.();
+    } else if (e.repeat && (e.code === 'Enter' || e.code === 'Space')) {
+      // Holding an activation key may span two queued choices with fresh buttons.
+      e.preventDefault();
+    } else if (e.code === 'Tab') {
+      const targets = Array.from(screen.querySelectorAll<HTMLElement>('button:not(:disabled)')).filter((el) => el.getClientRects().length > 0);
+      const first = targets[0], last = targets[targets.length - 1];
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
 }
 
 function itemDescription(w: World, it: InvItem): string {

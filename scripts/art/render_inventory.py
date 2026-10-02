@@ -293,13 +293,26 @@ def scroll(name,theme):
             a=pi/2+i*pi/8;r=.35 if i%2==0 else .14;pts.append((r*cos(a),yy,r*sin(a)))
         curve('Eight point celestial ornament',pts,.022,INK,True)
         for x,z in [(-.4,.4),(.4,.4),(-.4,-.4),(.4,-.4)]:uv('Celestial dot',(x,yy,z),(.028,.015,.028),INK,10,6)
+    elif theme=='identify':
+        # Always-known Identify has its own silver eye/lens seal, never an unknown appearance.
+        silver=mat('Brushed silver identify seal','#c9d9df',.84,.24,.09,52)
+        enamel=mat('Deep blue lens enamel','#31535e',.32,.21)
+        o=cyl('Silver identify medallion',(0,-.086,.04),.35,.075,silver,48);o.rotation_euler[0]=pi/2
+        torus('Raised silver lens rim',(0,-.14,.04),.295,.025,EDGE,rot=(pi/2,0,0))
+        o=cyl('Dark lens inset',(0,-.136,.04),.255,.026,enamel,48);o.rotation_euler[0]=pi/2
+        for side in [-1,1]:
+            curve('Silver eye outline',[(x,-.165,.04+side*.11*sin((x+.23)/.46*pi)) for x in [-.23+i*.46/32 for i in range(33)]],.026,silver)
+        torus('Lens iris',(0,-.167,.04),.075,.025,silver,rot=(pi/2,0,0))
+        uv('Lens catchlight',(-.018,-.195,.065),(.022,.01,.022),EDGE,16,8)
+        for z in [-.43,.49]:
+            curve('Silver seal diamond',[(0,yy,z+.055),(.055,yy,z),(0,yy,z-.055),(-.055,yy,z)],.014,silver,True)
     else:
         # Metallic bronze seal means the always-known upgrade scroll, never an unknown-effect mark.
         o=cyl('Bronze upgrade seal',(0,-.092,.04),.29,.09,BRONZE,12);o.rotation_euler[0]=pi/2
         torus('Seal raised rim',(0,-.15,.04),.23,.024,BRASS,rot=(pi/2,0,0))
         for z in [-.015,.115]:curve('Embossed neutral chevron',[(-.11,-.163,z),(.0,-.163,z+.075),(.11,-.163,z)],.021,BRASS)
         for side in [-1,1]:poly('Seal ribbon',[(side*.04,-.18),(side*.18,-.18),(side*.21,-.55),(side*.12,-.48),(side*.05,-.56)],.022,LEATHER,y=-.055,b=.003)
-for theme in ['ash','tide','thorn','star','upgrade']:scroll('scroll-'+('upgrade' if theme=='upgrade' else 'look-'+theme),theme)
+for theme in ['ash','tide','thorn','star','upgrade','identify']:scroll('scroll-'+(theme if theme in ['upgrade','identify'] else 'look-'+theme),theme)
 # RATION: bread, dried meat, waxed cloth and twine, no modern package label.
 activate('ration')
 BREAD=mat('Ration bread crust','#9c6939',0,.83,.72,16)
@@ -384,6 +397,11 @@ def frame(c):
     cam.location+=cam.rotation_euler.to_matrix()@Vector(((max(xs)+min(xs))/2,(max(ys)+min(ys))/2,0))
     return {'orthoScale':cam.data.ortho_scale,'objects':len(c.objects)}
 metadata={name: {'objects': len(c.objects), 'samples': 512 if name.startswith('potion-') else 64, 'projection': 'ORTHO'} for name,c in ASSETS.items()}
+# A selected render must retain framing metadata for the untouched assets.
+if (ART/'model-metadata.json').exists():
+    previous=json.loads((ART/'model-metadata.json').read_text()).get('assets',{})
+    for name in metadata:
+        if name in previous and 'orthoScale' in previous[name]:metadata[name]['orthoScale']=previous[name]['orthoScale']
 for name,c in ASSETS.items():
     c.hide_render=True
     c['asset_filename']=name+'.webp'
@@ -406,5 +424,5 @@ for name in selected:
     bpy.ops.render.render(write_still=True)
     c.hide_render=True
     print('ASSET_READY '+name,flush=True)
-(ART/'model-metadata.json').write_text(json.dumps({'generator':'scripts/art/render_inventory.py','blender':bpy.app.version_string,'seed':91304,'potionColors':POTION_COLORS,'assets':metadata},indent=2))
+(ART/'model-metadata.json').write_text(json.dumps({'generator':'scripts/art/render_inventory.py','blender':bpy.app.version_string,'seed':91304,'potionColors':POTION_COLORS,'assets':metadata},indent=2)+'\n')
 print('INVENTORY_RENDER_COMPLETE',flush=True)

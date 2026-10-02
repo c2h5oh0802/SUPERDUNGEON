@@ -1,6 +1,6 @@
 {
-  "totalBytes": 559318,
-  "count": 25,
+  "totalBytes": 583792,
+  "count": 26,
   "files": [
     {
       "file": "weapon-longsword.webp",
@@ -300,6 +300,18 @@
         45,
         401,
         475
+      ]
+    },
+    {
+      "file": "scroll-identify.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 24474,
+      "alphaBounds": [
+        92,
+        45,
+        421,
+        467
       ]
     }
   ]

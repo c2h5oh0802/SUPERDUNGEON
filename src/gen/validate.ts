@@ -1,4 +1,4 @@
-import { ENEMIES, HUNGER, ITEM_FX, PERCEPTION, PLAYER, RUN } from '../config';
+import { ENEMIES, HUNGER, IDENTIFY, ITEM_FX, PERCEPTION, PLAYER, RUN } from '../config';
 import { Nav } from '../sim/nav';
 import { buildLevel, type GenerateOptions, type LevelData } from './generator';
 
@@ -62,6 +62,9 @@ export function validateLevel(l: LevelData): ValidationResult {
     if (!reachableNear(pnav, seenNoTrap, l.heart.x, l.heart.z, 1.6)) errors.push('沉眠之心只能經過陷阱抵達');
   }
 
+  const identifySupplies = l.pickups.filter((p) => p.guaranteedIdentify);
+  const identifyCount = l.practice ? IDENTIFY.practiceCount : (IDENTIFY.guaranteedPerFloor[l.floor - 1] ?? 0);
+  if (identifySupplies.length !== identifyCount) errors.push('鑑定卷軸保底數量錯誤');
   if (!l.practice) {
     const food = l.pickups.filter((p) => p.item === 'food:ration');
     if (food.length !== HUNGER.foodPerFloor[l.floor - 1]) errors.push('乾糧保底數量錯誤');
@@ -77,6 +80,17 @@ export function validateLevel(l: LevelData): ValidationResult {
     const safe = floodAvoiding(pnav, l.spawn.x, l.spawn.z, (x, z) => inOptional(x, z) ||
       flames.some((a) => Math.hypot(a.x - x, a.z - z) <= ITEM_FX.area.fire.radius + PLAYER.radius));
     if (l.heart && !reachableNear(pnav, safe, l.heart.x, l.heart.z, 1.6)) errors.push('主線需要穿過特殊房');
+    for (const p of identifySupplies) {
+      if (p.kind !== 'item' || p.item !== 'scroll:identify' || p.amount !== 1 || p.level !== 0) errors.push('鑑定卷軸保底內容錯誤');
+      const mainRoom = l.rooms.some((r) => !r.optional && r.role === 'combat' &&
+        p.x > r.x0 && p.x < r.x0 + r.w && p.z > r.z0 && p.z < r.z0 + r.h);
+      if (!mainRoom || !reachableNear(pnav, safe, p.x, p.z, PLAYER.pickupRadius)) errors.push('鑑定卷軸保底不在可達主線');
+      if (g.circleBlocked(p.x, p.z, PLAYER.radius) ||
+          Math.hypot(p.x - l.spawn.x, p.z - l.spawn.z) <= PLAYER.pickupRadius ||
+          l.traps.some((t) => Math.hypot(t.i + .5 - p.x, t.j + .5 - p.z) < 1.2) ||
+          l.enemies.some((e) => Math.hypot(e.x - p.x, e.z - p.z) < PLAYER.radius + ENEMIES[e.kind].radius) ||
+          l.pickups.some((other) => other !== p && Math.hypot(other.x - p.x, other.z - p.z) < 1)) errors.push('鑑定卷軸保底位置不安全');
+    }
     for (const room of l.specialRooms ?? []) {
       if (!optional.some((r) => r.key === room.roomKey)) errors.push('特殊房不是可選支線');
       if (!l.pickups.some((p) => p.item === room.solution && p.x === room.supply.x && p.z === room.supply.z)) errors.push('特殊房缺少保底物資');

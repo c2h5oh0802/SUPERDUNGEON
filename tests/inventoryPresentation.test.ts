@@ -15,7 +15,7 @@ const EXPECTED_ART = [
   'weapon-longsword', 'weapon-knife', 'weapon-axe', 'weapon-spear', 'weapon-bow',
   'armor-cloth', 'armor-leather', 'armor-mail', 'ration',
   'potion-look-red', 'potion-look-blue', 'potion-look-green', 'potion-look-violet', 'potion-look-amber', 'potion-look-silver',
-  'scroll-look-ash', 'scroll-look-tide', 'scroll-look-thorn', 'scroll-look-star', 'scroll-upgrade',
+  'scroll-look-ash', 'scroll-look-tide', 'scroll-look-thorn', 'scroll-look-star', 'scroll-upgrade', 'scroll-identify',
   'stock-smoke', 'stock-stone', 'stock-arrow', 'stock-arrow-chill', 'stock-arrow-paralysis',
 ] as const;
 const POTION_ART = EXPECTED_ART.slice(9, 15);
@@ -24,7 +24,7 @@ const ALL_ITEMS: ItemId[] = [
   ...ALL_WEAPONS.map((id): ItemId => `weapon:${id}`),
   ...ALL_ARMORS.map((id): ItemId => `armor:${id}`),
   'food:ration', ...ALL_POTIONS.map((id): ItemId => `potion:${id}`),
-  ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`), 'scroll:upgrade',
+  ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`), 'scroll:upgrade', 'scroll:identify',
 ];
 const UNKNOWN_ITEMS: ItemId[] = [
   ...ALL_POTIONS.map((id): ItemId => `potion:${id}`), ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`),
@@ -104,10 +104,10 @@ function inventoryDom(w: World, onAction = vi.fn<(index: number, mode: PendingUs
 afterEach(() => vi.unstubAllGlobals());
 
 describe('inventory art catalog and every supported item', () => {
-  it('has the explicit 25 unique neutral WebP assets and 18 supported item identities', () => {
-    expect(ALL_ITEMS).toHaveLength(18);
+  it('has the explicit 26 unique WebP assets and 19 supported item identities', () => {
+    expect(ALL_ITEMS).toHaveLength(19);
     expect(INVENTORY_ART).toEqual(EXPECTED_ART);
-    expect(new Set(INVENTORY_ART).size).toBe(25);
+    expect(new Set(INVENTORY_ART).size).toBe(26);
     for (const art of INVENTORY_ART) {
       const url = inventoryArtUrl(art);
       expect(url).toMatch(new RegExp(`/assets/inventory/${art}\\.webp$`));
@@ -115,7 +115,7 @@ describe('inventory art catalog and every supported item', () => {
     }
   });
 
-  it('ships exactly the 25 catalog WebP assets in the Vite asset graph', () => {
+  it('ships exactly the 26 catalog WebP assets in the Vite asset graph', () => {
     const assets = import.meta.glob<string>('../src/assets/inventory/*.webp', { eager: true, query: '?url', import: 'default' });
     expect(Object.keys(assets).sort()).toEqual(EXPECTED_ART.map(name => `../src/assets/inventory/${name}.webp`).sort());
     for (const art of INVENTORY_ART) expect(assets[`../src/assets/inventory/${art}.webp`]).toMatch(new RegExp(`${art}\\.webp$`));
@@ -134,8 +134,8 @@ describe('inventory art catalog and every supported item', () => {
       expect(itemArt(w, id)).toBe('ration');
       expect(itemAppearance(w, id)).toBe('');
       expect(itemCategoryLabel(w, id)).toBe('食物');
-    } else if (id === 'scroll:upgrade') {
-      expect(itemArt(w, id)).toBe('scroll-upgrade');
+    } else if (id === 'scroll:upgrade' || id === 'scroll:identify') {
+      expect(itemArt(w, id)).toBe(id.replace(':', '-'));
       expect(itemAppearance(w, id)).toBe('');
       expect(itemCategoryLabel(w, id)).toBe('卷軸 · 已辨識');
     } else {

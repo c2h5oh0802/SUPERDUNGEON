@@ -709,6 +709,30 @@ button.ghost {
   font-size: 19px;
 }
 
+.identify-card {
+  display: grid;
+  grid-template-columns: 26px 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 112px;
+  padding: 12px;
+}
+
+.identify-card > kbd { align-self: start; }
+.identify-art { display: block; width: 88px; height: 88px; object-fit: contain; }
+.identify-copy { min-width: 0; }
+.identify-copy h3 { margin: 0 0 8px; font-size: 17px; }
+.identify-copy p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.identify-cancel-row, .identify-empty { grid-column: 1 / -1; }
+.identify-cancel-row { position: sticky; bottom: 0; padding: 10px 0 0; background: #161326; }
+#btn-identify-cancel { width: 100%; min-height: 48px; }
+#screen-choice button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+@media (max-width: 380px) {
+  .identify-card { grid-template-columns: 22px 64px minmax(0, 1fr); gap: 7px; padding: 10px; }
+  .identify-art { width: 64px; height: 64px; }
+}
+
 .map-screen {
   background: rgba(8, 6, 16, 0.78);
 }

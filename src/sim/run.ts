@@ -65,7 +65,7 @@ const ITEM_IDS = new Set<string>([
   'food:ration',
   ...ALL_POTIONS.map((k) => `potion:${k}`),
   ...ALL_SCROLLS.map((k) => `scroll:${k}`),
-  'scroll:upgrade',
+  'scroll:upgrade', 'scroll:identify',
   // Accepted only as migration input; neither remains in the active pool.
   'scroll:timeStop', 'scroll:lure',
   ...ALL_WEAPONS.map((k) => `weapon:${k}`),

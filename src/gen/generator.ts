@@ -1,5 +1,5 @@
 import type { PracticeTrialId } from './practiceTrials';
-import { ENEMIES, HUNGER, PLAYER, RUN, WORLD, type ItemId } from '../config';
+import { ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
@@ -31,6 +31,8 @@ export interface EnemySpawn {
 export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'item';
 
 export interface PickupSpawn {
+  /** Fixed Identify supply, separate from ordinary random scroll rolls. */
+  guaranteedIdentify?: true;
   kind: PickupKind;
   amount: number;
   item?: ItemId;
@@ -676,7 +678,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   const nav = new Nav(grid, PLAYER.radius);
   const seen = nav.flood(d.spawn.x, d.spawn.z, false);
   const mainRooms = d.rooms.filter((r) => !r.optional && r.role === 'combat');
-  const supplyAt = (index: number): V2 => {
+  const supplyAt = (index: number, avoid?: (point: V2) => boolean): V2 => {
     const room = mainRooms[index % mainRooms.length];
     if (!room) return { x: d.spawn!.x, z: d.spawn!.z };
     const spots: V2[] = [];
@@ -685,7 +687,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
       const c = nav.nearestPassable(q.x, q.z, 0.4);
       if (c < 0 || !seen[c] || grid.circleBlocked(q.x, q.z, PLAYER.radius) ||
           d.traps.some((tr) => Math.hypot(tr.i + .5 - q.x, tr.j + .5 - q.z) < 1.2) ||
-          pickups.some((p) => Math.hypot(p.x - q.x, p.z - q.z) < 1)) continue;
+          pickups.some((p) => Math.hypot(p.x - q.x, p.z - q.z) < 1) || avoid?.(q)) continue;
       spots.push(q);
     }
     spots.sort((a, b) => Math.hypot(a.x - room.x0 - room.w / 2, a.z - room.z0 - room.h / 2) -
@@ -733,6 +735,14 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   // Convert only after all RNG use and deterministic supply placement. Moving this
   // above addPatrols would consume extra random rolls and reshuffle unrelated loot.
   if (!opts.practice && floor <= RUN.explorationFloors) groundCampaignArchers(d, grid);
+  // Append after every existing supply: Identify never displaces a food, healing,
+  // Upgrade or optional-room solution pickup and never consumes a random draw.
+  const identifyCount = opts.practice ? IDENTIFY.practiceCount : (IDENTIFY.guaranteedPerFloor[fi] ?? 0);
+  for (let k = 0; k < identifyCount; k++) {
+    const q = supplyAt(0, (p) => Math.hypot(p.x - d.spawn!.x, p.z - d.spawn!.z) <= PLAYER.pickupRadius ||
+      d.enemies.some((e) => Math.hypot(p.x - e.x, p.z - e.z) < PLAYER.radius + ENEMIES[e.kind].radius));
+    pickups.push({ kind: 'item', amount: 1, item: 'scroll:identify', level: 0, ...q, guaranteedIdentify: true });
+  }
   return {
     seed,
     floor,

@@ -66,7 +66,7 @@ export function looksFor(seed: string, version: 1 | 2 = 2): Looks {
 
 export function isKnown(w: World, id: ItemId): boolean {
   const c = categoryOf(id);
-  if (c === 'food' || c === 'weapon' || c === 'armor' || id === 'scroll:upgrade') return true;
+  if (c === 'food' || c === 'weapon' || c === 'armor' || id === 'scroll:upgrade' || id === 'scroll:identify') return true;
   return w.player.known.includes(id);
 }
 
@@ -90,7 +90,7 @@ export function itemName(w: World, id: ItemId, level = 0): string {
   if (c === 'armor') return `${ARMORS[keyOf(id) as keyof typeof ARMORS].name}${lv}`;
   if (!isKnown(w, id)) return lookName(w, id);
   if (c === 'potion') return POTIONS[keyOf(id) as PotionId].name;
-  return SCROLLS[keyOf(id) as ScrollId | 'upgrade'].name;
+  return SCROLLS[keyOf(id) as ScrollId | 'upgrade' | 'identify'].name;
 }
 
 export function itemDesc(w: World, id: ItemId, level = 0): string {
@@ -105,19 +105,19 @@ export function itemDesc(w: World, id: ItemId, level = 0): string {
     const id = k as keyof typeof ARMORS;
     return `每次減傷 ${armorReduction(id, level)}（至少受 1；減傷上限 ${UPGRADE.armorMaxReduce}）；${ARMORS[id].stepMul > 1 ? '腳步聲較大、潛行步較慢' : '不增加腳步聲、不降低潛行步速'}`;
   }
-  if (!isKnown(w, id)) return c === 'potion' ? '未知的藥水：喝下可試出效果；投擲只有親眼看到明顯效果才會辨識，單純碎瓶不會。' : '未知的卷軸：讀了才知道效果。';
+  if (!isKnown(w, id)) return c === 'potion' ? '未知的藥水：可用鑑定卷軸辨識，或喝下試出效果；投擲只有親眼看到明顯效果才會辨識，單純碎瓶不會。' : '未知的卷軸：可用鑑定卷軸辨識，或讀了才知道效果。';
   if (c === 'potion') {
     const p = POTIONS[k as PotionId];
     return `喝下：${p.drink}。丟出：${p.thrown}。`;
   }
-  return SCROLLS[k as ScrollId | 'upgrade'].text + '。';
+  return SCROLLS[k as ScrollId | 'upgrade' | 'identify'].text + '。';
 }
 
 /** 物品在畫面上的顏色（藥水依這一局的外觀）。 */
 export function itemColor(seed: string, id: ItemId, version: 1 | 2 = 2): number {
   const c = categoryOf(id);
   if (c === 'potion') return POTION_LOOKS[looksFor(seed, version).potion[keyOf(id) as PotionId]]!.color;
-  if (c === 'scroll') return id === 'scroll:upgrade' ? 0xf2c14e : 0xe8dcc0;
+  if (c === 'scroll') return id === 'scroll:upgrade' ? 0xf2c14e : id === 'scroll:identify' ? 0xb2d9df : 0xe8dcc0;
   if (c === 'food') return 0xc59a5c;
   if (c === 'armor') return 0x9aa4b0;
   return 0xc3cad4;
@@ -208,6 +208,10 @@ export function takeForAction(w: World, index: number, mode: PendingUse['mode'] 
   }
   if (w.player.items[index]?.id === 'scroll:upgrade' && upgradeTargets(w).length === 0) {
     w.emit({ type: 'fullInventory', text: '目前沒有可強化的裝備，卷軸已保留' });
+    return null;
+  }
+  if (w.player.items[index]?.id === 'scroll:identify' && identifyTargets(w).length === 0) {
+    w.emit({ type: 'fullInventory', text: '背包沒有可鑑定的未知藥水或卷軸，鑑定卷軸已保留' });
     return null;
   }
   const it = takeOne(w, index);
@@ -354,15 +358,22 @@ export function stunPlayer(w: World, dur: number): void {
 
 // ---------- 卷軸 ----------
 
-export function readScroll(w: World, id: ScrollId | 'upgrade', reservedScroll = false): void {
+export function readScroll(w: World, id: ScrollId | 'upgrade' | 'identify', reservedScroll = false): void {
   if (id === 'upgrade' && upgradeTargets(w).length === 0) {
     if (reservedScroll) returnUpgradeScroll(w);
     return;
   }
+  if (id === 'identify' && identifyTargets(w).length === 0) {
+    if (reservedScroll) returnIdentifyScroll(w);
+    return;
+  }
   w.stats.itemsUsed++;
-  if (id !== 'upgrade') identify(w, `scroll:${id}`);
+  if (id !== 'upgrade' && id !== 'identify') identify(w, `scroll:${id}`);
   w.emit({ type: 'read', kind: id });
   switch (id) {
+    case 'identify':
+      queueChoice(w, { kind: 'identify', options: identifyTargets(w), reservedScroll });
+      return;
     case 'upgrade':
       queueChoice(w, { kind: 'upgrade', options: upgradeTargets(w), reservedScroll });
       return;
@@ -377,6 +388,45 @@ export function readScroll(w: World, id: ScrollId | 'upgrade', reservedScroll = 
       for (const e of w.enemies) if (Math.hypot(e.x - w.player.x, e.z - w.player.z) <= ITEM_FX.sleepRadius) lullEnemy(e);
       return;
   }
+}
+
+/** One explicit bag stack is selected. Knowledge is per kind, never per copy. */
+export function identifyTargets(w: World): InvItem[] {
+  return w.player.items.filter(it => it.count > 0 &&
+    (categoryOf(it.id) === 'potion' || categoryOf(it.id) === 'scroll') && !isKnown(w, it.id));
+}
+
+/** Reference identity rejects replacement stacks even if an inventory index was reused. */
+export function applyIdentification(w: World, target: InvItem): boolean {
+  if (!identifyTargets(w).includes(target)) return false;
+  identify(w, target.id);
+  return true;
+}
+
+function returnIdentifyScroll(w: World): void {
+  const returned = addItem(w, 'scroll:identify');
+  if (!returned) w.addPickup('item', 1, w.player.x, 0.15, w.player.z, null, 'scroll:identify', 0);
+  w.emit({ type: 'fullInventory', text: returned ? '鑑定未使用，卷軸已保留' : '鑑定未使用；背包滿了，卷軸留在腳邊' });
+}
+
+/** Reading time remains spent. Only its unspent reservation can be returned once. */
+export function cancelIdentification(w: World, choice: Extract<PendingChoice, { kind: 'identify' }>): void {
+  if (choice.settled) return;
+  choice.settled = true;
+  choice.options = [];
+  if (choice.reservedScroll) {
+    choice.reservedScroll = false;
+    returnIdentifyScroll(w);
+  }
+  w.stats.itemsUsed = Math.max(0, w.stats.itemsUsed - 1);
+}
+
+export function refreshIdentifyChoice(w: World, choice: Extract<PendingChoice, { kind: 'identify' }>): boolean {
+  if (choice.settled) return false;
+  choice.options = identifyTargets(w);
+  if (choice.options.length) return true;
+  cancelIdentification(w, choice);
+  return false;
 }
 
 function teleport(w: World): void {

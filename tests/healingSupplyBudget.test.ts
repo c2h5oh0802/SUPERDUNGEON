@@ -39,11 +39,25 @@ function totalHealing(level: LevelData): number {
     level.chests.reduce((n, c) => n + c.contents.items.filter((item) => item.id === 'potion:healing').length, 0);
 }
 
+// Historical fingerprints predate Identify. Replay only its expanded loot pool
+// with the same single RNG draw; current-pool behavior is covered separately in
+// identifySupply.test.ts, including full non-scroll hashes and exact draw counts.
+function replayLegacyScrollPool() {
+  const pick = Rng.prototype.pick;
+  return vi.spyOn(Rng.prototype, 'pick').mockImplementation(function <T>(this: Rng, pool: readonly T[]): T {
+    const legacy = pool.length === 4 && pool.join(',') === 'teleport,mapping,sleep,identify' ? pool.slice(0, 3) : pool;
+    return pick.call(this, legacy) as T;
+  });
+}
+
 describe('provisional chapter healing supply v2', () => {
   it.each(BEFORE)('%s F%i changes only the intended fixed bottle; RNG calls stay %i', async (seed, floor, calls, hash) => {
     const next = vi.spyOn(Rng.prototype, 'next');
+    const scrolls = replayLegacyScrollPool();
     try {
       const level = generateLevel(seed, { floor });
+      // Ignore only the separately tested, appended fixed Identify opportunity.
+      level.pickups = level.pickups.filter((p) => !p.guaranteedIdentify);
       expect(next).toHaveBeenCalledTimes(calls);
       if (floor >= 2 && floor <= 4) {
         expect(level.chests[1]!.contents.items).toHaveLength(1);
@@ -60,6 +74,7 @@ describe('provisional chapter healing supply v2', () => {
       }
       expect(await fingerprint(level)).toBe(hash);
     } finally {
+      scrolls.mockRestore();
       next.mockRestore();
     }
   });

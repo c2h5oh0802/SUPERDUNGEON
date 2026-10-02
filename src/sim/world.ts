@@ -3,7 +3,7 @@ import { CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIM
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { armorFootstepRadius, armorReduction, armorSneakSpeedMul } from './equipment';
-import { applyUpgrade, refreshUpgradeChoice, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
+import { applyIdentification, cancelIdentification, refreshIdentifyChoice, applyUpgrade, refreshUpgradeChoice, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
 import { applyTalent, gainXp, killXp, talentOptions } from './progress';
 import { segSphere, type V2, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
@@ -531,12 +531,34 @@ export class World {
       const t = c.options[index];
       if (!t) return;
       applyTalent(this, t);
+    } else if (c.kind === 'identify') {
+      if (this.player.dead || this.outcome !== 'none') return;
+      const target = c.options[index];
+      if (c.settled || !target || !applyIdentification(this, target)) {
+        if (refreshIdentifyChoice(this, c)) return;
+      } else {
+        c.reservedScroll = false;
+        c.settled = true;
+        c.options = [];
+      }
     } else {
       const t = c.options[index];
       if (!t || !applyUpgrade(this, t)) {
         if (refreshUpgradeChoice(this, c)) return;
       } else c.reservedScroll = false; // the reserved investment is now on the item
     }
+    this.advanceChoice();
+  }
+
+  /** Cancel only an identification offer, never a talent or equipment investment. */
+  cancelIdentifyChoice(): void {
+    const c = this.pendingChoice;
+    if (c?.kind !== 'identify' || this.player.dead || this.outcome !== 'none') return;
+    cancelIdentification(this, c);
+    this.advanceChoice();
+  }
+
+  private advanceChoice(): void {
     this.pendingChoice = null;
     while (this.choiceQueue.length) {
       const next = this.choiceQueue.shift()!;
@@ -545,6 +567,8 @@ export class World {
         // Re-evaluate at display time, preserving that level's deterministic shuffle.
         next.options = talentOptions(this.level.seed, this.player, next.level ?? this.player.level);
         if (!next.options.length) continue;
+      } else if (next.kind === 'identify') {
+        if (!refreshIdentifyChoice(this, next)) continue;
       } else if (!refreshUpgradeChoice(this, next)) continue;
       this.pendingChoice = next;
       break;

@@ -125,6 +125,12 @@
       "projection": "ORTHO",
       "orthoScale": 2.563339948654175
     },
+    "scroll-identify": {
+      "objects": 32,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.563339948654175
+    },
     "ration": {
       "objects": 11,
       "samples": 64,

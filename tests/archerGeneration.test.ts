@@ -64,14 +64,28 @@ function beforeConversion(level: LevelData): LevelData {
   const room = level.rooms.find((r) => r.layoutId === 'sanctum');
   return {
     ...level,
+    // Only the separately tested appended Identify guarantee is new supply.
+    pickups: level.pickups.filter((p) => !p.guaranteedIdentify),
     enemies: level.enemies.map((e) => e.kind === 'archer' && e.roomKey === room?.key
       ? { ...e, z: e.z - 1, y: WORLD.platformHeight, perched: true } : e),
   };
 }
 
+// Historical fingerprints predate Identify. Replay only its expanded loot pool
+// with the same single RNG draw; current-pool behavior is covered separately in
+// identifySupply.test.ts, including full non-scroll hashes and exact draw counts.
+function replayLegacyScrollPool() {
+  const pick = Rng.prototype.pick;
+  return vi.spyOn(Rng.prototype, 'pick').mockImplementation(function <T>(this: Rng, pool: readonly T[]): T {
+    const legacy = pool.length === 4 && pool.join(',') === 'teleport,mapping,sleep,identify' ? pool.slice(0, 3) : pool;
+    return pick.call(this, legacy) as T;
+  });
+}
+
 describe('campaign archer ground placement', () => {
   it.each(BASELINES)('$seed template $template preserves the full pre-change level and RNG stream', async ({ seed, template, digest, draws, before }) => {
     const rng = vi.spyOn(Rng.prototype, 'next');
+    const scrolls = replayLegacyScrollPool();
     try {
       const levels: LevelData[] = [];
       const counts = [0, 0, 0];
@@ -118,6 +132,7 @@ describe('campaign archer ground placement', () => {
       expect(results).toHaveLength(draws);
       expect(await hash({ levels: levels.map((level) => fingerprint(beforeConversion(level))), draws: results })).toBe(digest);
     } finally {
+      scrolls.mockRestore();
       rng.mockRestore();
     }
   });
