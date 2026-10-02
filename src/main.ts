@@ -1,5 +1,5 @@
 import './ui/style.css';
-import { CalibrationObserver } from './playtest/calibration';
+import { CalibrationObserver, type CalibrationMilestoneType } from './playtest/calibration';
 import { createPublicPlaytestWorld, type PlaytestStage } from './playtest/scenario';
 import { createBrowserPlaytestTelemetry, normalizePlaytestSource, type PlaytestTelemetry, type PlaytestEventName, type PlaytestFun, type PlaytestIssue } from './playtest/telemetry';
 import { Sfx } from './audio/sfx';
@@ -292,6 +292,10 @@ export class App {
       this.telemetry?.start();
       this.startPlaytest('calibration', true);
     });
+    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause']) click(id, () => {
+      if (this.playtestActive && this.playtestStage === 'calibration' && this.calibration.state.complete
+        && (this.mode === 'inventory' || this.mode === 'paused')) this.startPlaytest('core', true);
+    });
     click('btn-playtest-feedback', () => this.submitPlaytestFeedback());
     click('btn-start', () => {
       const raw = normalizeSeed(($('seed-input') as HTMLInputElement).value);
@@ -482,7 +486,7 @@ export class App {
     if (this.playtestActive) {
       if (this.mode !== 'paused' && this.mode !== 'results') return;
       this.telemetry?.retry();
-      if (!this.playtestEnded) this.telemetry?.progression('fail', this.playtestStage);
+      if (!this.playtestEnded && !(this.playtestStage === 'calibration' && this.calibration.state.complete)) this.telemetry?.progression('fail', this.playtestStage);
       this.startPlaytest(this.playtestStage, true);
     } else if (this.bossTestActive) this.startBossTest();
     else this.startRun(this.seed, this.practice);
@@ -690,7 +694,7 @@ export class App {
 
   private toMenu(): void {
     if (this.playtestActive) {
-      if (this.world && !this.playtestEnded) {
+      if (this.world && !this.playtestEnded && !(this.playtestStage === 'calibration' && this.calibration.state.complete)) {
         this.telemetry?.event('voluntary_quit');
         this.telemetry?.progression('fail', this.playtestStage);
       }
@@ -882,7 +886,7 @@ export class App {
     const w = this.world;
     const raw = mergeInput(this.input.consume(), this.touch.consume());
     if (w && this.mode === 'playing') {
-      if (raw.inventory && !this.playtestActive && !w.pendingChoice) {
+      if (raw.inventory && !w.pendingChoice) {
         this.openInventory();
       } else if (raw.map && !this.playtestActive) {
         // Desktop maps retain their existing pointer lock; touch never owns one.
@@ -918,7 +922,7 @@ export class App {
           potion: raw.potion,
           wait: raw.wait,
         };
-        const calibrationBefore = this.playtestActive && this.playtestStage === 'calibration' ? this.calibration.beforeFrame(w) : null;
+        const calibrationBefore = this.playtestActive ? this.calibration.beforeFrame(w) : null;
         w.frame(realDt, fi);
         this.updateTouchHud();
         const events = w.drainEvents();
@@ -976,6 +980,7 @@ export class App {
   private startPlaytest(stage: PlaytestStage, gesture: boolean): void {
     this.playtestStage = stage;
     $('playtest-cue').textContent = '';
+    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note']) $(id).classList.add('hidden');
     this.cls = 'warrior';
     this.run = null;
     this.calibration = new CalibrationObserver();
@@ -998,25 +1003,14 @@ export class App {
   private refreshPlaytestCue(): void {
     if (this.playtestStage === 'core') return;
     const state = this.calibration.state;
-    const moveIn = this.touchMode ? '搖桿往前' : '按 W 往前';
-    const retreat = this.touchMode ? '搖桿往後' : '按住 S 後退';
-    const attack = this.touchMode ? '點一下攻擊鍵' : '點一下滑鼠左鍵';
-    const guard = this.world?.enemies.find(e => e.kind === 'guard');
-    const closeEnough = guard && this.world && Math.hypot(guard.x - this.world.player.x, guard.z - this.world.player.z)
-      <= WEAPONS[this.world.player.weapon.id].reach + guard.radius;
-    const action = state.restartRecommended
-      ? `${this.touchMode ? '按暫停' : '按 Esc'}，再選「重新試一次」。`
-      : state.phase === 'move-look' ? state.cue
-      : state.phase === 'approach' ? `${moveIn}小步靠近盾衛；先別攻擊。`
-      : state.phase === 'dodge' ? `${retreat}！退到整劍揮完，先別攻擊。`
-      : state.phase === 'resolve' ? state.cue.replace('繼續往後退', `繼續${retreat}`).replace('繼續退開', `繼續${retreat}`)
-      : state.phase === 'hit-recovery' ? this.world?.player.action
-        ? '已經出手，先放開攻擊；保持面向盾衛，等這一劍命中。'
-        : closeEnough
-        ? `現在攻擊：${attack}！然後放開攻擊、往後退開。`
-        : `躲開了！${moveIn}靠近；看到「現在攻擊」再出手。`
+    const healing = this.touchMode ? '背包裡的「喝」' : '背包 I 裡的「喝」或 H';
+    const wound = `練習以半血開始（${Math.ceil((this.world?.player.maxHp ?? 10) / 2)}/${this.world?.player.maxHp ?? 10}）；這裡受傷最低保留 1 生命。`;
+    $('playtest-cue').textContent = state.phase === 'combat' ? `${wound}\n${state.cue}`
+      : state.phase === 'healing' ? `戰鬥結束，腳邊有一瓶治療藥水。撿起後用${healing}補血。`
       : state.cue;
-    $('playtest-cue').textContent = `練習 ${state.successes}/2：停下觀察 → 避刀 → 靠近命中\n${state.feedback ? `${state.feedback}\n` : ''}${action}`;
+    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note'])
+      $(id).classList.toggle('hidden', !state.complete);
+    $('playtest-unknown-note').textContent = `${state.healingSkipped ? '治療藥水已用在別處，仍可繼續。' : '治療已完成。'}未知藥水與卷軸可透過使用或鑑定得知效果；不必試用，可以直接繼續。`;
   }
 
   private observePlaytest(w: World, input: FrameInput, events: ReturnType<World['drainEvents']>, before: ReturnType<CalibrationObserver['beforeFrame']> | null): void {
@@ -1027,31 +1021,33 @@ export class App {
     }
     if (before) {
       const update = this.calibration.observeFrame(w, input, before, events);
-      const milestoneNames: Partial<Record<string, PlaytestEventName>> = {
-        movement_seen: 'first_move', look_seen: 'first_look', windup_seen: 'attack_seen',
-        stop_slow_seen: 'slow_time_observed', lock_seen: 'attack_committed',
-        attack_evaded: 'evade_equivalent', recovery_hit: 'recovery_hit_equivalent', calibration_learned: 'core_loop_learned',
-        calibration_cycle_failed: 'calibration_cycle_failed', calibration_restart_recommended: 'calibration_retry_needed',
+      const milestoneNames: Record<CalibrationMilestoneType, PlaytestEventName> = {
+        movement_seen: 'first_move', look_seen: 'first_look', stop_slow_seen: 'slow_time_observed',
+        counter_observed: 'counter_observed', deflect_observed: 'deflect_observed', hurt_observed: 'hurt_observed',
+        guard_defeated: 'guard_defeated', healing_used: 'healing_used',
+        healing_skipped_resource_lost: 'healing_skipped_resource_lost', calibration_complete: 'calibration_complete',
       };
-      for (const milestone of update.milestones) {
-        const name = milestoneNames[milestone.type];
-        if (name) this.telemetry?.event(name);
-      }
-      this.refreshPlaytestCue();
-      if (this.calibration.state.learned && w.outcome !== 'dead') {
-        this.telemetry?.progression('complete', 'calibration', w.realTime);
-        this.startPlaytest('core', false);
+      for (const milestone of update.milestones) this.telemetry?.event(milestoneNames[milestone.type]);
+      if (this.playtestStage === 'calibration') {
+        this.refreshPlaytestCue();
+        if (update.milestones.some(m => m.type === 'calibration_complete')) {
+          this.telemetry?.progression('complete', 'calibration', w.realTime);
+          // Ordinary bag exposes the optional unknown item, with an immediate
+          // continue button. No extra item action is a progression gate.
+          this.openInventory();
+        }
         return;
       }
-    } else if (w.outcome === 'none') {
+    }
+    if (w.outcome === 'none') {
       if (w.player.lastMoveDist > .002 || events.some(e => e.type === 'swing' || e.type === 'fire')) this.playtestLastActivity = w.realTime;
-      if (events.some(e => e.type === 'swing' || e.type === 'fire')) this.playtestAttacked = true;
       this.playtestHurts += events.filter(e => e.type === 'playerHurt').length;
       const hint = this.playtestHurts >= 3 ? 'hint_repeated_damage'
         : !this.playtestAttacked && w.realTime > 35 ? 'hint_no_attack'
         : w.realTime - this.playtestLastActivity > 22 ? 'hint_inactivity' : null;
       if (hint && !this.playtestHints.has(hint)) {
         this.playtestHints.add(hint);
+        this.telemetry?.assistance(true);
         this.telemetry?.event(hint);
         $('playtest-cue').textContent = hint === 'hint_no_attack'
           ? (this.touchMode ? '攻擊鍵可以出手；暫停裡能調整操作設定。' : '左鍵可以出手；Esc 裡能調整操作設定。')

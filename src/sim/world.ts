@@ -439,10 +439,19 @@ export class World {
   damagePlayer(amount: number, source: string, fromX: number, fromZ: number): void {
     const p = this.player;
     if (p.dead || this.outcome !== 'none') return;
-    amount = Math.max(1, amount - this.armorReduce());
-    p.hp -= amount;
-    this.stats.damageTaken[source] = (this.stats.damageTaken[source] ?? 0) + amount;
-    this.emit({ type: 'playerHurt', amount, x: fromX, z: fromZ, source });
+    const attemptedAmount = Math.max(1, amount - this.armorReduce());
+    // PublicCalibration is a disposable scenario rule, never a player/carry flag.
+    // Apply it at the HP/death boundary so every damage source keeps normal hit
+    // feedback, including another hit at 1 HP, without entering death first.
+    const publicCalibration = this.level.publicPlaytest === 'calibration';
+    const hpFloor = publicCalibration ? 1 : 0;
+    const actualAmount = Math.min(attemptedAmount, Math.max(0, p.hp - hpFloor));
+    p.hp -= publicCalibration ? actualAmount : attemptedAmount;
+    // Preserve ordinary-mode overkill statistics; protected calibration reports
+    // only HP actually lost. The event exposes both values without fake healing.
+    const reportedAmount = publicCalibration ? actualAmount : attemptedAmount;
+    this.stats.damageTaken[source] = (this.stats.damageTaken[source] ?? 0) + reportedAmount;
+    this.emit({ type: 'playerHurt', amount: reportedAmount, attemptedAmount, actualAmount, x: fromX, z: fromZ, source });
     if (p.hp <= 0) {
       p.hp = 0;
       p.dead = true;

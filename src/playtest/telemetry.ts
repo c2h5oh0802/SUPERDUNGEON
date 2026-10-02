@@ -13,12 +13,15 @@
 
 export const PLAYTEST_EVENT_NAMES = [
   'landing', 'start', 'first_move', 'first_look', 'first_attack', 'slow_time_observed',
-  'attack_seen', 'attack_committed', 'evade_equivalent', 'recovery_hit_equivalent',
-  'core_loop_learned', 'core_start', 'core_complete', 'player_death',
+  'counter_observed', 'deflect_observed', 'hurt_observed', 'guard_defeated',
+  'healing_used', 'healing_skipped_resource_lost',
+  'calibration_complete', 'core_start', 'core_complete', 'player_death',
   'voluntary_quit', 'retry', 'hint_inactivity', 'hint_no_attack',
-  'hint_repeated_damage', 'calibration_retry_needed', 'calibration_cycle_failed',
+  'hint_repeated_damage',
   'blur', 'pagehide_unknown', 'real_time', 'damage', 'kills',
 ] as const;
+/** Separate these factual observations from historical v1 choreography data. */
+export const PLAYTEST_TELEMETRY_NAMESPACE = 'playtest_open_v2' as const;
 export type PlaytestEventName = typeof PLAYTEST_EVENT_NAMES[number];
 export type PlaytestStage = 'calibration' | 'core';
 export type PlaytestSource = 'x' | 'reddit' | 'discord' | 'direct' | 'unknown';
@@ -82,7 +85,10 @@ export interface PlaytestTelemetry {
   readonly status: PlaytestTelemetryStatus;
   landing(): void;
   start(): void;
+  /** Enter a fresh stage/attempt. Every new core attempt starts unassisted. */
   stage(stage: PlaytestStage): void;
+  /** Mark a displayed core hint. False cannot undo assistance in this attempt. */
+  assistance(assisted: boolean): void;
   progression(status: keyof typeof PROGRESSION, stage: PlaytestStage, score?: number): void;
   event(name: PlaytestEventName, value?: number): void;
   retry(): void;
@@ -94,7 +100,8 @@ export interface PlaytestTelemetry {
 
 type PendingEvent =
   | { kind: 'design'; id: string; value?: number }
-  | { kind: 'progression'; status: 1 | 2 | 3; stage: PlaytestStage; score?: number };
+  | { kind: 'progression'; status: 1 | 2 | 3; stage: PlaytestStage;
+      assistance?: 'assisted' | 'unassisted'; score?: number };
 
 async function loadGameAnalytics(): Promise<PlaytestAnalyticsProvider> {
   // Dynamic import is reached only after explicit enablement AND valid keys.
@@ -135,6 +142,7 @@ export function createPlaytestTelemetry(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const pending: PendingEvent[] = [];
   let currentStage: PlaytestStage | undefined;
+  let coreAssisted = false;
   let lastHidden = false;
   let hiddenPageReported = false;
 
@@ -156,7 +164,7 @@ export function createPlaytestTelemetry(
     if (!sdk || state !== 'ready') return;
     try {
       if (event.kind === 'design') sdk.addDesignEvent(event.id, event.value);
-      else sdk.addProgressionEvent(event.status, COHORT, event.stage, undefined, event.score);
+      else sdk.addProgressionEvent(event.status, PLAYTEST_TELEMETRY_NAMESPACE, event.stage, event.assistance, event.score);
     } catch { unavailable(); }
   }
 
@@ -208,14 +216,25 @@ export function createPlaytestTelemetry(
 
   function event(name: PlaytestEventName, value?: number): void {
     if (!EVENT_NAMES.has(name) || !validNumber(value)) return;
-    if (name === 'landing' || name === 'start') currentStage = undefined;
-    enqueue({ kind: 'design', id: contextualId(`playtest:${name}`), value });
+    if (name === 'landing' || name === 'start') {
+      currentStage = undefined;
+      coreAssisted = false;
+    }
+    // A bounded hint event means the hint was displayed. Keep classification
+    // safe even if a caller forgets the explicit assistance(true) notification.
+    if (currentStage === 'core' && (
+      name === 'hint_inactivity' || name === 'hint_no_attack' || name === 'hint_repeated_damage'
+    )) coreAssisted = true;
+    enqueue({ kind: 'design', id: contextualId(`${PLAYTEST_TELEMETRY_NAMESPACE}:${name}`), value });
   }
 
   function contextualId(id: string): string {
     // Dashboard design events cannot infer stage from a previously sent event.
     // Capture the closed stage now, not when an early-event queue is flushed.
-    return currentStage ? `${id}:${currentStage}` : id;
+    // Combine core stage and assistance in one closed token: even feedback must
+    // fit the SDK's maximum of five colon-separated design-event segments.
+    const context = currentStage === 'core' ? `core_${coreAssisted ? 'assisted' : 'unassisted'}` : currentStage;
+    return context ? `${id}:${context}` : id;
   }
 
   return {
@@ -226,18 +245,23 @@ export function createPlaytestTelemetry(
     stage(stage) {
       if (!validStage(stage)) return;
       currentStage = stage;
-      enqueue({ kind: 'design', id: `playtest:stage:${stage}` });
+      coreAssisted = false;
+      enqueue({ kind: 'design', id: contextualId(`${PLAYTEST_TELEMETRY_NAMESPACE}:stage`) });
+    },
+    assistance(assisted) {
+      if (currentStage === 'core' && assisted === true) coreAssisted = true;
     },
     progression(status, stage, score) {
       if (Object.hasOwn(PROGRESSION, status) && validStage(stage) && validNumber(score)) {
-        enqueue({ kind: 'progression', status: PROGRESSION[status], stage, score });
+        enqueue({ kind: 'progression', status: PROGRESSION[status], stage,
+          assistance: stage === 'core' ? (coreAssisted ? 'assisted' : 'unassisted') : undefined, score });
       }
     },
     event,
     retry: () => event('retry'),
     feedback(fun, issue) {
-      if (fun !== undefined && FUN.includes(fun)) enqueue({ kind: 'design', id: contextualId(`playtest:feedback:fun:${fun}`) });
-      if (issue !== undefined && ISSUES.includes(issue)) enqueue({ kind: 'design', id: contextualId(`playtest:feedback:issue:${issue}`) });
+      if (fun !== undefined && FUN.includes(fun)) enqueue({ kind: 'design', id: contextualId(`${PLAYTEST_TELEMETRY_NAMESPACE}:feedback:fun:${fun}`) });
+      if (issue !== undefined && ISSUES.includes(issue)) enqueue({ kind: 'design', id: contextualId(`${PLAYTEST_TELEMETRY_NAMESPACE}:feedback:issue:${issue}`) });
     },
     visibility(hidden) {
       if (hidden && !lastHidden) event('blur');

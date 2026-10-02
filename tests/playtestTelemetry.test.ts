@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createBrowserPlaytestTelemetry, createPlaytestTelemetry, normalizePlaytestSource,
+  PLAYTEST_EVENT_NAMES, PLAYTEST_TELEMETRY_NAMESPACE,
   type PlaytestAnalyticsProvider, type PlaytestEventName, type PlaytestFun,
   type PlaytestIssue, type PlaytestStage, type PlaytestTelemetryConfig,
 } from '../src/playtest/telemetry';
@@ -77,6 +78,11 @@ describe('public playtest telemetry configuration', () => {
     telemetry.start();
     telemetry.feedback('position', 'none');
     telemetry.progression('start', 'calibration');
+    telemetry.stage('core');
+    telemetry.assistance(true);
+    telemetry.event('hint_no_attack');
+    telemetry.event('core_complete');
+    telemetry.progression('complete', 'core', 1);
     await flush();
     expect(telemetry.configured).toBe(false);
     expect(telemetry.status).toBe('disabled');
@@ -87,6 +93,8 @@ describe('public playtest telemetry configuration', () => {
     const loader = vi.fn(async () => mockProvider().sdk);
     const telemetry = createPlaytestTelemetry(CONFIG, loader);
     expect(telemetry.configured).toBe(true);
+    telemetry.assistance(true);
+    telemetry.assistance(false);
     expect(loader).not.toHaveBeenCalled();
     telemetry.dispose();
   });
@@ -152,13 +160,13 @@ describe('optional provider lifecycle and safe event mapping', () => {
     await flush();
     expect(telemetry.status).toBe('ready');
     expect(provider.sdk.addDesignEvent.mock.calls).toEqual([
-      ['playtest:landing', undefined], ['playtest:start', undefined], ['playtest:stage:calibration', undefined],
+      ['playtest_open_v2:landing', undefined], ['playtest_open_v2:start', undefined], ['playtest_open_v2:stage:calibration', undefined],
     ]);
-    expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(1, 'playtest_v1', 'calibration', undefined, undefined);
+    expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(1, 'playtest_open_v2', 'calibration', undefined, undefined);
     telemetry.progression('complete', 'calibration', 3);
     telemetry.progression('fail', 'core');
     expect(provider.sdk.addProgressionEvent.mock.calls.slice(-2)).toEqual([
-      [2, 'playtest_v1', 'calibration', undefined, 3], [3, 'playtest_v1', 'core', undefined, undefined],
+      [2, 'playtest_open_v2', 'calibration', undefined, 3], [3, 'playtest_open_v2', 'core', 'unassisted', undefined],
     ]);
     telemetry.dispose();
   });
@@ -175,8 +183,8 @@ describe('optional provider lifecycle and safe event mapping', () => {
     provider.ready();
     await flush();
     expect(provider.sdk.addDesignEvent).toHaveBeenCalledTimes(100);
-    expect(provider.sdk.addDesignEvent.mock.calls[0]).toEqual(['playtest:landing', undefined]);
-    expect(provider.sdk.addDesignEvent.mock.calls[99]).toEqual(['playtest:damage', 98]);
+    expect(provider.sdk.addDesignEvent.mock.calls[0]).toEqual(['playtest_open_v2:landing', undefined]);
+    expect(provider.sdk.addDesignEvent.mock.calls[99]).toEqual(['playtest_open_v2:damage', 98]);
     telemetry.dispose();
   });
 
@@ -201,8 +209,8 @@ describe('optional provider lifecycle and safe event mapping', () => {
     telemetry.feedback('none');
     telemetry.feedback(undefined, 'performance');
     expect(provider.sdk.addDesignEvent.mock.calls).toEqual([
-      ['playtest:damage', 0], ['playtest:real_time', 12.5],
-      ['playtest:feedback:fun:none', undefined], ['playtest:feedback:issue:performance', undefined],
+      ['playtest_open_v2:damage', 0], ['playtest_open_v2:real_time', 12.5],
+      ['playtest_open_v2:feedback:fun:none', undefined], ['playtest_open_v2:feedback:issue:performance', undefined],
     ]);
     expect(provider.sdk.addProgressionEvent).not.toHaveBeenCalled();
     telemetry.dispose();
@@ -223,25 +231,139 @@ describe('optional provider lifecycle and safe event mapping', () => {
     telemetry.visibility(true);
     telemetry.pagehide();
     expect(provider.sdk.addDesignEvent.mock.calls.map((call) => call[0])).toEqual([
-      'playtest:blur', 'playtest:pagehide_unknown', 'playtest:blur', 'playtest:pagehide_unknown',
+      'playtest_open_v2:blur', 'playtest_open_v2:pagehide_unknown', 'playtest_open_v2:blur', 'playtest_open_v2:pagehide_unknown',
     ]);
     expect(provider.sdk.addProgressionEvent).not.toHaveBeenCalled();
     telemetry.dispose();
   });
 
-  it('accepts closed calibration diagnostics and actual first-attack evidence', async () => {
+  it('accepts factual open-calibration events without historical choreography semantics', async () => {
     const provider = mockProvider();
     provider.ready();
     const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
     telemetry.event('first_attack');
-    telemetry.event('calibration_retry_needed');
-    telemetry.event('calibration_cycle_failed');
+    telemetry.event('guard_defeated');
+    telemetry.event('healing_used');
+    telemetry.event('healing_skipped_resource_lost');
+    telemetry.event('calibration_complete');
     await flush();
     expect(provider.sdk.addDesignEvent.mock.calls.map((call) => call[0])).toEqual([
-      'playtest:first_attack', 'playtest:calibration_retry_needed', 'playtest:calibration_cycle_failed',
+      'playtest_open_v2:first_attack', 'playtest_open_v2:guard_defeated', 'playtest_open_v2:healing_used',
+      'playtest_open_v2:healing_skipped_resource_lost',
+      'playtest_open_v2:calibration_complete',
     ]);
     telemetry.dispose();
   });
+
+  it('rejects historical choreography events rather than relabelling old success as completion', async () => {
+    const provider = mockProvider();
+    provider.ready();
+    const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+    telemetry.stage('calibration');
+    await flush();
+    provider.sdk.addDesignEvent.mockClear();
+    for (const retired of [
+      'core_loop_learned', 'attack_seen', 'attack_committed', 'evade_equivalent',
+      'recovery_hit_equivalent', 'calibration_retry_needed', 'calibration_cycle_failed',
+    ]) {
+      expect(PLAYTEST_EVENT_NAMES).not.toContain(retired);
+      telemetry.event(retired as PlaytestEventName);
+    }
+    expect(provider.sdk.addDesignEvent).not.toHaveBeenCalled();
+    expect(PLAYTEST_TELEMETRY_NAMESPACE).toBe('playtest_open_v2');
+    telemetry.dispose();
+  });
+
+  it('allows actual slow-time and combat observations in both stages', async () => {
+    const provider = mockProvider();
+    provider.ready();
+    const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+    for (const stage of ['calibration', 'core'] as const) {
+      telemetry.stage(stage);
+      for (const fact of [
+        'first_move', 'first_look', 'first_attack', 'slow_time_observed',
+        'counter_observed', 'deflect_observed', 'hurt_observed',
+      ] as const) telemetry.event(fact);
+    }
+    await flush();
+    expect(provider.sdk.addDesignEvent.mock.calls.map(call => call[0])).toEqual([
+      'playtest_open_v2:stage:calibration', 'playtest_open_v2:first_move:calibration',
+      'playtest_open_v2:first_look:calibration', 'playtest_open_v2:first_attack:calibration',
+      'playtest_open_v2:slow_time_observed:calibration', 'playtest_open_v2:counter_observed:calibration',
+      'playtest_open_v2:deflect_observed:calibration', 'playtest_open_v2:hurt_observed:calibration',
+      'playtest_open_v2:stage:core_unassisted', 'playtest_open_v2:first_move:core_unassisted',
+      'playtest_open_v2:first_look:core_unassisted', 'playtest_open_v2:first_attack:core_unassisted',
+      'playtest_open_v2:slow_time_observed:core_unassisted', 'playtest_open_v2:counter_observed:core_unassisted',
+      'playtest_open_v2:deflect_observed:core_unassisted', 'playtest_open_v2:hurt_observed:core_unassisted',
+    ]);
+    telemetry.dispose();
+  });
+
+  it.each(['core_complete', 'player_death', 'voluntary_quit'] as const)(
+    'snapshots sticky assistance for queued %s outcomes and progression, then resets the next attempt',
+    async (outcome) => {
+      const provider = mockProvider();
+      const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+      const terminal = outcome === 'core_complete' ? 'complete' : 'fail';
+      telemetry.stage('calibration');
+      telemetry.assistance(true); // Calibration support must not taint the core attempt.
+      telemetry.stage('core');
+      telemetry.progression('start', 'core');
+      telemetry.event('core_start');
+      telemetry.assistance(true);
+      telemetry.assistance(false); // Sticky until a new attempt begins.
+      telemetry.event(outcome);
+      telemetry.progression(terminal, 'core', 12);
+      telemetry.feedback('position', 'none');
+      telemetry.retry();
+      telemetry.stage('core');
+      telemetry.progression('start', 'core');
+      telemetry.event(outcome);
+      telemetry.progression(terminal, 'core', 5);
+      await flush();
+      provider.ready();
+      await flush();
+      const ids = provider.sdk.addDesignEvent.mock.calls.map(call => call[0]);
+      expect(ids).toContain(`playtest_open_v2:${outcome}:core_assisted`);
+      expect(ids).toContain(`playtest_open_v2:${outcome}:core_unassisted`);
+      expect(ids).toContain('playtest_open_v2:core_start:core_unassisted');
+      expect(ids).toContain('playtest_open_v2:feedback:fun:position:core_assisted');
+      expect(ids).toContain('playtest_open_v2:feedback:issue:none:core_assisted');
+      expect(ids).toContain('playtest_open_v2:retry:core_assisted');
+      expect(provider.sdk.addProgressionEvent.mock.calls).toEqual([
+        [1, 'playtest_open_v2', 'core', 'unassisted', undefined],
+        [terminal === 'complete' ? 2 : 3, 'playtest_open_v2', 'core', 'assisted', 12],
+        [1, 'playtest_open_v2', 'core', 'unassisted', undefined],
+        [terminal === 'complete' ? 2 : 3, 'playtest_open_v2', 'core', 'unassisted', 5],
+      ]);
+      for (const id of ids) {
+        expect(id.split(':').length).toBeLessThanOrEqual(5);
+        expect(id.split(':').every((part: string) => part.length <= 32)).toBe(true);
+      }
+      telemetry.dispose();
+    },
+  );
+
+  it.each(['hint_inactivity', 'hint_no_attack', 'hint_repeated_damage'] as const)(
+    'classifies a displayed %s as assistance without relying on caller ordering',
+    async (hint) => {
+      const provider = mockProvider();
+      provider.ready();
+      const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+      telemetry.stage('core');
+      telemetry.event(hint);
+      telemetry.assistance(false);
+      telemetry.event('player_death');
+      telemetry.progression('fail', 'core');
+      await flush();
+      expect(provider.sdk.addDesignEvent.mock.calls.map(call => call[0])).toEqual([
+        'playtest_open_v2:stage:core_unassisted', `playtest_open_v2:${hint}:core_assisted`,
+        'playtest_open_v2:player_death:core_assisted',
+      ]);
+      expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(3, 'playtest_open_v2', 'core', 'assisted', undefined);
+      telemetry.dispose();
+    },
+  );
 
   it('captures stage in queued milestone, outcome, stats, retry, and feedback IDs while landing/start stay global', async () => {
     const provider = mockProvider();
@@ -250,7 +372,7 @@ describe('optional provider lifecycle and safe event mapping', () => {
     telemetry.start();
     telemetry.stage('calibration');
     telemetry.event('first_attack');
-    telemetry.event('calibration_cycle_failed');
+    telemetry.event('calibration_complete');
     telemetry.retry();
     telemetry.stage('core');
     telemetry.event('first_attack');
@@ -268,13 +390,13 @@ describe('optional provider lifecycle and safe event mapping', () => {
     await flush();
     const ids = provider.sdk.addDesignEvent.mock.calls.map((call) => call[0] as string);
     expect(ids).toEqual([
-      'playtest:landing', 'playtest:start', 'playtest:stage:calibration',
-      'playtest:first_attack:calibration', 'playtest:calibration_cycle_failed:calibration',
-      'playtest:retry:calibration', 'playtest:stage:core', 'playtest:first_attack:core',
-      'playtest:core_complete:core', 'playtest:real_time:core', 'playtest:damage:core',
-      'playtest:kills:core', 'playtest:feedback:fun:position:core',
-      'playtest:feedback:issue:performance:core', 'playtest:retry:core',
-      'playtest:landing', 'playtest:pagehide_unknown', 'playtest:start',
+      'playtest_open_v2:landing', 'playtest_open_v2:start', 'playtest_open_v2:stage:calibration',
+      'playtest_open_v2:first_attack:calibration', 'playtest_open_v2:calibration_complete:calibration',
+      'playtest_open_v2:retry:calibration', 'playtest_open_v2:stage:core_unassisted', 'playtest_open_v2:first_attack:core_unassisted',
+      'playtest_open_v2:core_complete:core_unassisted', 'playtest_open_v2:real_time:core_unassisted', 'playtest_open_v2:damage:core_unassisted',
+      'playtest_open_v2:kills:core_unassisted', 'playtest_open_v2:feedback:fun:position:core_unassisted',
+      'playtest_open_v2:feedback:issue:performance:core_unassisted', 'playtest_open_v2:retry:core_unassisted',
+      'playtest_open_v2:landing', 'playtest_open_v2:pagehide_unknown', 'playtest_open_v2:start',
     ]);
     for (const id of ids) {
       expect(id.split(':').length).toBeLessThanOrEqual(5);

@@ -363,6 +363,10 @@ export interface GameEvent {
   id?: number;
   kind?: string;
   amount?: number;
+  /** playerHurt: incoming damage after the ordinary armor reduction. */
+  attemptedAmount?: number;
+  /** playerHurt: HP actually removed, after scenario protection/overkill. */
+  actualAmount?: number;
   head?: boolean;
   sneak?: boolean;
   air?: boolean;

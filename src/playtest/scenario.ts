@@ -3,7 +3,7 @@ import { createTrialLevel } from '../gen/practiceTrials';
 import { Grid, T } from '../sim/grid';
 import { World } from '../sim/world';
 
-export const PUBLIC_BUILD_ID = 'RemoteValidationV1' as const;
+export const PUBLIC_BUILD_ID = 'PublicCalibrationOpenV2' as const;
 export type PlaytestStage = 'calibration' | 'core';
 
 /** Disposable authored fixtures. No RunState, campaign save, carry, or trial kit. */
@@ -11,6 +11,8 @@ export function createPublicPlaytestWorld(stage: PlaytestStage): World {
   const level = stage === 'calibration' ? createCalibrationLevel() : createTrialLevel('shield-crossfire');
   level.publicPlaytest = stage;
   const world = new World(level, { cls: 'warrior' });
+  // Disposable, disclosed starting wound. No combat damage or healing rule changes.
+  if (stage === 'calibration') world.player.hp = Math.ceil(world.player.maxHp / 2);
   world.drainEvents();
   return world;
 }

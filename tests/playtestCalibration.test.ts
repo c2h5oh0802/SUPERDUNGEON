@@ -1,90 +1,69 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSES, ENEMIES, PLAYER, WEAPONS } from '../src/config';
+import { CLASSES, ENEMIES, HEALING_POTION, PLAYER, WEAPONS } from '../src/config';
 import { yawFromDir } from '../src/core/math';
 import { CalibrationObserver, type CalibrationMilestone } from '../src/playtest/calibration';
 import { createPublicPlaytestWorld, PUBLIC_BUILD_ID } from '../src/playtest/scenario';
+import { isKnown, queueUse } from '../src/sim/items';
 import { Nav } from '../src/sim/nav';
-import { emptyInput, type FrameInput, type GameEvent } from '../src/sim/types';
+import { emptyInput, type FrameInput } from '../src/sim/types';
 
 const DT = 1 / 60;
-function driver(world = createPublicPlaytestWorld('calibration')) {
-  const observer = new CalibrationObserver();
+function driver() {
+  const world = createPublicPlaytestWorld('calibration'), observer = new CalibrationObserver();
   const evidence: CalibrationMilestone[] = [];
-  const independentCues = new Set<string>();
-  const frame = (partial: Partial<FrameInput> = {}, injected: GameEvent[] = []) => {
+  const frame = (partial: Partial<FrameInput> = {}) => {
     const input = { ...emptyInput(world.player.yaw, world.player.pitch), ...partial };
     const before = observer.beforeFrame(world);
     world.frame(DT, input);
-    const events = [...world.drainEvents(), ...injected];
-    const update = observer.observeFrame(world, input, before, events);
+    const update = observer.observeFrame(world, input, before, world.drainEvents());
     evidence.push(...update.milestones);
-    if (update.state.successes === 1 && !update.state.restartRecommended) independentCues.add(update.state.cue);
     return update;
   };
-  return { world, observer, evidence, independentCues, frame };
+  return { world, observer, evidence, frame };
 }
-
-/** Ordinary frame inputs only. Reads combat state to act deterministically; never
- * sets HP, phase, positions, learned flags, or injects a success event. */
-function performCycles(d: ReturnType<typeof driver>, options: { dodge?: boolean; lookAway?: boolean; holdAttack?: boolean; freshPress?: boolean } = {}) {
-  let attackCycle = -1;
-  const phaseChanges: string[] = [];
-  let lastPhase = '';
-  for (let f = 0; f < 12000 && !d.observer.state.learned && !d.observer.state.restartRecommended; f++) {
-    const w = d.world, p = w.player, e = w.enemies[0]!;
-    let yaw = yawFromDir(e.x - p.x, e.z - p.z);
-    // Genuine initial camera motion, then return to viewing the guard.
-    if (f < 12) yaw += .2;
-    if (options.lookAway) yaw += Math.PI;
-    const input: Partial<FrameInput> = { yaw };
-    const distance = Math.hypot(e.x - p.x, e.z - p.z);
-    if (e.phase === 'none') input.moveZ = distance > 3.2 ? (options.lookAway ? -1 : 1) : 0;
-    if ((e.phase === 'windup' && e.locked) || e.phase === 'active') input.moveZ = options.dodge === false ? 0 : (options.lookAway ? 1 : -1);
-    if (e.phase === 'recovery' && !p.action) {
-      input.moveZ = options.lookAway ? -1 : 1;
-      if (distance <= 2.45 && attackCycle !== d.observer.state.cycle) {
-        input.fire = true; input.firePressed = options.freshPress !== false; attackCycle = d.observer.state.cycle;
-      }
-    }
-    if (p.action?.kind === 'melee') input.moveZ = p.action.hitSet.has(e.id) ? (distance < 2.6 ? -1 : 0) : (distance > 2.1 ? 1 : 0);
-    if (options.holdAttack) { input.fire = true; input.firePressed = f === 0; }
-    d.frame(input);
-    const phase = `${e.phase}/${d.observer.state.phase}/${d.observer.state.successes}`;
-    if (phase !== lastPhase) { phaseChanges.push(`${f}:${phase} hp${p.hp}/${e.hp} d${distance.toFixed(2)}`); lastPhase = phase; }
+function killGuard(d: ReturnType<typeof driver>) {
+  for (let f = 0; f < 3000 && d.world.enemies[0]!.alive; f++) {
+    const p = d.world.player, e = d.world.enemies[0]!;
+    d.frame({ yaw: yawFromDir(e.x - p.x, e.z - p.z), moveZ: Math.hypot(e.x - p.x, e.z - p.z) > 1.7 ? 1 : 0,
+      fire: true, firePressed: f === 0 });
   }
-  return phaseChanges;
+  expect(d.world.enemies[0]!.alive).toBe(false);
+}
+function recovery(d: ReturnType<typeof driver>) {
+  killGuard(d);
+  for (let f = 0; f < 180 && !d.world.player.items.some(i => i.id === 'potion:healing'); f++) d.frame();
+  expect(d.observer.state.phase).toBe('healing');
+  expect(d.world.player.items).toEqual([{ id: 'potion:healing', count: 1, level: 0 }]);
+}
+function finishDrink(d: ReturnType<typeof driver>) {
+  for (let f = 0; f < 180 && !d.observer.state.complete; f++) d.frame();
+  expect(d.observer.state.complete).toBe(true);
 }
 
-describe('RemoteValidationV1 disposable fixtures', () => {
-  it('uses one ordinary guard and the unmodified starting warrior kit', () => {
+describe('open public calibration fixtures', () => {
+  it('keeps native guard/kit/knowledge and authors a disclosed initial wound', () => {
     const w = createPublicPlaytestWorld('calibration');
-    expect(PUBLIC_BUILD_ID).toBe('RemoteValidationV1');
-    expect(w.level.publicPlaytest).toBe('calibration');
-    expect(w.level.practiceTrial).toBeUndefined();
+    expect(PUBLIC_BUILD_ID).toBe('PublicCalibrationOpenV2');
     expect(w.enemies).toHaveLength(1);
     expect(w.enemies[0]!.hp).toBe(ENEMIES.guard.hp);
     expect(w.player.weapon).toEqual({ id: CLASSES.warrior.weapon, level: 0 });
+    expect(w.player.hp).toBe(Math.ceil(w.player.maxHp / 2));
     expect(w.player.items).toEqual([]);
-    expect(w.player.talents).toEqual([]);
     expect(w.pickups).toEqual([]);
-    expect(w.interactables).toEqual([]);
-    expect(w.level.torches.length).toBeGreaterThan(0);
-    expect(w.player.stones).toBe(CLASSES.warrior.start.stones);
+    expect(isKnown(w, 'potion:healing')).toBe(true);
+    expect(isKnown(w, 'scroll:identify')).toBe(false);
     expect(ENEMIES.guard.hp).toBe(2 * WEAPONS.longsword.damage);
+    expect(createPublicPlaytestWorld('core').player.hp).toBe(PLAYER.maxHp);
   });
-
-  it('reuses shield-crossfire geometry without the demonstration kit or carry', () => {
+  it('reuses fresh shield-crossfire core without carry, bonus items, hunger or protection', () => {
     const a = createPublicPlaytestWorld('core'), b = createPublicPlaytestWorld('core');
-    expect(a.level.publicPlaytest).toBe('core');
     expect(a.level.practiceTrial).toBe('shield-crossfire');
     expect(a.enemies.map(e => e.kind)).toEqual(['guard', 'archer']);
     expect(a.player.items).toEqual([]);
-    expect(a.player.talents).toEqual([]);
-    for (let f = 0; f < 100; f++) a.frame(DT, { ...emptyInput(a.player.yaw), wait: true });
-    expect(a.time).toBeGreaterThan(1);
+    for (let f = 0; f < 100; f++) a.frame(DT, { ...emptyInput(), wait: true });
     expect(a.player.hunger).toBe(0);
-    expect(a.player).not.toBe(b.player);
-    a.player.hp = 1;
+    a.damagePlayer(999, 'guard', a.player.x + 1, a.player.z);
+    expect(a.player.dead).toBe(true);
     expect(b.player.hp).toBe(b.player.maxHp);
   });
 });
@@ -137,90 +116,82 @@ describe('public core ordinary-input reachability', () => {
   });
 });
 
-describe('calibration evidence from real World frames', () => {
-  it('accepts two separate visible slow-observe, committed dodge, full resolution, recovery-hit cycles, including lethal hit', () => {
+describe('factual open calibration and formal healing', () => {
+  it('observes actual slow once before any movement/look, independent of guard phase', () => {
     const d = driver();
-    const phases = performCycles(d);
-    expect(d.observer.state.learned, JSON.stringify({ phases, evidence: d.evidence }, null, 2)).toBe(true);
-    expect(d.observer.state.successes).toBe(2);
-    expect(d.observer.state.guided).toBe(false);
-    expect(d.observer.state.restartRecommended).toBe(false);
-    expect(d.world.enemies[0]!.alive).toBe(false);
-    expect(d.world.enemies[0]!.phase).toBe('none');
-    expect(d.world.player.hp).toBe(d.world.player.maxHp);
-    expect(d.world.player.hunger).toBe(0);
-    expect(d.world.player.xp).toBe(0);
-    expect(d.world.pickups).toEqual([]);
-    expect([...d.independentCues]).toEqual(['再獨立完成一次：停下觀察 → 避開整劍 → 收招時命中。']);
-    expect(d.evidence.filter(e => e.type === 'recovery_hit').map(e => e.cycle)).toEqual([1, 2]);
-    expect(d.evidence.filter(e => e.type === 'stop_slow_seen')).toHaveLength(2);
-    expect(d.evidence.filter(e => e.type === 'dodge_seen')).toHaveLength(2);
-    expect(d.evidence.filter(e => e.type === 'attack_evaded').map(e => e.cycle)).toEqual([1, 2]);
-    expect(d.evidence.filter(e => e.type === 'calibration_learned')).toHaveLength(1);
-  });
-
-  it('does not learn from elapsed time or invented semantic events', () => {
-    const d = driver();
-    for (let f = 0; f < 3600 && !d.world.player.dead; f++) d.frame({ wait: true }, [{ type: 'learned' } as unknown as GameEvent]);
-    expect(d.observer.state.learned).toBe(false);
-    expect(d.observer.state.successes).toBe(0);
+    for (let f = 0; f < 120; f++) d.frame({ yaw: Math.PI });
+    expect(d.observer.state.slowObserved).toBe(true);
     expect(d.observer.state.moved).toBe(false);
-    expect(d.observer.state.looked).toBe(false);
-    expect(d.evidence.some(e => e.type === 'recovery_hit')).toBe(false);
+    expect(d.evidence.filter(e => e.type === 'stop_slow_seen')).toHaveLength(1);
+    expect(d.observer.state.complete).toBe(false);
+    expect(d.world.pickups).toHaveLength(0);
   });
-
-  it('does not accept holding attack and asks for a real restart if the guard is killed early', () => {
+  it('does not credit waiting, held movement against a wall, committed actions, or paused frames as slow', () => {
     const d = driver();
-    performCycles(d, { holdAttack: true });
-    expect(d.observer.state.learned).toBe(false);
-    expect(d.observer.state.successes).toBe(0);
-    expect(d.world.enemies[0]!.alive).toBe(false);
-    expect(d.observer.state.restartRecommended).toBe(true);
-    expect(d.evidence.some(e => e.type === 'calibration_restart_recommended')).toBe(true);
+    for (let f = 0; f < 120; f++) d.frame({ wait: true });
+    expect(d.observer.state.slowObserved).toBe(false);
+    for (let f = 0; f < 180; f++) d.frame({ moveZ: -1 });
+    expect(d.observer.state.slowObserved).toBe(false);
+    for (let f = 0; f < 120; f++) d.frame({ fire: true });
+    expect(d.observer.state.slowObserved).toBe(false);
+    const before = d.observer.beforeFrame(d.world);
+    d.observer.observeFrame(d.world, emptyInput(), before, []);
+    expect(d.observer.state.slowObserved).toBe(false);
   });
-
-  it('requires a fresh attack press during recovery, not a held attack level', () => {
-    const d = driver();
-    performCycles(d, { freshPress: false });
-    expect(d.world.enemies[0]!.alive).toBe(false);
-    expect(d.world.player.hp).toBe(d.world.player.maxHp);
-    expect(d.observer.state.successes).toBe(0);
-    expect(d.observer.state.learned).toBe(false);
-    expect(d.observer.state.restartRecommended).toBe(true);
+  it.each(['hotkey', 'inventory'] as const)('credits only completed formal Healing effect via %s', mode => {
+    const d = driver(); recovery(d);
+    const hp = d.world.player.hp;
+    expect(d.world.stats.healingFound).toBe(1);
+    expect(d.world.pickups.filter(p => p.item === 'potion:healing')).toHaveLength(1);
+    if (mode === 'inventory') queueUse(d.world, 0, 'use');
+    d.frame({ potion: mode === 'hotkey' });
+    expect(d.world.player.items.some(i => i.id === 'potion:healing')).toBe(false);
+    expect(d.world.player.action?.kind).toBe('potion');
+    expect(d.world.player.hp).toBe(hp);
+    expect(d.world.stats.healingUsed).toBe(0);
+    expect(d.observer.state.complete).toBe(false);
+    finishDrink(d);
+    expect(d.world.player.hp).toBe(Math.min(d.world.player.maxHp, hp + Math.ceil(d.world.player.maxHp * HEALING_POTION.fraction)));
+    expect(d.world.stats.healingUsed).toBe(1);
+    expect(d.observer.state.healingUsed).toBe(true);
+    expect(d.observer.state.healingSkipped).toBe(false);
+    expect(d.evidence.filter(e => e.type === 'calibration_complete')).toHaveLength(1);
+    expect(d.world.player.items).toEqual([{ id: 'potion:haste', count: 1, level: 0 }]);
+    expect(isKnown(d.world, 'potion:haste')).toBe(false);
   });
-
-  it('rejects an actual counter interruption rather than crediting it as a dodge', () => {
-    const d = driver();
-    const w = d.world, guard = w.enemies[0]!;
-    for (let f = 0; f < 2000 && !guard.locked; f++) {
-      const yaw = yawFromDir(guard.x - w.player.x, guard.z - w.player.z) + (f < 12 ? .2 : 0);
-      d.frame({ yaw, moveZ: guard.phase === 'none' ? 1 : 0 });
-    }
-    expect(guard.locked).toBe(true);
-    d.frame({ fire: true, firePressed: true });
+  it('preserves an intact dropped lesson item for ordinary reacquisition without duplicate supply', () => {
+    const d = driver(); recovery(d);
+    queueUse(d.world, 0, 'drop'); d.frame();
     for (let f = 0; f < 30; f++) d.frame();
-    expect(w.stats.counters).toBe(1);
-    expect(guard.phase).toBe('stagger');
-    expect(d.observer.state.successes).toBe(0);
-    expect(d.observer.state.learned).toBe(false);
-    expect(d.evidence.some(e => e.type === 'calibration_cycle_failed')).toBe(true);
+    expect(d.observer.state.complete).toBe(false);
+    expect(d.world.pickups.filter(p => p.item === 'potion:healing' && !p.taken)).toHaveLength(1);
+    for (let f = 0; f < 30; f++) d.frame({ moveZ: -1 });
+    for (let f = 0; f < 30; f++) d.frame({ moveZ: 1 });
+    expect(d.world.player.items.some(i => i.id === 'potion:healing')).toBe(true);
+    expect(d.world.stats.healingFound).toBe(1);
+    d.frame({ potion: true }); finishDrink(d);
   });
-
-  it('rejects a cycle that takes damage instead of evading the whole active phase', () => {
-    const d = driver();
-    performCycles(d, { dodge: false });
-    expect(d.world.player.hp).toBeLessThan(d.world.player.maxHp);
-    expect(d.observer.state.learned).toBe(false);
-    expect(d.observer.state.successes).toBe(0);
-    expect(d.evidence.some(e => e.type === 'calibration_cycle_failed' && e.reason === 'hurt-or-blocked')).toBe(true);
+  it('a thrown lesson bottle permits explicitly classified continuation without replacing or faking healing', () => {
+    const d = driver(); recovery(d);
+    const hp = d.world.player.hp;
+    queueUse(d.world, 0, 'throw'); d.frame();
+    expect(d.observer.state.complete).toBe(false);
+    finishDrink(d);
+    expect(d.world.player.hp).toBe(hp);
+    expect(d.world.stats.healingUsed).toBe(0);
+    expect(d.observer.state.healingSkipped).toBe(true);
+    expect(d.evidence.some(e => e.type === 'healing_skipped_resource_lost')).toBe(true);
+    expect(d.world.pickups.filter(p => p.item === 'potion:healing')).toHaveLength(1);
   });
-
-  it('does not accept an off-camera threat even when the world attack phases continue', () => {
-    const d = driver();
-    performCycles(d, { lookAway: true });
-    expect(d.observer.state.learned).toBe(false);
-    expect(d.observer.state.successes).toBe(0);
-    expect(d.evidence.some(e => e.type === 'stop_slow_seen')).toBe(false);
-    expect(d.evidence.some(e => e.type === 'windup_seen')).toBe(false);
+  it('emits independent core facts without adding supplies or calibration completion', () => {
+    const w = createPublicPlaytestWorld('core'), observer = new CalibrationObserver();
+    const evidence: CalibrationMilestone[] = [];
+    for (let f = 0; f < 30; f++) {
+      const before = observer.beforeFrame(w), input = emptyInput(w.player.yaw);
+      w.frame(DT, input); evidence.push(...observer.observeFrame(w, input, before, w.drainEvents()).milestones);
+    }
+    expect(evidence.filter(e => e.type === 'stop_slow_seen')).toHaveLength(1);
+    expect(observer.state.complete).toBe(false);
+    expect(w.pickups).toEqual([]);
   });
 });

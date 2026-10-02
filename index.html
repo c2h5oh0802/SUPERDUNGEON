@@ -94,9 +94,9 @@
       <div class="menu-card playtest-landing">
         <p class="sub">沉眠之心 · 短篇試玩</p>
         <h1 id="playtest-title">停下腳步<br />時間就會慢下來</h1>
-        <p class="pitch">先練兩次：停下看舉劍 → 退開避刀 → 靠近打一下<br />接著通過一場短遭遇</p>
+        <p class="pitch">停下觀察，行動讓時間前進。<br />用自己的方式擊倒盾衛，再試一場短遭遇</p>
         <button id="btn-playtest-start" class="primary">開始試玩</button>
-        <p class="muted small">約 1–2 分鐘熟悉操作，再試一場短遭遇。手機建議橫放。</p>
+        <p class="muted small">開放練習以半血開始，受傷最低保留 1 生命；戰後可試用治療藥水。手機建議橫放。</p>
         <p id="playtest-privacy" class="muted small"></p>
       </div>
     </section>
@@ -277,6 +277,7 @@
         <p id="boss-test-pause-loadout" class="boss-test-loadout hidden"></p>
         <button id="btn-pause-class">職業說明</button>
         <button id="btn-pause-settings">設定</button>
+        <button id="btn-playtest-core-pause" class="primary hidden">進入核心遭遇</button>
         <button id="btn-quit">回主畫面</button>
         <p class="muted small">暫停時世界完全停止；正在進行的行動會保留，繼續後接著完成。</p>
       </div>
@@ -301,7 +302,9 @@
           <aside class="inv-gear" id="inv-gear" aria-label="目前裝備與隨身物資"></aside>
           <div class="inv-list" id="inv-list"></div>
         </div>
+        <p id="playtest-unknown-note" class="muted hidden"></p>
         <footer class="inv-footer">
+          <button id="btn-playtest-core" class="primary hidden">進入核心遭遇</button>
           <p>未知的藥水與卷軸需要辨識。<span>選擇物品不消耗時間；操作後回到地城。</span></p>
           <button id="btn-inv-close">返回地城 <kbd>I</kbd> <kbd>Esc</kbd></button>
         </footer>

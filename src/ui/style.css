@@ -1612,7 +1612,7 @@ html:fullscreen { background: var(--bg); }
 /* Public validation keeps the shared renderer / HUD; only unrelated information is hidden. */
 .public-playtest #hunger, .public-playtest #xp, .public-playtest #armor,
 .public-playtest #class-badge, .public-playtest .items, .public-playtest #btn-pause-class,
-.public-playtest #touch-inventory, .public-playtest #touch-map,
+.public-playtest #touch-map,
 .public-playtest #hint { display: none; }
 .playtest-landing { max-width: 640px; text-align: center; }
 .playtest-landing h1 { font-size: clamp(28px, 5vw, 48px); line-height: 1.4; }
