@@ -57,6 +57,8 @@ export interface InputHandlers {
   onFocusLost(): void;
   /** 目前是否在遊戲中（決定要不要攔截按鍵預設行為）。 */
   capturing(): boolean;
+  /** 背包由原生 HTML 控制項處理輸入，只保留 I／Escape 關閉快捷鍵。 */
+  inventoryOpen?(): boolean;
 }
 
 export class Input {
@@ -93,6 +95,13 @@ export class Input {
     on(window, 'keydown', (ev) => {
       const e = ev as KeyboardEvent;
       if (!this.h.capturing()) return;
+      if (this.h.inventoryOpen?.()) {
+        if (e.code === 'KeyI' || e.code === 'Escape') {
+          e.preventDefault();
+          if (!e.repeat) this.pressed.add(e.code);
+        }
+        return;
+      }
       if (GAME_CODES.has(e.code) || e.code === 'Escape') {
         e.preventDefault();
       }
@@ -103,10 +112,11 @@ export class Input {
     on(window, 'keyup', (ev) => {
       const e = ev as KeyboardEvent;
       this.held.delete(e.code);
-      if (this.h.capturing() && GAME_CODES.has(e.code)) e.preventDefault();
+      if (this.h.capturing() && !this.h.inventoryOpen?.() && GAME_CODES.has(e.code)) e.preventDefault();
     });
     on(document, 'mousemove', (ev) => {
       const e = ev as MouseEvent;
+      if (this.h.inventoryOpen?.()) return;
       if (this.locked || this.dragging) {
         const mx = e.movementX || 0;
         const my = e.movementY || 0;
@@ -118,7 +128,7 @@ export class Input {
     });
     on(this.canvas, 'mousedown', (ev) => {
       const e = ev as MouseEvent;
-      if (!this.h.capturing()) return;
+      if (!this.h.capturing() || this.h.inventoryOpen?.()) return;
       if (e.button === 0) {
         this.fireHeld = true;
         this.firePressed = true;
@@ -136,7 +146,7 @@ export class Input {
     });
     on(this.canvas, 'contextmenu', (e) => e.preventDefault());
     on(window, 'wheel', (e) => {
-      if (this.h.capturing()) e.preventDefault();
+      if (this.h.capturing() && !this.h.inventoryOpen?.()) e.preventDefault();
     }, { passive: false });
     on(window, 'blur', () => {
       this.clear();

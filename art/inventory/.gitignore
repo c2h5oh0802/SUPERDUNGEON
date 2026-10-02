@@ -1,0 +1,5 @@
+# Blender/PNG intermediates are reproducible; only WebPs ship in the game.
+renders/
+*.log
+*.blend1
+*.blend2

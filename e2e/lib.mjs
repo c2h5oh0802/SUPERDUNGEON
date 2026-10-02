@@ -103,3 +103,11 @@ export async function startRun(page, seed) {
   await page.click('#btn-start');
   await page.waitForFunction(() => window.__sd?.state().mode === 'playing', null, { timeout: 90000 });
 }
+
+/** Select the tile through the real UI before operating its inspector. */
+export async function selectInventoryItem(page, index) {
+  if (!Number.isInteger(index) || index < 0) throw new Error(`Invalid inventory index: ${index}`);
+  const tile = page.locator(`#inv-list button[data-select="${index}"]`);
+  await tile.click();
+  await page.locator(`#inv-list article[data-detail="${index}"]:not([hidden])`).waitFor({ state: 'visible' });
+}

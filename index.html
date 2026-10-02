@@ -207,13 +207,21 @@
       </div>
     </section>
 
-    <section id="screen-inventory" class="screen hidden">
+    <section id="screen-inventory" class="screen hidden" role="dialog" aria-modal="true" aria-labelledby="inv-title">
       <div class="panel wide inv-panel">
-        <h2>背包 <small class="muted" id="inv-count"></small></h2>
-        <div class="inv-gear" id="inv-gear"></div>
-        <div class="inv-list" id="inv-list"></div>
-        <p class="muted small">世界暫停中。未知的藥水與卷軸用了才知道是什麼；丟出的藥水會往準星方向拋出（可以在空中射爆）。按 <kbd>I</kbd> 或 <kbd>Esc</kbd> 關閉。</p>
-        <button id="btn-inv-close">關閉</button>
+        <header class="inv-header">
+          <div><p class="inv-eyebrow">沉眠之心 · 遠征裝備</p><h2 id="inv-title">背包 <small id="inv-count"></small></h2></div>
+          <div id="inv-status" class="inv-status"></div>
+          <span class="inv-paused"><i></i>世界暫停中</span>
+        </header>
+        <div class="inv-workbench">
+          <aside class="inv-gear" id="inv-gear" aria-label="目前裝備與隨身物資"></aside>
+          <div class="inv-list" id="inv-list"></div>
+        </div>
+        <footer class="inv-footer">
+          <p>未知的藥水與卷軸需要辨識。<span>選擇物品不消耗時間；操作後回到地城。</span></p>
+          <button id="btn-inv-close">返回地城 <kbd>I</kbd> <kbd>Esc</kbd></button>
+        </footer>
       </div>
     </section>
 

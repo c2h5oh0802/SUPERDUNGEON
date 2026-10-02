@@ -1,7 +1,7 @@
 // Normal adventure entry and normal inventory/input paths. Gear grants and
 // starting-position teleport are explicit test setup injections, not a full playthrough.
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { BASE, OUT, launch } from './lib.mjs';
+import { BASE, OUT, launch, selectInventoryItem } from './lib.mjs';
 
 mkdirSync(OUT, { recursive: true });
 const { browser, page, errors } = await launch();
@@ -31,6 +31,7 @@ try {
         const text = await page.textContent('#inv-list');
         check('inventory communicates thrust time and movement commitment', text.includes('0.85 秒') && text.includes('分階段減速'));
       }
+      await selectInventoryItem(page, index);
       await page.click(`#inv-list button[data-k="${index}"][data-m="use"]`);
       await page.waitForFunction(id => {
         const s = window.__sd.state();

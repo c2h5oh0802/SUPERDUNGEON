@@ -1,7 +1,7 @@
 // 五層冒險：四個探索層 → 守心者 → 取心通關（或死亡）。
 // Uses normal controls with omniscient read-only navigation/aiming; not human balance evidence.
 // 用法：node e2e/playthrough.mjs <seed> [--headed] [--class=warrior|huntress]
-import { Bot, OUT, launch, startRun, wrap, yawTo } from './lib.mjs';
+import { Bot, OUT, launch, startRun, wrap, yawTo, selectInventoryItem } from './lib.mjs';
 
 const seed = process.argv[2] ?? 'RUN1';
 const headed = process.argv.includes('--headed');
@@ -277,6 +277,7 @@ async function goTo(tx, tz, arrive = 1.0, maxMs = 90000) {
     if (!p.action && p.hunger >= 120 && food >= 0) {
       await bot.releaseAll(); await bot.tap('KeyI');
       await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
+      await selectInventoryItem(page, food);
       await page.click(`#inv-list button[data-k="${food}"][data-m="use"]`);
       await bot.waitIdle(); continue;
     }

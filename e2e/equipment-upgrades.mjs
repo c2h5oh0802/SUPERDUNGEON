@@ -1,7 +1,7 @@
 // Explicit gear/item fixture injection; real inventory buttons and paid actions.
 // This checks UI contracts, not natural loot acquisition or human game feel.
 import assert from 'node:assert/strict';
-import { launch, BASE, Bot, startRun } from './lib.mjs';
+import { launch, BASE, Bot, startRun, selectInventoryItem } from './lib.mjs';
 const { browser, page, errors } = await launch({ viewport: { width: 860, height: 480 } });
 const bot = new Bot(page);
 const st = () => bot.st();
@@ -12,6 +12,7 @@ async function openBag() {
 async function use(id, level) {
   const index = (await st()).player.items.findIndex(it => it.id === id && (level === undefined || it.level === level));
   assert.ok(index >= 0, `${id} exists`);
+  await selectInventoryItem(page, index);
   await page.click(`#inv-list button[data-k="${index}"][data-m="use"]`);
 }
 async function idle() {
@@ -64,6 +65,7 @@ try {
   assert.ok(text.includes('減傷 3'));
   assert.ok(text.includes('6 m') && text.includes('40%'));
   const scrollIndex = (await st()).player.items.findIndex(it => it.id === 'scroll:upgrade');
+  await selectInventoryItem(page, scrollIndex);
   assert.equal(await page.locator(`#inv-list button[data-k="${scrollIndex}"][data-m="use"]`).isDisabled(), true);
   assert.equal((await st()).player.items[scrollIndex].count, 1);
   // The short-viewport panel is scrollable, so expanded comparisons cannot trap controls.
@@ -74,7 +76,8 @@ try {
   assert.ok(await close.isVisible());
   const closeBounds = await close.boundingBox();
   assert.ok(closeBounds && closeBounds.y >= 0 && closeBounds.y + closeBounds.height <= 480);
-  const lastAction = page.locator('#inv-list .acts button').last();
+  await selectInventoryItem(page, (await st()).player.items.length - 1);
+  const lastAction = page.locator('#inv-list .inv-detail:not([hidden]) .acts button').last();
   await lastAction.scrollIntoViewIfNeeded();
   const actionBounds = await lastAction.boundingBox();
   assert.ok(actionBounds && actionBounds.y >= 0 && actionBounds.y + actionBounds.height <= 480);

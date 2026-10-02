@@ -1,6 +1,6 @@
 // Menu/retry/save regressions using real controls. No debug state injection.
 import assert from 'node:assert/strict';
-import { launch, BASE, Bot, startRun } from './lib.mjs';
+import { launch, BASE, Bot, startRun, selectInventoryItem } from './lib.mjs';
 const { browser, page, errors } = await launch();
 const bot = new Bot(page);
 const playing = () => page.waitForFunction(() => window.__sd?.state().mode === 'playing');
@@ -26,6 +26,7 @@ try {
     s = await bot.st();
     const index = s.player.items.findIndex(i => i.id === 'potion:gas');
     const before = s.time;
+    await selectInventoryItem(page, index);
     const convert = page.locator(`#inv-list button[data-k="${index}"][data-m="convert"]`);
     assert.equal(await convert.isDisabled(), false);
     await convert.click();

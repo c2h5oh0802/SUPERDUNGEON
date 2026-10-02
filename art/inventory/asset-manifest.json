@@ -1,0 +1,306 @@
+{
+  "totalBytes": 559318,
+  "count": 25,
+  "files": [
+    {
+      "file": "weapon-longsword.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 12130,
+      "alphaBounds": [
+        133,
+        46,
+        366,
+        465
+      ]
+    },
+    {
+      "file": "weapon-knife.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 14724,
+      "alphaBounds": [
+        131,
+        60,
+        361,
+        464
+      ]
+    },
+    {
+      "file": "weapon-axe.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 19020,
+      "alphaBounds": [
+        70,
+        61,
+        429,
+        471
+      ]
+    },
+    {
+      "file": "weapon-spear.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 8152,
+      "alphaBounds": [
+        138,
+        45,
+        363,
+        474
+      ]
+    },
+    {
+      "file": "weapon-bow.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 12008,
+      "alphaBounds": [
+        144,
+        51,
+        312,
+        473
+      ]
+    },
+    {
+      "file": "armor-cloth.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 29980,
+      "alphaBounds": [
+        80,
+        54,
+        432,
+        467
+      ]
+    },
+    {
+      "file": "armor-leather.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 30074,
+      "alphaBounds": [
+        80,
+        54,
+        432,
+        469
+      ]
+    },
+    {
+      "file": "armor-mail.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 47864,
+      "alphaBounds": [
+        80,
+        54,
+        432,
+        467
+      ]
+    },
+    {
+      "file": "ration.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 30762,
+      "alphaBounds": [
+        75,
+        88,
+        436,
+        459
+      ]
+    },
+    {
+      "file": "stock-smoke.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 18010,
+      "alphaBounds": [
+        154,
+        47,
+        357,
+        452
+      ]
+    },
+    {
+      "file": "potion-look-red.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 24430,
+      "alphaBounds": [
+        132,
+        58,
+        380,
+        437
+      ]
+    },
+    {
+      "file": "potion-look-blue.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 23842,
+      "alphaBounds": [
+        132,
+        58,
+        380,
+        437
+      ]
+    },
+    {
+      "file": "potion-look-green.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 24996,
+      "alphaBounds": [
+        132,
+        58,
+        380,
+        437
+      ]
+    },
+    {
+      "file": "potion-look-violet.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 23314,
+      "alphaBounds": [
+        132,
+        58,
+        380,
+        437
+      ]
+    },
+    {
+      "file": "potion-look-amber.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 24368,
+      "alphaBounds": [
+        132,
+        58,
+        380,
+        437
+      ]
+    },
+    {
+      "file": "potion-look-silver.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 22342,
+      "alphaBounds": [
+        132,
+        58,
+        380,
+        437
+      ]
+    },
+    {
+      "file": "scroll-look-ash.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 21188,
+      "alphaBounds": [
+        92,
+        45,
+        421,
+        467
+      ]
+    },
+    {
+      "file": "scroll-look-tide.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 20810,
+      "alphaBounds": [
+        92,
+        45,
+        421,
+        467
+      ]
+    },
+    {
+      "file": "scroll-look-thorn.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 20644,
+      "alphaBounds": [
+        92,
+        45,
+        421,
+        467
+      ]
+    },
+    {
+      "file": "scroll-look-star.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 21556,
+      "alphaBounds": [
+        92,
+        45,
+        421,
+        467
+      ]
+    },
+    {
+      "file": "scroll-upgrade.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 23874,
+      "alphaBounds": [
+        92,
+        45,
+        421,
+        467
+      ]
+    },
+    {
+      "file": "stock-stone.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 14716,
+      "alphaBounds": [
+        57,
+        100,
+        435,
+        425
+      ]
+    },
+    {
+      "file": "stock-arrow.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 23254,
+      "alphaBounds": [
+        94,
+        45,
+        401,
+        475
+      ]
+    },
+    {
+      "file": "stock-arrow-chill.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 23934,
+      "alphaBounds": [
+        94,
+        45,
+        401,
+        475
+      ]
+    },
+    {
+      "file": "stock-arrow-paralysis.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 23326,
+      "alphaBounds": [
+        94,
+        45,
+        401,
+        475
+      ]
+    }
+  ]
+}

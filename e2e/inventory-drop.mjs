@@ -1,7 +1,7 @@
 // Debug-created inventory/position fixtures; real bag buttons and action clocks.
 // This is a UI contract check, not evidence of natural acquisition or game feel.
 import assert from 'node:assert/strict';
-import { launch, BASE, Bot, startRun } from './lib.mjs';
+import { launch, BASE, Bot, startRun, selectInventoryItem } from './lib.mjs';
 const { browser, page, errors } = await launch({ viewport: { width: 860, height: 480 } });
 const bot = new Bot(page);
 const count = (s, id) => s.player.items.filter(i => i.id === id).reduce((n, i) => n + i.count, 0);
@@ -12,6 +12,7 @@ async function openBag() {
 async function place(id, mode) {
   const index = (await bot.st()).player.items.findIndex(i => i.id === id);
   assert.ok(index >= 0);
+  await selectInventoryItem(page, index);
   await page.click(`#inv-list button[data-k="${index}"][data-m="${mode}"]`);
   await page.waitForFunction(() => {
     const s = window.__sd.state();
@@ -57,7 +58,8 @@ try {
   s = await bot.st(); assert.equal(s.stats.healingFound, found); assert.equal(s.stats.healingUsed, 0);
   assert.ok(!s.player.known.includes('potion:healing'));
   await openBag();
-  const lastDrop = page.locator('#inv-list button[data-m="drop"]').last();
+  await selectInventoryItem(page, (await bot.st()).player.items.length - 1);
+  const lastDrop = page.locator('#inv-list .inv-detail:not([hidden]) button[data-m="drop"]').last();
   await lastDrop.scrollIntoViewIfNeeded();
   const bounds = await lastDrop.boundingBox();
   assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= 480);

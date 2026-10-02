@@ -2,7 +2,7 @@ import './ui/style.css';
 import { Sfx } from './audio/sfx';
 import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
-import { renderInventory } from './ui/inventory';
+import { focusInventory, renderInventory } from './ui/inventory';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -56,6 +56,7 @@ export class App {
       onLockError: () => {},
       onFocusLost: () => this.onFocusLost(),
       capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'choice' || this.mode === 'inventory',
+      inventoryOpen: () => this.mode === 'inventory',
     });
     this.input.attach();
     this.applySettings();
@@ -500,11 +501,13 @@ export class App {
     this.releaseForUi();
     this.mode = 'inventory';
     this.show('screen-inventory');
+    focusInventory();
     this.sfx.ui('open');
   }
 
   private closeInventory(): void {
     if (this.mode !== 'inventory') return;
+    this.input.clear();
     this.backToPlay();
   }
 

@@ -1,7 +1,7 @@
 // Chapter identity/knowledge browser contracts. debug.giveItem is explicit fixture
 // injection; class choice, bag inspection, inventory actions and menu pauses are UI.
 import assert from 'node:assert/strict';
-import { launch, BASE, Bot, startRun } from './lib.mjs';
+import { launch, BASE, Bot, startRun, selectInventoryItem } from './lib.mjs';
 const { browser, page, errors } = await launch();
 const bot = new Bot(page);
 try {
@@ -28,6 +28,7 @@ try {
     const t = (await bot.st()).time;
     await page.waitForTimeout(250); assert.equal((await bot.st()).time, t);
     const sleep = (await bot.st()).player.items.findIndex((it) => it.id === 'scroll:sleep');
+    await selectInventoryItem(page, sleep);
     await page.click(`#inv-list button[data-k="${sleep}"][data-m="use"]`);
     await page.waitForFunction(() => window.__sd.state().player.known.includes('scroll:sleep'));
     assert.ok((await bot.st()).time > t);

@@ -1,0 +1,165 @@
+{
+  "generator": "scripts/art/render_inventory.py",
+  "blender": "4.3.2",
+  "seed": 91304,
+  "potionColors": {
+    "red": "#e0504a",
+    "blue": "#4a78e0",
+    "green": "#4ec46a",
+    "violet": "#a060e0",
+    "amber": "#e0a040",
+    "silver": "#d8e2e8"
+  },
+  "assets": {
+    "weapon-longsword": {
+      "objects": 8,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 3.657696008682251
+    },
+    "weapon-knife": {
+      "objects": 6,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 1.8338615894317627
+    },
+    "weapon-axe": {
+      "objects": 8,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.7018096446990967
+    },
+    "weapon-spear": {
+      "objects": 7,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 4.362001419067383
+    },
+    "weapon-bow": {
+      "objects": 14,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 3.7689733505249023
+    },
+    "armor-cloth": {
+      "objects": 21,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 3.0054140090942383
+    },
+    "armor-leather": {
+      "objects": 36,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 3.0054140090942383
+    },
+    "armor-mail": {
+      "objects": 438,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 3.0054140090942383
+    },
+    "potion-look-red": {
+      "objects": 7,
+      "samples": 512,
+      "projection": "ORTHO",
+      "orthoScale": 2.20221209526062
+    },
+    "potion-look-blue": {
+      "objects": 7,
+      "samples": 512,
+      "projection": "ORTHO",
+      "orthoScale": 2.20221209526062
+    },
+    "potion-look-green": {
+      "objects": 7,
+      "samples": 512,
+      "projection": "ORTHO",
+      "orthoScale": 2.20221209526062
+    },
+    "potion-look-violet": {
+      "objects": 7,
+      "samples": 512,
+      "projection": "ORTHO",
+      "orthoScale": 2.20221209526062
+    },
+    "potion-look-amber": {
+      "objects": 7,
+      "samples": 512,
+      "projection": "ORTHO",
+      "orthoScale": 2.20221209526062
+    },
+    "potion-look-silver": {
+      "objects": 7,
+      "samples": 512,
+      "projection": "ORTHO",
+      "orthoScale": 2.20221209526062
+    },
+    "scroll-look-ash": {
+      "objects": 30,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.563339948654175
+    },
+    "scroll-look-tide": {
+      "objects": 26,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.563339948654175
+    },
+    "scroll-look-thorn": {
+      "objects": 28,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.563339948654175
+    },
+    "scroll-look-star": {
+      "objects": 28,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.563339948654175
+    },
+    "scroll-upgrade": {
+      "objects": 29,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.563339948654175
+    },
+    "ration": {
+      "objects": 11,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 1.847344994544983
+    },
+    "stock-smoke": {
+      "objects": 8,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 1.9811856746673584
+    },
+    "stock-stone": {
+      "objects": 3,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.0177817344665527
+    },
+    "stock-arrow": {
+      "objects": 22,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.445204019546509
+    },
+    "stock-arrow-chill": {
+      "objects": 22,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.445204019546509
+    },
+    "stock-arrow-paralysis": {
+      "objects": 22,
+      "samples": 64,
+      "projection": "ORTHO",
+      "orthoScale": 2.445204019546509
+    }
+  }
+}

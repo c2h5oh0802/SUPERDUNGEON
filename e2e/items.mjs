@@ -1,6 +1,6 @@
 // 物品與成長（練習場）：背包、喝未知藥水、讀強化卷軸、裝備重斧、丟藥水、升級選天賦、潛行步。
 // 練習場一開始背包裡就有幾樣東西；升級用的經驗是「狀態注入」（debug.giveXp），其餘都是正常輸入（按鍵、點按鈕）。
-import { Bot, OUT, launch } from './lib.mjs';
+import { Bot, OUT, launch, selectInventoryItem } from './lib.mjs';
 
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173/';
 const results = [];
@@ -53,6 +53,7 @@ await page.screenshot({ path: `${OUT}items-bag.png` });
 
 // 2) 喝未知的冰霜藥水：揭曉，腳下結冰
 const frost = await idx('potion:frost');
+await selectInventoryItem(page, frost);
 await page.click(`#inv-list button[data-k="${frost}"][data-m="use"]`);
 await waitIdle();
 s = await st();
@@ -61,6 +62,7 @@ check('冰霜藥水喝下去：在腳下結冰', s.areas.some((a) => a.kind === 
 
 // 3) 讀強化卷軸：選擇畫面，選武器
 await openBag();
+await selectInventoryItem(page, await idx('scroll:upgrade'));
 await page.click(`#inv-list button[data-k="${await idx('scroll:upgrade')}"][data-m="use"]`);
 await page.waitForFunction(() => window.__sd.state().mode === 'choice', null, { timeout: 20000 });
 const choiceText = await page.textContent('#choice-cards');
@@ -79,6 +81,7 @@ check('工具列顯示「長劍 +1」', await toolHas('長劍 +1'), await page.t
 
 // 4) 裝備重斧：長劍 +1 回到背包
 await openBag();
+await selectInventoryItem(page, await idx('weapon:axe'));
 await page.click(`#inv-list button[data-k="${await idx('weapon:axe')}"][data-m="use"]`);
 await waitIdle();
 s = await st();
@@ -88,6 +91,7 @@ check('工具列顯示「重斧」', await toolHas('重斧'), await page.textCon
 // 5) 丟出火焰藥水：碎開處燒起來、揭曉
 await bot.pitchTo(0.05, 0.05);
 await openBag();
+await selectInventoryItem(page, await idx('potion:fire'));
 await page.click(`#inv-list button[data-k="${await idx('potion:fire')}"][data-m="throw"]`);
 await page.waitForFunction(() => window.__sd.state().areas.some((a) => a.kind === 'fire'), null, { timeout: 30000 });
 s = await st();

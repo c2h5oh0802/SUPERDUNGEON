@@ -2,7 +2,7 @@
 // are used only to reach thresholds quickly in the practice map, never as playthrough proof.
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
-import { launch, BASE, OUT, Bot, startRun } from './lib.mjs';
+import { launch, BASE, OUT, Bot, startRun, selectInventoryItem } from './lib.mjs';
 
 mkdirSync(OUT, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1000, height: 650 } });
@@ -45,6 +45,7 @@ try {
   // Upgrade/talent modal freezing uses existing practice items and debug XP.
   await bot.tap('KeyI'); await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
   const upgrade = (await state()).player.items.findIndex((it) => it.id === 'scroll:upgrade');
+  await selectInventoryItem(page, upgrade);
   await page.click(`#inv-list button[data-k="${upgrade}"][data-m="use"]`);
   await page.waitForFunction(() => window.__sd.state().mode === 'choice');
   await frozen('upgrade'); await page.click('#choice-cards button[data-idx="0"]'); await waitPlaying();
@@ -66,6 +67,7 @@ try {
   await bot.tap('KeyI'); await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
   const food = (await state()).player.items.findIndex((it) => it.id === 'food:ration');
   assert.ok((await page.textContent('#inv-list')).includes('乾糧'));
+  await selectInventoryItem(page, food);
   await page.click(`#inv-list button[data-k="${food}"][data-m="use"]`);
   await page.waitForFunction(() => window.__sd.state().player.action?.kind === 'eat');
   assert.equal((await state()).player.hungerState, 'starving');

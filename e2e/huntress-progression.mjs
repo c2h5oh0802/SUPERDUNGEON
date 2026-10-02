@@ -1,6 +1,6 @@
 // Focused UI regression, explicit debug talent/item injection; not a full-run playtest.
 import assert from 'node:assert/strict';
-import { launch, BASE, Bot, startRun } from './lib.mjs';
+import { launch, BASE, Bot, startRun, selectInventoryItem } from './lib.mjs';
 const { browser, page, errors } = await launch();
 const bot = new Bot(page);
 try {
@@ -20,11 +20,13 @@ try {
   let s = await bot.st();
   let idx = s.player.items.findIndex(it => it.id === 'potion:frost');
   assert.equal(await page.locator(`#inv-list button[data-k="${idx}"][data-m="convert"]`).count(), 0);
+  await selectInventoryItem(page, idx);
   await page.click(`#inv-list button[data-k="${idx}"][data-m="use"]`);
   await page.waitForFunction(() => window.__sd.state().player.known.includes('potion:frost'));
   await bot.tap('KeyI');
   await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
   s = await bot.st(); idx = s.player.items.findIndex(it => it.id === 'potion:frost');
+  await selectInventoryItem(page, idx);
   const convert = page.locator(`#inv-list button[data-k="${idx}"][data-m="convert"]`);
   assert.equal(await convert.count(), 1);
   assert.equal(await convert.isDisabled(), true); // 2/3 stock cannot fit batch of2
@@ -36,6 +38,7 @@ try {
   await page.waitForFunction(() => window.__sd.state().player.tipped.chill === 1 && !window.__sd.state().player.action);
   await bot.tap('KeyI'); await page.waitForFunction(() => window.__sd.state().mode === 'inventory');
   s = await bot.st(); idx = s.player.items.findIndex(it => it.id === 'potion:frost');
+  await selectInventoryItem(page, idx);
   assert.equal(await page.locator(`#inv-list button[data-k="${idx}"][data-m="convert"]`).isDisabled(), false);
   const before = s.time;
   await page.click(`#inv-list button[data-k="${idx}"][data-m="convert"]`);

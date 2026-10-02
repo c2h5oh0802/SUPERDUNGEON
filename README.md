@@ -39,6 +39,8 @@ npm run preview    # http://127.0.0.1:4173/ 預覽打包結果
 
 新增 [地面弩手短移動與找射線](docs/archer-mobility.md)：被同伴或牆擋住時找近處角度，近身只短退後停下瞄準；已鎖定的射擊仍可能誤傷同伴。一般聖所弩手更多落在地面，特殊高台遭遇保留。
 
+新增 [戰術式背包介面](docs/tactical-inventory.md)：原創 Blender 物品圖、格狀背包、裝備與檢視面板；保留十格、堆疊、未知辨識與所有既有操作。
+
 新增 [完整放下背包物品](docs/inventory-drop.md)：可放下單件或整疊，走開再靠近可撿回。治療固定供給先從全章 12 瓶調為 9 瓶，第一層不變，詳見 [治療供給 v2](docs/healing-supply-v2.md)。
 
 新增 [裝備能力、換裝比較與強化預覽](docs/equipment-upgrade-clarity.md)：背包顯示實際裝備等級的數值，護甲封頂後不再提供無效強化。
@@ -188,6 +190,7 @@ node e2e/retry.mjs        # 死亡 → 結算 → 同種子重試（佈局相同
 node e2e/huntress-progression.mjs # 獵手已知藥水調製、容量與時間（注入測試）
 node e2e/equipment-upgrades.mjs # 裝備數值、換裝取捨、護甲封頂與卷軸保留
 node e2e/warden.mjs       # 守心者試煉入口、皇冠提示、取心門檻、重置與存檔隔離
+node e2e/inventory-presentation.mjs # 格狀背包、辨識安全、鍵盤、窄視窗與舊存檔溢出
 node e2e/inventory-drop.mjs # 單件／整疊放下、重新拾取、滿包與短視窗操作
 node e2e/items.mjs        # 物品：背包、喝未知藥水、強化卷軸、換武器、丟藥水、升級選天賦、潛行步（練習場）
 node e2e/floors.mjs       # 第 1 → 5 層、存檔、守心者門檻與飢餓凍結、取心通關
