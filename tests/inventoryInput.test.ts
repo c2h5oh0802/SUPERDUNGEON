@@ -254,3 +254,36 @@ describe('gameplay, map, and choice routing remain unchanged', () => {
     expect(input.listenerCount).toBe(0);
   });
 });
+
+describe('touch mode and app pointer scope', () => {
+  it('ignores compatibility mouse fire and look in touch mode but keeps real keyboard movement', async () => {
+    const { input, handlers, down, move, key } = setup('playing');
+    handlers.touchMode = () => true;
+    input.locked = true;
+    down(0);
+    down(2);
+    move(20, 10);
+    key('keydown', 'KeyW');
+    expect(input.consume()).toEqual({ ...idleFrame, moveZ: 1 });
+    expect(await input.requestLock()).toBe(false);
+    handlers.touchMode = () => false;
+    down(0);
+    move(20, 10);
+    expect(input.consume()).toEqual({ ...idleFrame, moveZ: 1, fire: true, firePressed: true, lookDX: 20, lookDY: 10 });
+  });
+
+  it('never queues canvas attacks from map or choice when app supplies playing scope', () => {
+    const { input, handlers, state, down, move, key } = setup('map');
+    handlers.playing = () => state.mode === 'playing';
+    input.locked = true;
+    down(0); down(2); move(5, 5);
+    expect(input.consume()).toEqual(idleFrame);
+    key('keydown', 'Tab');
+    expect(input.consume().map).toBe(true);
+    state.mode = 'choice';
+    down(0); key('keydown', 'Digit2');
+    expect(input.consume()).toEqual({ ...idleFrame, selectSlot: 2, digit: 2 });
+    state.mode = 'playing';
+    expect(input.consume()).toEqual(idleFrame);
+  });
+});

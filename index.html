@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="沉眠之心：第一人稱慢動作地城潛入原型" />
     <title>沉眠之心</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141226'/%3E%3Cpath d='M16 5l7 11-7 11-7-11z' fill='%238ccaff'/%3E%3C/svg%3E" />
@@ -63,6 +63,31 @@
       <div id="vignette"></div>
     </div>
 
+    <div id="touch-controls" class="hidden" role="group" aria-label="觸控操作">
+      <div id="touch-look" data-touch="look" aria-label="拖曳右半畫面轉動視角"><span class="touch-look-hint">滑動轉視角</span></div>
+      <div class="touch-toolbar" role="group" aria-label="遊戲選單">
+        <button id="touch-inventory" data-touch="inventory" aria-label="背包，世界暫停"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6V4h8v2M6 7h12l2 14H4L6 7Zm1 8h10M8 11v3m8-3v3" /></svg><span>背包</span></button>
+        <button id="touch-map" data-touch="map" aria-label="地圖，世界暫停"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Zm6-2v16m6-14v16" /></svg><span>地圖</span></button>
+        <button id="touch-pause" data-touch="escape" aria-label="暫停"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg><span>暫停</span></button>
+      </div>
+      <div class="touch-movement-options" role="group" aria-label="時間與移動">
+        <button id="touch-sneak" data-touch="sneak" aria-pressed="false"><span class="touch-label">潛行</span><small>切換</small></button>
+        <button id="touch-wait" data-touch="wait"><span class="touch-label">等待</span><small>按住</small></button>
+      </div>
+      <div id="touch-move" data-touch="move" aria-label="拖曳搖桿移動；離中心越遠走得越快">
+        <span class="touch-move-ring" aria-hidden="true"></span><span id="touch-stick" aria-hidden="true"></span><span class="touch-move-label" aria-hidden="true">移動</span>
+      </div>
+      <div class="touch-slots" role="group" aria-label="選擇武器">
+        <button id="touch-slot-1" data-touch="slot1" aria-pressed="true"><span class="touch-slot-key" aria-hidden="true">Ⅰ</span><span class="touch-label">近戰</span><span class="touch-count"></span></button>
+        <button id="touch-slot-2" data-touch="slot2" aria-pressed="false"><span class="touch-slot-key" aria-hidden="true">Ⅱ</span><span class="touch-label">遠程</span><span class="touch-count"></span></button>
+        <button id="touch-slot-3" data-touch="slot3" aria-pressed="false"><span class="touch-slot-key" aria-hidden="true">Ⅲ</span><span class="touch-label">藥劑箭</span><span class="touch-count"></span></button>
+      </div>
+      <button id="touch-bottle" data-touch="bottle" class="touch-round" aria-label="投擲煙霧瓶"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6m-5 0v6l-5 7a4 4 0 0 0 3 5h8a4 4 0 0 0 3-5l-5-7V3M8 14h8" /></svg><span class="touch-label">煙霧</span><span class="touch-count"></span></button>
+      <button id="touch-shield" data-touch="shield" class="touch-round" aria-label="推擊，不會格擋"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m-3-3 3 3-3 3M4 17h9m-3-3 3 3-3 3M18 4v16" /></svg><span class="touch-label">推擊</span></button>
+      <button id="touch-interact" data-touch="interact" class="touch-round"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 20V4h10v16M13 12h1" /></svg><span class="touch-label">互動</span></button>
+      <button id="touch-fire" data-touch="fire" class="touch-round" aria-label="使用武器；按住可連續攻擊，拖曳可同時瞄準"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 3-3m-3-3 6 6M8 16 18 3l3 0 0 3-13 10" /></svg><span class="touch-label">攻擊</span><small>按住・拖曳瞄準</small></button>
+    </div>
+
     <section id="screen-menu" class="screen">
       <div class="menu-card">
         <h1>沉眠之心</h1>
@@ -90,7 +115,8 @@
         </div>
         <div class="rules">
           <div><b>時間</b>：靜止時世界以慢動作流動；移動、攻擊、使用道具時，世界以正常速度前進。</div>
-          <div><b>操作</b>：WASD 移動 · 按住 Shift 潛行步（安靜慢走） · 滑鼠瞄準 · 左鍵 使用武器 · 1/2/3 切換武器（依職業） · 右鍵／F 推擊（戰士） · Q 煙霧瓶 · I 背包 · E 互動 · H 快速飲用背包中已知的治療藥水 · 空白 等待 · Tab 地圖 · Esc 暫停</div>
+          <div class="keyboard-instructions"><b>操作</b>：WASD 移動 · 按住 Shift 潛行步（安靜慢走） · 滑鼠瞄準 · 左鍵 使用武器 · 1/2/3 切換武器（依職業） · 右鍵／F 推擊（戰士） · Q 煙霧瓶 · I 背包 · E 互動 · H 快速飲用背包中已知的治療藥水 · 空白 等待 · Tab 地圖 · Esc 暫停</div>
+          <div class="touch-instructions"><b>觸控</b>：橫向遊玩 · 左手搖桿移動 · 右側滑動瞄準 · 按住攻擊可連續出手，並可拖曳瞄準 · 點武器格切換 · 背包可使用物品</div>
         </div>
       </div>
       <p class="footnote" id="storage-note"></p>
@@ -110,8 +136,8 @@
           <button id="btn-heart-warden">4 · 守心者</button>
           <p class="muted">正式首領場地與招式。沿用職業基礎工具包，不額外給藥瓶或天賦；擊倒守心者後解封沉眠之心。</p>
         </div>
-        <p>前三場試玩工具包：基礎裝備與彈藥、已鑑定冰霜／氣體各一瓶。獵手試用現有狩獵標記＋藥劑師，兩種藥劑箭各一支；可保留瓶子或在 I 背包付費調製。</p>
-        <p class="muted">沒有場內補給台。獵手可用普通箭與刀，戰士可用長劍與投擲石；兩職業都可繞位；沒有指定道具解鎖。Esc → 重置練習可還原同一遭遇，倒下後自動重置。練習知識與物資不帶入正式局，也不覆蓋正式存檔。</p>
+        <p>前三場試玩工具包：基礎裝備與彈藥、已鑑定冰霜／氣體各一瓶。獵手試用現有狩獵標記＋藥劑師，兩種藥劑箭各一支；可保留瓶子或在背包付費調製。</p>
+        <p class="muted">沒有場內補給台。獵手可用普通箭與刀，戰士可用長劍與投擲石；兩職業都可繞位；沒有指定道具解鎖。暫停選單 → 重置練習可還原同一遭遇，倒下後自動重置。練習知識與物資不帶入正式局，也不覆蓋正式存檔。</p>
         <button class="back">返回主選單</button>
       </div>
     </section>
@@ -124,12 +150,21 @@
             <h3>目標</h3>
             <p>第一章有 <b>4 個探索層＋1 個首領層</b>。前四層找到<b>往下的階梯</b>並探索補給；第五層擊倒守心者後，取得<b>沉眠之心</b>通關。探索層不必殺光敵人。</p>
             <p>越往下，敵人越多、醒著的越多；最底層的沉眠之心旁有守衛。生命與物資會帶到下一層，每層開頭自動存檔，可以從主選單「繼續」。</p>
+            <h3>觸控操作</h3>
+            <ul>
+              <li>將手機<b>橫放</b>。左下搖桿移動；右半畫面滑動轉視角。搖桿推得越遠，移動越快。</li>
+              <li>右下<b>攻擊</b>鍵可一邊按住、一邊拖曳瞄準，左手仍可移動。點一下開始一次攻擊；按住會在收招後接著出手。</li>
+              <li>弓在按下後開始拉弓，準備完成便<b>自動射出</b>。鬆手不會取消這次射擊；其他已開始的行動也不能取消。</li>
+              <li>下方直接點選武器；獵手再次點藥劑箭可切換種類。戰士的<b>推擊</b>只推退敵人，不會格擋。</li>
+              <li><b>潛行</b>點一下開啟，再點關閉；<b>等待</b>須按住。煙霧鍵每按一次投一瓶。靠近門、寶箱與階梯後點<b>互動</b>。</li>
+              <li>背包、地圖、暫停都會停止世界。喝藥、吃乾糧與換裝在<b>背包</b>操作；選單保留一般滑動捲動。</li>
+            </ul>
             <h3>時間</h3>
             <ul>
               <li>靜止、觀察、瞄準時，世界以 <b>0.1 倍</b>慢動作流動。</li>
               <li>走多遠，世界就前進多少（全速行走＝正常速度）。</li>
               <li>攻擊、投擲、喝藥、開門等行動都有<b>行動時間</b>，期間世界以正常速度播放；行動中可以移動，但不能取消。</li>
-              <li>按住<b>空白鍵</b>讓時間正常流動（等巡邏走過、等煙霧散）。</li>
+              <li>按住<b>空白鍵／觸控「等待」</b>讓時間正常流動（等巡邏走過、等煙霧散）。</li>
             </ul>
           </div>
           <div>
@@ -137,8 +172,8 @@
             <ul>
               <li>敵人頭上：<b>Zz</b> 睡眠、<b>?</b> 起疑（圈會填滿）、<b>!</b> 發現你。</li>
               <li><b>奇襲</b>：睡著的敵人不限方向；未目擊你的活動敵人要<b>從背後</b>出手。命中讓它踉蹌 0.8 世界秒，獵刀另有 ×2 傷害；調查（?）、搜索（…）或追擊（!）中的敵人不算奇襲。</li>
-              <li>飢餓只隨世界時間增加：思考時很慢，行動與等待照常；背包、地圖與暫停完全停止。乾糧在 I 背包中吃，吃完才減少飢餓。瀕餓會定期扣生命；首領戰正式開始後飢餓暫停。</li>
-              <li>正常走路有<b>腳步聲</b>（約 4 m）；按住 <b>Shift</b> 潛行步是安靜慢走：沒有腳步聲，速度減半、每公尺花兩倍世界時間；視線與身體高度不變。</li>
+              <li>飢餓只隨世界時間增加：思考時很慢，行動與等待照常；背包、地圖與暫停完全停止。乾糧在背包中吃，吃完才減少飢餓。瀕餓會定期扣生命；首領戰正式開始後飢餓暫停。</li>
+              <li>正常走路有<b>腳步聲</b>（約 4 m）；按住 <b>Shift</b>，或開啟觸控<b>「潛行」</b>，便是安靜慢走：沒有腳步聲，速度減半、每公尺花兩倍世界時間；視線與身體高度不變。</li>
               <li>敵人看到同伴的<b>屍體</b>會大喊，整層進入<b>戒備</b>：視野更廣、發現更快。</li>
               <li>醒著的地面敵人會跨房活動，聽見聲音去調查，失去你後搜索最後位置。可以誘敵、繞過或正面作戰。越深敵人越硬，第 3 層起有<b>老兵</b>。</li>
               <li><b>投擲石</b>與箭的落點會發出聲響，把敵人引過去。</li>
@@ -173,11 +208,12 @@
     <section id="screen-settings" class="screen hidden">
       <div class="panel">
         <h2>設定</h2>
-        <label class="field">滑鼠靈敏度 <input type="range" id="set-sens" min="0.2" max="3" step="0.05" /><output id="out-sens"></output></label>
+        <label class="field">視角靈敏度 <input type="range" id="set-sens" min="0.2" max="3" step="0.05" /><output id="out-sens"></output></label>
         <label class="field">視野角度 FOV <input type="range" id="set-fov" min="60" max="100" step="1" /><output id="out-fov"></output></label>
         <label class="field">主音量 <input type="range" id="set-master" min="0" max="1" step="0.05" /><output id="out-master"></output></label>
         <label class="field">音效音量 <input type="range" id="set-sfx" min="0" max="1" step="0.05" /><output id="out-sfx"></output></label>
         <label class="field">畫質（像素比上限） <input type="range" id="set-pr" min="0.75" max="2" step="0.25" /><output id="out-pr"></output></label>
+        <label class="check"><input type="checkbox" id="set-touch" /> 觸控操作（建議橫向遊玩）</label>
         <label class="check"><input type="checkbox" id="set-invert" /> 反轉 Y 軸</label>
         <label class="check"><input type="checkbox" id="set-reduced" /> 減少鏡頭晃動</label>
         <p class="footnote" id="settings-note"></p>
@@ -227,7 +263,7 @@
 
     <section id="screen-map" class="screen hidden map-screen">
       <div class="panel wide map-panel">
-        <h2 id="map-title">地圖</h2>
+        <div class="map-heading"><h2 id="map-title">地圖</h2><button id="btn-map-close">返回地城</button></div>
         <canvas id="map-canvas" width="900" height="640"></canvas>
         <p class="muted small">只顯示你看過的區域。<b class="c-player">▲</b> 你　<b class="c-exit">▲</b> 來時的階梯　<b class="c-down">▲</b> 往下的階梯　<b class="c-heart">◆</b> 沉眠之心　<b class="c-chest">■</b> 寶箱　按 <kbd>Tab</kbd> 關閉（世界暫停中）</p>
       </div>
@@ -252,10 +288,28 @@
     </section>
 
     <section id="screen-mobile" class="screen hidden">
-      <div class="panel">
-        <h2>需要桌面鍵盤與滑鼠</h2>
-        <p>這個原型目前只支援桌面瀏覽器的鍵盤＋滑鼠操作，尚未支援觸控。</p>
-        <button id="btn-mobile-continue">我有鍵盤滑鼠，繼續</button>
+      <div class="panel touch-intro-panel">
+        <p class="touch-eyebrow">沉眠之心 · 觸控冒險</p>
+        <h2>橫放手機，進入地城</h2>
+        <p class="muted">停下腳步，時間就會慢下來。用雙手拇指移動、瞄準與出手。</p>
+        <div class="touch-intro-hands">
+          <div><span class="touch-intro-mark" aria-hidden="true">◎</span><b>左手移動</b><p>拖曳左下搖桿<br />推得越遠，走得越快</p></div>
+          <div><span class="touch-intro-mark" aria-hidden="true">◇</span><b>右手瞄準・攻擊</b><p>滑動畫面轉視角<br />攻擊鍵也能按住拖曳</p></div>
+        </div>
+        <p class="touch-intro-note">點攻擊即開始出手；弓準備完成會自動射出，鬆手不會取消。背包、地圖與暫停都會停止世界。</p>
+        <button id="btn-mobile-continue" class="primary">開始觸控遊玩</button>
+        <button id="btn-mobile-keyboard" class="ghost">使用鍵盤滑鼠</button>
+      </div>
+    </section>
+
+    <section id="touch-rotate" class="screen hidden" role="dialog" aria-modal="true" aria-labelledby="touch-rotate-title">
+      <div class="panel touch-rotate-panel">
+        <svg class="touch-rotate-icon" viewBox="0 0 80 64" aria-hidden="true"><rect x="19" y="15" width="46" height="28" rx="4" /><path d="M60 7A28 28 0 0 0 7 29m0-10v10h10M20 57a28 28 0 0 0 53-22m0 10V35H63M58 26v6" /></svg>
+        <p class="touch-eyebrow">世界已暫停</p>
+        <h2 id="touch-rotate-title">請將手機橫放</h2>
+        <p class="muted">讓雙手留在兩側，中央看清地城。<br />轉回橫向後，點「繼續」回到地城。</p>
+        <button id="btn-rotate-pause" class="primary">開啟暫停選單</button>
+        <button id="btn-rotate-menu">返回主選單</button>
       </div>
     </section>
 

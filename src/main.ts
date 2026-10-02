@@ -1,6 +1,6 @@
 import './ui/style.css';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, classInfo, type ClassInfo, type PlayerClass } from './config';
+import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
 import { focusInventory, renderInventory } from './ui/inventory';
 import { clampRealDt } from './core/time';
@@ -11,6 +11,8 @@ import { PRACTICE_TRIALS, trialForSeed } from './gen/practiceTrials';
 import { createTrialWorld } from './sim/practiceTrials';
 import { generateLevel } from './gen/validate';
 import { Input } from './input/input';
+import { TouchInput } from './input/touch';
+import { mergeInput } from './input/merge';
 import { GameRenderer } from './render/renderer';
 import type { FrameInput } from './sim/types';
 import { World } from './sim/world';
@@ -33,6 +35,11 @@ export class App {
   readonly loop = new Loop();
   readonly renderer: GameRenderer;
   readonly input: Input;
+  readonly touch: TouchInput;
+  touchMode = false;
+  private rotateBlocked = false;
+  private rotateDismissed = false;
+  private lastTouchHud = '';
   world: World | null = null;
   mode: Mode = 'menu';
   seed = '';
@@ -50,6 +57,9 @@ export class App {
 
   constructor() {
     this.settings.load();
+    this.touchMode = this.settings.value.touchControls ?? !!window.matchMedia?.('(pointer: coarse)').matches;
+    document.body.classList.toggle('touch-mode', this.touchMode);
+    this.hud.setTouchMode(this.touchMode);
     this.renderer = new GameRenderer(this.canvas);
     this.input = new Input(this.canvas, {
       onLockChange: (locked) => this.onLockChange(locked),
@@ -57,29 +67,96 @@ export class App {
       onFocusLost: () => this.onFocusLost(),
       capturing: () => this.mode === 'playing' || this.mode === 'map' || this.mode === 'choice' || this.mode === 'inventory',
       inventoryOpen: () => this.mode === 'inventory',
+      playing: () => this.mode === 'playing',
+      touchMode: () => this.touchMode,
+    });
+    this.touch = new TouchInput($('touch-controls'), {
+      active: () => this.touchMode && this.mode === 'playing' && !this.rotateBlocked,
     });
     this.input.attach();
+    this.touch.attach();
     this.applySettings();
     this.cls = this.settings.value.cls;
     this.fillClassTexts();
     this.bindUi();
     this.refreshContinue();
-    window.addEventListener('resize', () => this.resize());
+    window.addEventListener('resize', () => {
+      this.clearInput();
+      this.resize();
+      this.checkOrientation();
+    });
     // 遊戲中滑鼠未鎖定（也不是備用模式）時，點畫面就重新要求鎖定（點擊本身是使用者手勢）
     this.canvas.addEventListener('mousedown', () => {
-      if (this.mode === 'playing' && !this.input.locked && !this.input.fallback) void this.input.requestLock();
+      if (!this.touchMode && this.mode === 'playing' && !this.input.locked && !this.input.fallback) void this.input.requestLock();
     });
     this.resize();
     if (!this.settings.persistent) $('storage-note').textContent = '瀏覽器封鎖了本機儲存：設定只在本次遊玩有效。';
-    const touchOnly = window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
-    this.show(touchOnly ? 'screen-mobile' : 'screen-menu');
+    this.show(this.touchMode ? 'screen-mobile' : 'screen-menu');
     this.loop.start((dt) => this.frame(dt));
   }
 
   // ---------- 介面 ----------
 
   private show(id: string | null): void {
+    if (id !== null) this.clearInput();
     for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
+    $('touch-controls').classList.toggle('hidden', id !== null || !this.touchMode || this.rotateBlocked);
+  }
+
+  private clearInput(): void {
+    this.input.clear();
+    this.touch.clear();
+  }
+
+  private setTouchMode(enabled: boolean): void {
+    this.clearInput();
+    this.touchMode = enabled;
+    this.settings.update({ touchControls: enabled });
+    document.body.classList.toggle('touch-mode', enabled);
+    this.hud.setTouchMode(enabled);
+    if (enabled && this.input.locked) {
+      this.intentionalUnlock = true;
+      this.input.exitLock();
+    }
+    // Desktop pointer-lock fallback is independent of the chosen touch UI.
+    this.input.fallback = false;
+    this.hud.setLockBanner(false);
+    this.checkOrientation();
+  }
+
+  private checkOrientation(): void {
+    const portrait = this.touchMode && window.innerHeight > window.innerWidth;
+    if (!portrait) this.rotateDismissed = false;
+    if (portrait && this.mode === 'playing') {
+      this.rotateDismissed = false;
+      this.pause('（請將手機橫放）');
+    }
+    this.rotateBlocked = portrait && this.world !== null && this.mode === 'paused' && !this.rotateDismissed;
+    $('touch-rotate').classList.toggle('hidden', !this.rotateBlocked);
+    $('touch-controls').classList.toggle('hidden', !this.touchMode || this.mode !== 'playing' || this.rotateBlocked);
+  }
+
+  private updateTouchHud(): void {
+    if (!this.touchMode || !this.world) return;
+    const p = this.world.player;
+    const key = [p.cls, p.tool, p.desiredTool, p.weapon.id, p.tipKind, p.arrows, p.stones,
+      p.tipped.chill, p.tipped.paralysis, p.bottles, this.world.interactTarget?.enabled].join('|');
+    if (key === this.lastTouchHud) return;
+    this.lastTouchHud = key;
+    $('touch-shield').classList.toggle('hidden', p.cls !== 'warrior');
+    for (let slot = 1; slot <= 3; slot++) {
+      const button = $<HTMLButtonElement>(`touch-slot-${slot}`), tool = p.slots[slot - 1];
+      button.classList.toggle('hidden', !tool);
+      if (!tool) continue;
+      button.querySelector('.touch-label')!.textContent = tool === 'melee' ? WEAPONS[p.weapon.id].name : tool === 'tipped' ? TIP_NAMES[p.tipKind] : TOOL_NAMES[tool];
+      button.querySelector('.touch-count')!.textContent = tool === 'bow' ? String(p.arrows) : tool === 'stone' ? String(p.stones) : tool === 'tipped' ? String(p.tipped[p.tipKind]) : '';
+      button.classList.toggle('selected', p.desiredTool === tool);
+      button.setAttribute('aria-pressed', String(p.desiredTool === tool));
+    }
+    $('touch-bottle').setAttribute('aria-label', `煙霧瓶，剩餘 ${p.bottles} 瓶`);
+    $('touch-bottle').querySelector('.touch-count')!.textContent = String(p.bottles);
+    $('touch-interact').classList.toggle('available', !!this.world.interactTarget?.enabled);
+    $('touch-fire').querySelector('.touch-label')!.textContent = p.tool === 'bow' || p.tool === 'tipped' ? '射擊' : p.tool === 'stone' ? '投擲' : '攻擊';
   }
 
   /** 職業完整說明（起始裝備、職業規則、擅長與弱點、代表性的一刻），全部由 config 的數值生成。 */
@@ -175,6 +252,7 @@ export class App {
     click('btn-pause-settings', () => this.openSettings('pause'));
     click('btn-pause-class', () => this.openClassScreen());
     click('btn-inv-close', () => this.closeInventory());
+    click('btn-map-close', () => { if (this.mode === 'map') this.backToPlay(); });
     click('btn-class-back', () => this.show('screen-pause'));
     click('btn-quit', () => this.toMenu());
     click('btn-retry', () => this.startRun(this.seed, this.practice));
@@ -184,7 +262,10 @@ export class App {
     });
     click('btn-new', () => this.startRun(randomSeed(), false));
     click('btn-menu', () => this.toMenu());
-    click('btn-mobile-continue', () => this.show('screen-menu'));
+    click('btn-mobile-continue', () => { this.setTouchMode(true); this.show('screen-menu'); });
+    click('btn-mobile-keyboard', () => { this.setTouchMode(false); this.show('screen-menu'); });
+    click('btn-rotate-menu', () => this.toMenu());
+    click('btn-rotate-pause', () => { this.rotateDismissed = true; this.checkOrientation(); });
     // 設定
     const bindRange = (id: string, out: string, key: 'sensitivity' | 'fov' | 'masterVolume' | 'sfxVolume' | 'pixelRatio', fmt: (v: number) => string) => {
       const el = $<HTMLInputElement>(id);
@@ -206,6 +287,9 @@ export class App {
       this.settings.update({ reducedMotion: (e.target as HTMLInputElement).checked });
       this.applySettings();
     });
+    $<HTMLInputElement>('set-touch').addEventListener('change', (e) => {
+      this.setTouchMode((e.target as HTMLInputElement).checked);
+    });
     $<HTMLInputElement>('seed-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') $('btn-start').click();
     });
@@ -225,6 +309,7 @@ export class App {
     setR('set-pr', 'out-pr', s.pixelRatio, s.pixelRatio.toFixed(2));
     $<HTMLInputElement>('set-invert').checked = s.invertY;
     $<HTMLInputElement>('set-reduced').checked = s.reducedMotion;
+    $<HTMLInputElement>('set-touch').checked = this.touchMode;
     $('settings-note').textContent = this.settings.persistent ? '設定會自動儲存。' : '無法使用本機儲存：設定只在本次遊玩有效。';
     this.show('screen-settings');
   }
@@ -302,7 +387,7 @@ export class App {
     this.sfx.unlock();
     this.intentionalUnlock = false;
     // 沒有使用者手勢時（練習場自動重置、走下階梯）不要求鎖定，也不改變目前的操作模式
-    const lockP = fromGesture ? this.input.requestLock() : Promise.resolve(this.input.locked || !this.input.fallback);
+    const lockP = this.touchMode ? Promise.resolve(true) : fromGesture ? this.input.requestLock() : Promise.resolve(this.input.locked || !this.input.fallback);
     this.seed = seed;
     this.practice = practice;
     this.mode = 'loading';
@@ -326,9 +411,9 @@ export class App {
       this.runCount++;
       void lockP.then((ok) => {
         if (this.world !== w) return;
-        this.input.fallback = !ok;
-        this.hud.setLockBanner(!ok);
-        if (!ok) this.flashLockFail();
+        this.input.fallback = !ok && !this.touchMode;
+        this.hud.setLockBanner(!ok && !this.touchMode);
+        if (!ok && !this.touchMode) this.flashLockFail();
         this.enterPlaying();
         if (!practice && floor > 1) {
           this.hud.hint(
@@ -340,8 +425,11 @@ export class App {
           );
           return;
         }
-        const clsHint =
-          this.cls === 'warrior'
+        const clsHint = this.touchMode
+          ? this.cls === 'warrior'
+            ? '左側搖桿移動，右側滑動轉向。按攻擊出手；也能按住攻擊並滑動瞄準。敵人攻擊鎖定時可反擊，推擊讓近身敵人退開。'
+            : '左側搖桿移動，右側滑動瞄準；按射擊後會自動拉弓出箭，鬆手不取消這一箭，按住會連射。再按目前藥劑箭可切換種類。'
+          : this.cls === 'warrior'
             ? '戰士（1 長劍、2 投擲石、右鍵/F 推擊）：敵人的攻擊鎖定、就在眼前時準星下出現「反擊」；敵人貼身時出現「推擊」。'
             : '獵手（1 獵刀、2 獵弓、3 藥劑箭）：麻痺箭讓敵人的時間軸暫停，冰寒箭讓它變慢；再按一次 3 切換。暫停選單有完整職業說明。';
         const trial = practice ? trialForSeed(seed) : undefined;
@@ -363,18 +451,21 @@ export class App {
   }
 
   private enterPlaying(): void {
+    this.clearInput();
     this.mode = 'playing';
     this.show(null);
     this.hud.show(true);
     this.loop.resetClock();
     this.sfx.resume();
     this.canvas.focus();
+    this.updateTouchHud();
+    this.checkOrientation();
   }
 
   pause(reason: string): void {
     if (this.mode !== 'playing' && this.mode !== 'map') return;
     this.mode = 'paused';
-    this.input.clear();
+    this.clearInput();
     $('pause-info').textContent = `${classInfo(this.cls).name} · ${this.practice ? (trialForSeed(this.seed)?.name ?? '練習場') : `種子 ${this.seed} · 第 ${this.run?.floor ?? 1} / ${RUN.floors} 層`} ${reason}`;
     if (this.world?.level.practiceTrial) {
       const w = this.world;
@@ -394,7 +485,7 @@ export class App {
 
   private resume(): void {
     if (this.mode !== 'paused' || !this.world) return;
-    if (this.input.fallback || this.input.locked) {
+    if (this.touchMode || this.input.fallback || this.input.locked) {
       this.enterPlaying();
       return;
     }
@@ -420,6 +511,8 @@ export class App {
     this.renderer.clearWorld();
     this.world = null;
     this.mode = 'menu';
+    this.rotateBlocked = false;
+    $('touch-rotate').classList.add('hidden');
     this.hud.show(false);
     this.hud.reset();
     this.show('screen-menu');
@@ -431,10 +524,11 @@ export class App {
       this.intentionalUnlock = false;
       return;
     }
-    if (this.mode === 'playing' || this.mode === 'map') this.pause('（滑鼠鎖定已解除）');
+    if (!this.touchMode && (this.mode === 'playing' || this.mode === 'map')) this.pause('（滑鼠鎖定已解除）');
   }
 
   private onFocusLost(): void {
+    this.clearInput();
     if (this.mode === 'playing' || this.mode === 'map') this.pause('（視窗失去焦點）');
   }
 
@@ -479,7 +573,7 @@ export class App {
 
   /** 開背包、選擇畫面時放開滑鼠讓玩家點選（不觸發暫停）。 */
   private releaseForUi(): void {
-    this.input.clear();
+    this.clearInput();
     if (this.input.locked) {
       this.intentionalUnlock = true;
       this.input.exitLock();
@@ -488,7 +582,7 @@ export class App {
 
   private backToPlay(): void {
     this.enterPlaying();
-    if (!this.input.locked && !this.input.fallback) void this.input.requestLock();
+    if (!this.touchMode && !this.input.locked && !this.input.fallback) void this.input.requestLock();
   }
 
   private openInventory(): void {
@@ -507,7 +601,7 @@ export class App {
 
   private closeInventory(): void {
     if (this.mode !== 'inventory') return;
-    this.input.clear();
+    this.clearInput();
     this.backToPlay();
   }
 
@@ -563,12 +657,15 @@ export class App {
     const t0 = performance.now();
     const realDt = clampRealDt(frameDt);
     const w = this.world;
-    const raw = this.input.consume();
+    const raw = mergeInput(this.input.consume(), this.touch.consume());
     if (w && this.mode === 'playing') {
       if (raw.inventory && !w.pendingChoice) {
         this.openInventory();
       } else if (raw.map) {
+        // Desktop maps retain their existing pointer lock; touch never owns one.
+        this.clearInput();
         this.mode = 'map';
+        $('btn-map-close').classList.toggle('hidden', this.input.locked && !this.touchMode);
         drawMap($<HTMLCanvasElement>('map-canvas'), w);
         $('map-title').textContent = `地圖${this.practice ? '' : ` · 種子 ${this.seed}`}`;
         this.show('screen-map');
@@ -590,7 +687,7 @@ export class App {
           pitch: this.pitch,
           fire: raw.fire,
           firePressed: raw.firePressed,
-          selectSlot: raw.digit,
+          selectSlot: raw.selectSlot,
           shield: raw.shield,
           sneak: raw.sneak,
           bottle: raw.bottle,
@@ -599,6 +696,7 @@ export class App {
           wait: raw.wait,
         };
         w.frame(realDt, fi);
+        this.updateTouchHud();
         const events = w.drainEvents();
         this.renderer.onEvents(events);
         this.sfx.setListener(w.player.x, w.player.z, w.player.yaw);
@@ -617,7 +715,7 @@ export class App {
         }
       }
     } else if (w && this.mode === 'map') {
-      if (raw.map || raw.escape) this.enterPlaying();
+      if (raw.map || raw.escape) this.backToPlay();
     } else if (w && this.mode === 'choice') {
       if (raw.digit) this.choose(raw.digit - 1);
     } else if (w && this.mode === 'inventory') {

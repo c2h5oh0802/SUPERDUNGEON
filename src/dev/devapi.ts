@@ -51,6 +51,7 @@ export function installDevApi(app: App): void {
         awakened: w.awakened,
         fallback: app.input.fallback,
         locked: app.input.locked,
+        touchMode: app.touchMode,
         player: {
           cls: p.cls,
           x: p.x,

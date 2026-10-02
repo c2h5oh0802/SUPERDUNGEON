@@ -59,6 +59,10 @@ export interface InputHandlers {
   capturing(): boolean;
   /** 背包由原生 HTML 控制項處理輸入，只保留 I／Escape 關閉快捷鍵。 */
   inventoryOpen?(): boolean;
+  /** App-level pointer input is gameplay-only; omitted by older consumers. */
+  playing?(): boolean;
+  /** Touch mode owns the canvas, so compatibility mouse events must never fire. */
+  touchMode?(): boolean;
 }
 
 export class Input {
@@ -116,7 +120,7 @@ export class Input {
     });
     on(document, 'mousemove', (ev) => {
       const e = ev as MouseEvent;
-      if (this.h.inventoryOpen?.()) return;
+      if (this.h.inventoryOpen?.() || this.h.playing?.() === false || this.h.touchMode?.()) return;
       if (this.locked || this.dragging) {
         const mx = e.movementX || 0;
         const my = e.movementY || 0;
@@ -128,7 +132,7 @@ export class Input {
     });
     on(this.canvas, 'mousedown', (ev) => {
       const e = ev as MouseEvent;
-      if (!this.h.capturing() || this.h.inventoryOpen?.()) return;
+      if (!this.h.capturing() || this.h.inventoryOpen?.() || this.h.playing?.() === false || this.h.touchMode?.()) return;
       if (e.button === 0) {
         this.fireHeld = true;
         this.firePressed = true;
@@ -188,6 +192,7 @@ export class Input {
 
   /** 需在使用者手勢中呼叫。回傳是否成功鎖定。 */
   requestLock(): Promise<boolean> {
+    if (this.h.touchMode?.()) return Promise.resolve(false);
     if (this.locked) return Promise.resolve(true);
     return new Promise((resolve) => {
       let done = false;

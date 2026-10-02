@@ -12,6 +12,8 @@ export interface Settings {
   seenIntro: boolean;
   /** 上次選的職業。 */
   cls: PlayerClass;
+  /** null chooses touch controls from the primary pointer; explicit choice is persistent. */
+  touchControls: boolean | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reducedMotion: false,
   seenIntro: false,
   cls: 'warrior',
+  touchControls: null,
 };
 
 const KEY = 'superdungeon.settings.v1';
@@ -77,5 +80,6 @@ function sanitize(s: Settings): Settings {
     reducedMotion: !!s.reducedMotion,
     seenIntro: !!s.seenIntro,
     cls: ALL_CLASSES.includes(s.cls) ? s.cls : 'warrior',
+    touchControls: typeof s.touchControls === 'boolean' ? s.touchControls : null,
   };
 }

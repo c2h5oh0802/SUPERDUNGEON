@@ -8,6 +8,7 @@ import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
 import type { GameEvent, Player } from '../sim/types';
 import type { World } from '../sim/world';
+import { controlText } from './controlText';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -33,6 +34,7 @@ function toolEmpty(p: Player, t: Tool): boolean {
 }
 
 export class Hud {
+  private touch = false;
   private root = $('hud');
   private hpEl = $('hp');
   private hungerEl = $('hunger');
@@ -84,6 +86,14 @@ export class Hud {
     this.root.classList.toggle('hidden', !on);
   }
 
+  setTouchMode(touch: boolean): void {
+    this.touch = touch;
+    this.last = {};
+    this.hintEl.textContent = '';
+    this.hintT = 0;
+    this.hintQueue = [];
+  }
+
   setLockBanner(on: boolean): void {
     this.lockBanner.classList.toggle('hidden', !on);
   }
@@ -117,7 +127,7 @@ export class Hud {
   toast(text: string, cls = '', dur = 2.2): void {
     const el = document.createElement('div');
     el.className = `toast ${cls}`;
-    el.textContent = text;
+    el.textContent = controlText(text, this.touch);
     this.toasts.appendChild(el);
     while (this.toasts.children.length > 4) this.toasts.firstElementChild?.remove();
     window.setTimeout(() => (el.style.opacity = '0'), dur * 1000);
@@ -132,7 +142,7 @@ export class Hud {
       if (this.hintQueue.length < 3) this.hintQueue.push({ text, dur });
       return;
     }
-    this.hintEl.textContent = text;
+    this.hintEl.textContent = controlText(text, this.touch);
     this.hintT = dur;
   }
 
@@ -307,13 +317,13 @@ export class Hud {
       ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
     this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
-      this.objective.textContent = trial
+      this.objective.textContent = controlText(trial
         ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
         : w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
         : w.level.goal === 'descend'
           ? `${f}：找到往下的階梯`
-          : `${f}（首領層）：${w.heartAvailable ? '取得沉眠之心' : '擊倒守心者，解封沉眠之心'}`;
+          : `${f}（首領層）：${w.heartAvailable ? '取得沉眠之心' : '擊倒守心者，解封沉眠之心'}`, this.touch);
       this.objective.classList.toggle('escape', p.hasHeart);
       this.heartStatus.classList.toggle('hidden', !p.hasHeart);
     });
@@ -374,7 +384,7 @@ export class Hud {
     const st = p.sneaking ? 'sneak' : moving ? 'loud' : '';
     this.set('stealth', `${st}|${w.alarm}`, () => {
       this.stealthEl.className = `${st}${w.alarm ? ' alarm' : ''}`;
-      this.stealthEl.textContent = p.sneaking ? '潛行步：安靜' : moving ? '腳步聲（Shift 安靜慢走）' : '靜止';
+      this.stealthEl.textContent = controlText(p.sneaking ? '潛行步：安靜' : moving ? '腳步聲（Shift 安靜慢走）' : '靜止', this.touch);
     });
     // 時間流速
     const rate = w.lastRealDt > 0 ? w.lastWorldDt / w.lastRealDt : 0;
@@ -399,7 +409,7 @@ export class Hud {
     const t = w.interactTarget;
     const plabel = t ? t.label : '';
     this.set('prompt', plabel + (t?.enabled ? '1' : '0'), () => {
-      this.prompt.textContent = plabel;
+      this.prompt.textContent = controlText(plabel, this.touch);
       this.prompt.classList.toggle('disabled', !!t && !t.enabled);
     });
     // 提示計時
@@ -407,7 +417,7 @@ export class Hud {
       this.hintT -= realDt;
       if (this.hintT <= 0) {
         const next = this.hintQueue.shift();
-        this.hintEl.textContent = next ? next.text : '';
+        this.hintEl.textContent = next ? controlText(next.text, this.touch) : '';
         this.hintT = next ? next.dur : 0;
       }
     }
@@ -486,7 +496,7 @@ export class Hud {
     }
     this.set('cue', `${cls}|${text}`, () => {
       this.cueEl.className = cls;
-      this.cueEl.textContent = text;
+      this.cueEl.textContent = controlText(text, this.touch);
       this.crosshair.classList.toggle('cue-counter', cls === 'counter' || cls === 'push');
       this.crosshair.classList.toggle('cue-quick', cls === 'quick');
     });

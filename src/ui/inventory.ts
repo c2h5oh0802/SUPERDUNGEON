@@ -9,6 +9,7 @@ import { inventoryArtUrl, itemAppearance, itemArt, itemCategoryLabel, type Inven
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+const compactInventory = (): boolean => Boolean(document.body?.classList?.contains('touch-mode') || window.matchMedia?.('(max-width: 700px), (pointer: coarse)').matches);
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
 const image = (art: InventoryArt, cls = '') => `<img class="inv-art ${cls}" src="${esc(inventoryArtUrl(art))}" alt="" draggable="false" width="512" height="512">`;
 const details = (text: string, label: string): string => `<details class="equipment-details"><summary>${esc(label)}</summary><div>${esc(text)}</div></details>`;
@@ -91,7 +92,7 @@ export function renderInventory(w: World, onAction: (index: number, mode: Pendin
         tile.classList.toggle('selected', selected); tile.setAttribute('aria-pressed', String(selected));
       }
       for (const detail of Array.from(list.querySelectorAll<HTMLElement>('[data-detail]'))) detail.hidden = Number(detail.dataset.detail) !== index;
-      if (window.matchMedia('(max-width: 700px)').matches) {
+      if (compactInventory()) {
         const detail = list.querySelector<HTMLElement>(`[data-detail="${index}"]`);
         detail?.scrollIntoView({ block: 'start' });
         const heading = detail?.querySelector<HTMLElement>('h3');
@@ -100,7 +101,11 @@ export function renderInventory(w: World, onAction: (index: number, mode: Pendin
     });
   }
   for (const b of Array.from(list.querySelectorAll<HTMLButtonElement>('button[data-return]'))) {
-    b.addEventListener('click', () => list.querySelector<HTMLButtonElement>(`button[data-select="${b.dataset.return}"]`)?.focus());
+    b.addEventListener('click', () => {
+      const tile = list.querySelector<HTMLButtonElement>(`button[data-select="${b.dataset.return}"]`);
+      if (compactInventory()) tile?.scrollIntoView({ block: 'center' });
+      tile?.focus({ preventScroll: compactInventory() });
+    });
   }
   let dispatched = false;
   for (const b of Array.from(list.querySelectorAll<HTMLButtonElement>('button[data-k]'))) {
