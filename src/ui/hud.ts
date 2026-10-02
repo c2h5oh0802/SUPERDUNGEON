@@ -35,6 +35,7 @@ function toolEmpty(p: Player, t: Tool): boolean {
 
 export class Hud {
   private touch = false;
+  private publicPlaytest = false;
   private root = $('hud');
   private hpEl = $('hp');
   private hungerEl = $('hunger');
@@ -137,6 +138,7 @@ export class Hud {
 
   /** 一次顯示一則提示；顯示中的提示不會被新的蓋掉，新的排隊（最多 3 則）。 */
   hint(key: string, text: string, dur = 6): void {
+    if (this.publicPlaytest) return;
     if (this.shownHints.has(key)) return;
     this.shownHints.add(key);
     if (this.hintT > 0) {
@@ -152,6 +154,7 @@ export class Hud {
   }
 
   onEvents(events: GameEvent[], w: World): void {
+    this.publicPlaytest = !!w.level.publicPlaytest;
     const p = w.player;
     for (const e of events) {
       switch (e.type) {
@@ -321,7 +324,9 @@ export class Hud {
       ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
     this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
-      this.objective.textContent = controlText(trial
+      this.objective.textContent = controlText(w.level.publicPlaytest
+        ? (w.level.publicPlaytest === 'core' ? '核心遭遇：清除兩名敵人' : '先試著讀懂一次攻防')
+        : trial
         ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
         : w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'

@@ -17,10 +17,12 @@
     "e2e": "node e2e/run-all.mjs"
   },
   "dependencies": {
+    "gameanalytics": "5.0.0",
     "three": "0.180.0"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
+    "@types/node": "22.19.13",
     "@types/three": "0.180.0",
     "eslint": "9.39.5",
     "playwright": "1.56.1",

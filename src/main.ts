@@ -1,4 +1,7 @@
 import './ui/style.css';
+import { CalibrationObserver } from './playtest/calibration';
+import { createPublicPlaytestWorld, type PlaytestStage } from './playtest/scenario';
+import { createBrowserPlaytestTelemetry, normalizePlaytestSource, type PlaytestTelemetry, type PlaytestEventName, type PlaytestFun, type PlaytestIssue } from './playtest/telemetry';
 import { Sfx } from './audio/sfx';
 import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
@@ -29,7 +32,7 @@ type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inve
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const SCREENS = ['screen-menu', 'screen-boss-test', 'screen-trials', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
+const SCREENS = ['screen-playtest', 'screen-menu', 'screen-boss-test', 'screen-trials', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
 
 export class App {
   readonly canvas = $<HTMLCanvasElement>('game');
@@ -61,7 +64,17 @@ export class App {
   private settingsReturn: 'menu' | 'pause' = 'menu';
   private runCount = 0;
   private worldTransition = 0;
-  readonly devEnabled = new URLSearchParams(location.search).has('dev');
+  readonly playtestActive = new URLSearchParams(location.search).get('playtest') === '1';
+  readonly devEnabled = !this.playtestActive && new URLSearchParams(location.search).has('dev');
+  private telemetry: PlaytestTelemetry | null = null;
+  private playtestStage: PlaytestStage = 'calibration';
+  private calibration = new CalibrationObserver();
+  private playtestEnded = false;
+  private playtestLastActivity = 0;
+  private playtestAttacked = false;
+  private playtestHurts = 0;
+  private playtestHints = new Set<string>();
+  private feedbackSent = false;
   bossTestActive = this.devEnabled && new URLSearchParams(location.search).get('boss') === '1';
   bossTestPreset: BossTestPreset = 'starting';
   private bossTestClass: PlayerClass = 'warrior';
@@ -72,6 +85,11 @@ export class App {
     this.touchMode = this.settings.value.touchControls ?? !!window.matchMedia?.('(pointer: coarse)').matches;
     document.body.classList.toggle('touch-mode', this.touchMode);
     this.hud.setTouchMode(this.touchMode);
+    document.body.classList.toggle('public-playtest', this.playtestActive);
+    if (this.playtestActive) this.telemetry = createBrowserPlaytestTelemetry({
+      source: normalizePlaytestSource(new URLSearchParams(location.search).get('src')),
+      device: this.touchMode ? 'touch' : 'desktop',
+    });
     this.renderer = new GameRenderer(this.canvas);
     this.input = new Input(this.canvas, {
       onLockChange: (locked) => this.onLockChange(locked),
@@ -123,7 +141,16 @@ export class App {
     this.resize();
     if (!this.settings.persistent) $('storage-note').textContent = '瀏覽器封鎖了本機儲存：設定只在本次遊玩有效。';
     $('btn-boss-test').classList.toggle('hidden', !this.devEnabled);
-    if (this.bossTestActive) this.openBossTest();
+    if (this.playtestActive) {
+      this.openPlaytestLanding();
+      window.addEventListener('pagehide', () => { if (!this.playtestEnded) this.telemetry?.pagehide(); });
+      window.addEventListener('blur', () => { if (!this.playtestEnded) this.telemetry?.visibility(true); });
+      window.addEventListener('focus', () => { if (!this.playtestEnded) this.telemetry?.visibility(false); });
+      document.addEventListener('visibilitychange', () => {
+        if (!this.playtestEnded) this.telemetry?.visibility(document.visibilityState === 'hidden');
+      });
+    }
+    else if (this.bossTestActive) this.openBossTest();
     else this.show(this.touchMode ? 'screen-mobile' : 'screen-menu');
     this.loop.start((dt) => this.frame(dt));
   }
@@ -134,6 +161,7 @@ export class App {
     if (id !== null) this.clearInput();
     for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
     $('touch-controls').classList.toggle('hidden', id !== null || !this.touchMode || this.rotateBlocked);
+    $('playtest-cue').classList.toggle('hidden', !this.playtestActive || id !== null);
   }
 
   private clearInput(): void {
@@ -259,12 +287,18 @@ export class App {
         this.sfx.ui('click');
         fn();
       });
+    click('btn-playtest-start', () => {
+      if (!this.playtestActive || this.mode !== 'menu') return;
+      this.telemetry?.start();
+      this.startPlaytest('calibration', true);
+    });
+    click('btn-playtest-feedback', () => this.submitPlaytestFeedback());
     click('btn-start', () => {
       const raw = normalizeSeed(($('seed-input') as HTMLInputElement).value);
       this.startRun(raw || randomSeed(), false);
     });
     click('btn-continue', () => {
-      if (this.bossTestActive) return;
+      if (this.bossTestActive || this.playtestActive) return;
       const saved = App.loadRun();
       if (!saved) return this.refreshContinue();
       this.selectClass(saved.cls);
@@ -272,7 +306,7 @@ export class App {
     });
     click('btn-seed-random', () => (($('seed-input') as HTMLInputElement).value = randomSeed()));
     click('btn-practice', () => this.startRun('PRACTICE', true));
-    click('btn-trials', () => this.show('screen-trials'));
+    click('btn-trials', () => { if (!this.playtestActive) this.show('screen-trials'); });
     click('btn-boss-test', () => this.openBossTest());
     click('btn-boss-test-start', () => this.startBossTest());
     click('btn-boss-test-exit', () => this.toMenu());
@@ -287,24 +321,25 @@ export class App {
       this.refreshBossTestLoadout();
     });
     for (const trial of PRACTICE_TRIALS) click(`btn-${trial.id}`, () => this.startRun(trial.seed, true));
-    click('btn-settings', () => this.openSettings('menu'));
-    click('btn-help', () => this.show('screen-help'));
+    click('btn-settings', () => { if (!this.playtestActive) this.openSettings('menu'); });
+    click('btn-help', () => { if (!this.playtestActive) this.show('screen-help'); });
     for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>('button.back')))
       b.addEventListener('click', () => {
         this.sfx.ui('click');
         if (b.closest('#screen-settings') && this.settingsReturn === 'pause') this.show('screen-pause');
-        else this.show('screen-menu');
+        else this.show(this.playtestActive ? 'screen-playtest' : 'screen-menu');
       });
     click('btn-resume', () => this.resume());
     click('btn-restart', () => this.retryWorld());
     click('btn-pause-settings', () => this.openSettings('pause'));
-    click('btn-pause-class', () => this.openClassScreen());
+    click('btn-pause-class', () => { if (!this.playtestActive) this.openClassScreen(); });
     click('btn-inv-close', () => this.closeInventory());
     click('btn-map-close', () => { if (this.mode === 'map') this.backToPlay(); });
     click('btn-class-back', () => this.show('screen-pause'));
     click('btn-quit', () => this.toMenu());
     click('btn-retry', () => this.retryWorld());
     click('btn-swap', () => {
+      if (this.playtestActive) return;
       if (this.bossTestActive) return this.swapBossTest();
       this.selectClass(this.otherClass());
       this.startRun(this.seed, this.practice);
@@ -394,7 +429,7 @@ export class App {
   }
 
   private saveRun(run: RunState | null): void {
-    if (this.bossTestActive) return;
+    if (this.bossTestActive || this.playtestActive) return;
     try {
       if (run) window.localStorage.setItem(App.SAVE_KEY, serializeRun(run));
       else window.localStorage.removeItem(App.SAVE_KEY);
@@ -405,7 +440,7 @@ export class App {
   }
 
   private refreshContinue(): void {
-    const saved = this.bossTestActive ? null : App.loadRun();
+    const saved = this.bossTestActive || this.playtestActive ? null : App.loadRun();
     const btn = $<HTMLButtonElement>('btn-continue');
     btn.classList.toggle('hidden', !saved);
     if (saved) btn.textContent = `繼續：第 ${saved.floor} / ${RUN.floors} 層 · ${classInfo(saved.cls).name} · 種子 ${saved.seed}`;
@@ -438,7 +473,12 @@ export class App {
   }
 
   private retryWorld(): void {
-    if (this.bossTestActive) this.startBossTest();
+    if (this.playtestActive) {
+      if (this.mode !== 'paused' && this.mode !== 'results') return;
+      this.telemetry?.retry();
+      if (!this.playtestEnded) this.telemetry?.progression('fail', this.playtestStage);
+      this.startPlaytest(this.playtestStage, true);
+    } else if (this.bossTestActive) this.startBossTest();
     else this.startRun(this.seed, this.practice);
   }
 
@@ -450,7 +490,7 @@ export class App {
 
   /** 必須在使用者手勢中呼叫（取得滑鼠鎖定與啟用音訊）。 */
   startRun(seed: string, practice: boolean, fromGesture = true): void {
-    if (this.bossTestActive) return;
+    if (this.bossTestActive || this.playtestActive) return;
     if (practice) {
       this.run = null;
       this.startWorld(seed, true, fromGesture, () => {
@@ -470,7 +510,7 @@ export class App {
 
   /** 開始（或繼續）一局的某一層；進入時自動存檔。 */
   private startFloor(run: RunState, fromGesture: boolean): void {
-    if (this.bossTestActive) return;
+    if (this.bossTestActive || this.playtestActive) return;
     this.run = run;
     this.cls = run.cls;
     this.saveRun(run);
@@ -492,6 +532,7 @@ export class App {
     const info = classInfo(this.cls);
     const floor = this.run?.floor ?? 1;
     $('loading-seed').textContent = `${info.name} · ${practice ? (trialForSeed(seed)?.name ?? '練習場') : `種子 ${seed} · 第 ${floor} / ${RUN.floors} 層`}`;
+    if (this.playtestActive) $('loading-seed').textContent = this.playtestStage === 'calibration' ? '先熟悉移動與觀察' : '接著，自己決定怎麼通過這場遭遇';
     this.show('screen-loading');
     window.setTimeout(() => {
       if (transition !== this.worldTransition || this.mode !== 'loading') return;
@@ -517,6 +558,10 @@ export class App {
         this.hud.setLockBanner(!ok && !this.touchMode);
         if (!ok && !this.touchMode) this.flashLockFail();
         this.enterPlaying();
+        if (this.playtestActive) {
+          this.refreshPlaytestCue();
+          return;
+        }
         if (this.bossTestActive) {
           this.hud.hint(`boss-test${this.runCount}`, '開發者 Boss 測試：Esc／暫停可立即重打、換職業或調整配裝。物資有限，不會戰中補滿；正式存檔不受影響。', 8);
           return;
@@ -587,6 +632,11 @@ export class App {
     for (const id of ['btn-boss-test-swap', 'btn-boss-test-options', 'boss-test-pause-loadout']) $(id).classList.toggle('hidden', !this.bossTestActive);
     $('btn-boss-test-swap').textContent = `換成${classInfo(this.otherClass()).name}並重打 Boss`;
     $('boss-test-pause-loadout').textContent = `測試起始配裝（每次重打還原）：\n${this.bossTestInitialLoadout}`;
+    if (this.playtestActive) {
+      $('pause-info').textContent = `${this.playtestStage === 'calibration' ? '操作校準' : '核心遭遇'} ${reason}`;
+      $('btn-restart').textContent = '重新試一次';
+      $('btn-quit').textContent = '返回試玩入口';
+    }
     this.show('screen-pause');
     this.sfx.suspend();
     // 暫停時一定釋放滑鼠，讓玩家能點「繼續」
@@ -635,6 +685,16 @@ export class App {
   }
 
   private toMenu(): void {
+    if (this.playtestActive) {
+      if (this.world && !this.playtestEnded) {
+        this.telemetry?.event('voluntary_quit');
+        this.telemetry?.progression('fail', this.playtestStage);
+      }
+      this.playtestEnded = true;
+      this.discardWorld();
+      this.openPlaytestLanding();
+      return;
+    }
     this.discardWorld();
     this.bossTestActive = false;
     this.practice = false;
@@ -758,6 +818,7 @@ export class App {
   }
 
   private showResults(): void {
+    if (this.playtestActive) { this.showPlaytestResults(); return; }
     const w = this.world!;
     this.intentionalUnlock = true;
     this.input.exitLock();
@@ -813,9 +874,9 @@ export class App {
     const w = this.world;
     const raw = mergeInput(this.input.consume(), this.touch.consume());
     if (w && this.mode === 'playing') {
-      if (raw.inventory && !w.pendingChoice) {
+      if (raw.inventory && !this.playtestActive && !w.pendingChoice) {
         this.openInventory();
-      } else if (raw.map) {
+      } else if (raw.map && !this.playtestActive) {
         // Desktop maps retain their existing pointer lock; touch never owns one.
         this.clearInput();
         this.mode = 'map';
@@ -849,6 +910,7 @@ export class App {
           potion: raw.potion,
           wait: raw.wait,
         };
+        const calibrationBefore = this.playtestActive && this.playtestStage === 'calibration' ? this.calibration.beforeFrame(w) : null;
         w.frame(realDt, fi);
         this.updateTouchHud();
         const events = w.drainEvents();
@@ -857,12 +919,17 @@ export class App {
         this.sfx.onEvents(events);
         this.hud.onEvents(events, w);
         this.devLog(events);
+        if (this.playtestActive) {
+          const transition = this.worldTransition;
+          this.observePlaytest(w, fi, events, calibrationBefore);
+          if (transition !== this.worldTransition) return;
+        }
         if (canPresentChoice(w)) this.openChoice();
         if (w.outcome !== 'none') {
           this.outcomeT += realDt;
           const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
           if (this.outcomeT >= delay) {
-            if (this.practice && !this.bossTestActive && w.outcome === 'dead') this.startRun(this.seed, true, false);
+            if (this.practice && !this.bossTestActive && !this.playtestActive && w.outcome === 'dead') this.startRun(this.seed, true, false);
             else if (w.outcome === 'descend' && this.run) this.startFloor(nextFloor(this.run, w), false);
             else this.showResults();
           }
@@ -887,6 +954,127 @@ export class App {
     } else this.renderer.render(realDt, true);
     this.perf.simMs += t1 - t0;
     this.perf.frames++;
+  }
+
+  private openPlaytestLanding(): void {
+    this.playtestEnded = false;
+    this.telemetry?.landing();
+    $('playtest-privacy').textContent = this.telemetry?.configured
+      ? '本試玩使用 GameAnalytics 收集不具名操作、結果與裝置統計（使用隨機識別碼），幫助改善遊戲；不收集姓名、聊天或錄影。'
+      : '這次試玩不傳送分析資料。';
+    this.show('screen-playtest');
+  }
+
+  private startPlaytest(stage: PlaytestStage, gesture: boolean): void {
+    this.playtestStage = stage;
+    $('playtest-cue').textContent = '';
+    this.cls = 'warrior';
+    this.run = null;
+    this.calibration = new CalibrationObserver();
+    this.playtestEnded = false;
+    this.playtestLastActivity = 0;
+    this.playtestAttacked = false;
+    this.playtestHurts = 0;
+    this.playtestHints.clear();
+    this.feedbackSent = false;
+    $('playtest-feedback-status').textContent = '';
+    $<HTMLSelectElement>('playtest-fun').value = '';
+    $<HTMLSelectElement>('playtest-issue').value = '';
+    $<HTMLButtonElement>('btn-playtest-feedback').disabled = false;
+    this.telemetry?.stage(stage);
+    this.telemetry?.progression('start', stage);
+    if (stage === 'core') this.telemetry?.event('core_start');
+    this.startWorld(`PLAYTEST-${stage.toUpperCase()}`, true, gesture, () => createPublicPlaytestWorld(stage));
+  }
+
+  private refreshPlaytestCue(): void {
+    if (this.playtestStage === 'core') return;
+    const state = this.calibration.state;
+    const controls = this.touchMode ? '左側搖桿移動，右側滑動轉視角；攻擊鍵出手。' : 'WASD 移動，滑鼠轉視角，左鍵攻擊。';
+    $('playtest-cue').textContent = state.restartRecommended
+      ? `這次尚未完成兩次循環。${this.touchMode ? '按暫停' : '按 Esc'}，再選「重新試一次」。`
+      : !state.moved || !state.looked ? controls : state.cue;
+  }
+
+  private observePlaytest(w: World, input: FrameInput, events: ReturnType<World['drainEvents']>, before: ReturnType<CalibrationObserver['beforeFrame']> | null): void {
+    if (this.playtestEnded) return;
+    if (!this.playtestAttacked && events.some(e => e.type === 'swing' || e.type === 'fire')) {
+      this.playtestAttacked = true;
+      this.telemetry?.event('first_attack');
+    }
+    if (before) {
+      const update = this.calibration.observeFrame(w, input, before, events);
+      const milestoneNames: Partial<Record<string, PlaytestEventName>> = {
+        movement_seen: 'first_move', look_seen: 'first_look', windup_seen: 'attack_seen',
+        stop_slow_seen: 'slow_time_observed', lock_seen: 'attack_committed',
+        attack_evaded: 'evade_equivalent', recovery_hit: 'recovery_hit_equivalent', calibration_learned: 'core_loop_learned',
+        calibration_cycle_failed: 'calibration_cycle_failed', calibration_restart_recommended: 'calibration_retry_needed',
+      };
+      for (const milestone of update.milestones) {
+        const name = milestoneNames[milestone.type];
+        if (name) this.telemetry?.event(name);
+      }
+      this.refreshPlaytestCue();
+      if (this.calibration.state.learned && w.outcome !== 'dead') {
+        this.telemetry?.progression('complete', 'calibration', w.realTime);
+        this.startPlaytest('core', false);
+        return;
+      }
+    } else if (w.outcome === 'none') {
+      if (w.player.lastMoveDist > .002 || events.some(e => e.type === 'swing' || e.type === 'fire')) this.playtestLastActivity = w.realTime;
+      if (events.some(e => e.type === 'swing' || e.type === 'fire')) this.playtestAttacked = true;
+      this.playtestHurts += events.filter(e => e.type === 'playerHurt').length;
+      const hint = this.playtestHurts >= 3 ? 'hint_repeated_damage'
+        : !this.playtestAttacked && w.realTime > 35 ? 'hint_no_attack'
+        : w.realTime - this.playtestLastActivity > 22 ? 'hint_inactivity' : null;
+      if (hint && !this.playtestHints.has(hint)) {
+        this.playtestHints.add(hint);
+        this.telemetry?.event(hint);
+        $('playtest-cue').textContent = hint === 'hint_no_attack'
+          ? (this.touchMode ? '攻擊鍵可以出手；暫停裡能調整操作設定。' : '左鍵可以出手；Esc 裡能調整操作設定。')
+          : hint === 'hint_repeated_damage' ? '可以先停下來觀察，或暫停後重新試一次。'
+          : '有點卡住？可以暫停調整操作，或重新試一次。';
+      }
+      if (w.enemies.every(e => !e.alive)) w.outcome = 'win';
+    }
+  }
+
+  private showPlaytestResults(): void {
+    const w = this.world!;
+    if (!this.playtestEnded) {
+      this.playtestEnded = true;
+      this.telemetry?.event(w.outcome === 'win' ? 'core_complete' : 'player_death');
+      this.telemetry?.progression(w.outcome === 'win' ? 'complete' : 'fail', this.playtestStage, w.realTime);
+      this.telemetry?.event('real_time', w.realTime);
+      this.telemetry?.event('damage', Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0));
+      this.telemetry?.event('kills', w.stats.kills);
+    }
+    this.releaseForUi();
+    this.mode = 'results';
+    this.hud.show(false);
+    $('res-title').textContent = w.outcome === 'win' ? '遭遇完成' : '你倒下了';
+    $('res-sub').textContent = this.playtestStage === 'core' ? '這一次，你怎麼決定下一步？' : '再試一次，看看停下腳步後會發生什麼。';
+    const damage = Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0);
+    $('res-stats').innerHTML = [['結果', w.outcome === 'win' ? '完成' : '死亡'], ['遊玩時間', `${w.realTime.toFixed(1)} 秒`], ['受到傷害', String(damage)], ['擊倒敵人', String(w.stats.kills)]]
+      .map(([label, value]) => `<div><span>${label}</span><b>${value}</b></div>`).join('');
+    $('btn-retry').textContent = '再試一次';
+    $('btn-menu').textContent = '返回試玩入口';
+    for (const id of ['btn-new', 'btn-swap', 'btn-boss-test-result-options']) $(id).classList.add('hidden');
+    $('playtest-feedback').classList.remove('hidden');
+    this.show('screen-results');
+  }
+
+  private submitPlaytestFeedback(): void {
+    if (!this.playtestActive || this.mode !== 'results' || this.feedbackSent) return;
+    const fun = $<HTMLSelectElement>('playtest-fun').value;
+    const issue = $<HTMLSelectElement>('playtest-issue').value;
+    if (!fun && !issue) return;
+    this.telemetry?.feedback(fun as PlaytestFun || undefined, issue as PlaytestIssue || undefined);
+    this.feedbackSent = true;
+    $<HTMLButtonElement>('btn-playtest-feedback').disabled = true;
+    $('playtest-feedback-status').textContent = !this.telemetry?.configured ? '謝謝！分析未啟用，回饋只留在本次畫面，不會傳送。'
+      : this.telemetry.status === 'unavailable' ? '謝謝！分析服務目前無法連線，這次回饋未能傳送。'
+      : '謝謝，已嘗試送出你的選擇；網路傳送不保證成功。';
   }
 
   /** 除錯用：直接設定視角（狀態注入）。 */

@@ -453,7 +453,7 @@ export class World {
   }
 
   get hungerPaused(): boolean {
-    return this.encounterState === 'active' || this.encounterState === 'resolved';
+    return !!this.level.publicPlaytest || this.encounterState === 'active' || this.encounterState === 'resolved';
   }
 
   get heartAvailable(): boolean {
@@ -519,6 +519,7 @@ export class World {
 
   /** 敵人倒下：經驗與掉落。 */
   onKill(e: Enemy): void {
+    if (this.level.publicPlaytest) return;
     dropLoot(this, e);
     gainXp(this, killXp(e));
   }

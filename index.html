@@ -44,6 +44,7 @@
       <div id="prompt"></div>
       <div id="toasts"></div>
       <div id="hint"></div>
+      <div id="playtest-cue" class="hidden" role="status" aria-live="polite"></div>
       <div class="hud-bottom-left">
         <div id="class-badge"></div>
         <div id="hp"></div>
@@ -89,7 +90,18 @@
       <button id="touch-fire" data-touch="fire" class="touch-round" aria-label="使用武器；按住可連續攻擊，拖曳可同時瞄準"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 3-3m-3-3 6 6M8 16 18 3l3 0 0 3-13 10" /></svg><span class="touch-label">攻擊</span><small>按住・拖曳瞄準</small></button>
     </div>
 
-    <section id="screen-menu" class="screen">
+    <section id="screen-playtest" class="screen hidden" aria-labelledby="playtest-title">
+      <div class="menu-card playtest-landing">
+        <p class="sub">沉眠之心 · 短篇試玩</p>
+        <h1 id="playtest-title">停下腳步<br />時間就會慢下來</h1>
+        <p class="pitch">看清攻擊，再決定行動</p>
+        <button id="btn-playtest-start" class="primary">開始試玩</button>
+        <p class="muted small">約 1–2 分鐘熟悉操作，再試一場短遭遇。手機建議橫放。</p>
+        <p id="playtest-privacy" class="muted small"></p>
+      </div>
+    </section>
+
+    <section id="screen-menu" class="screen hidden">
       <div class="menu-card">
         <div class="fullscreen-actions touch-instructions">
           <button data-fullscreen type="button" aria-pressed="false" aria-describedby="menu-fullscreen-note">全螢幕</button>
@@ -309,6 +321,22 @@
         <h2 id="res-title">通關</h2>
         <p id="res-sub" class="muted"></p>
         <div id="res-stats" class="stats"></div>
+        <div id="playtest-feedback" class="hidden">
+          <p>願意留下兩個選擇嗎？可以略過，直接再試一次。</p>
+          <label for="playtest-fun">哪一刻最有趣？</label>
+          <select id="playtest-fun">
+            <option value="">略過</option><option value="slow_time">停下觀察慢時間</option>
+            <option value="dodge_counter">閃避後反攻</option><option value="position">換位置與選擇先後</option><option value="none">沒有特別有趣</option>
+          </select>
+          <label for="playtest-issue">最主要的卡點？</label>
+          <select id="playtest-issue">
+            <option value="">略過</option><option value="unclear">不知道該做什麼</option>
+            <option value="controls">操作不順</option><option value="hard">太難</option><option value="easy">太簡單</option>
+            <option value="slow">節奏太慢</option><option value="performance">效能問題</option><option value="none">沒有問題</option>
+          </select>
+          <button id="btn-playtest-feedback">送出選擇（選填）</button>
+          <p id="playtest-feedback-status" class="muted small" role="status"></p>
+        </div>
         <div class="menu-row">
           <button id="btn-retry" class="primary">同種子再試</button>
           <button id="btn-swap">換職業（同種子）</button>

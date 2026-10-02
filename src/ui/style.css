@@ -1608,3 +1608,19 @@ html:fullscreen { background: var(--bg); }
 .boss-test-loadout { white-space: pre-line; line-height: 1.65; color: var(--teal); }
 #boss-test-badge { color: var(--gold); font-size: 12px; line-height: 1.4; }
 .boss-test-panel button { min-height: 44px; }
+
+/* Public validation keeps the shared renderer / HUD; only unrelated information is hidden. */
+.public-playtest #hunger, .public-playtest #xp, .public-playtest #armor,
+.public-playtest #class-badge, .public-playtest .items, .public-playtest #btn-pause-class,
+.public-playtest #touch-inventory, .public-playtest #touch-map,
+.public-playtest #hint { display: none; }
+.playtest-landing { max-width: 640px; text-align: center; }
+.playtest-landing h1 { font-size: clamp(28px, 5vw, 48px); line-height: 1.4; }
+.playtest-landing .primary { min-width: 190px; min-height: 52px; margin: 16px 0; }
+#playtest-cue { position: absolute; bottom: 105px; left: 50%; transform: translateX(-50%); width: min(520px, 66vw); padding: 10px 16px; text-align: center; color: #ffe1a2; background: #171823dc; border: 1px solid #8d7648; border-radius: 8px; font-size: 15px; line-height: 1.6; pointer-events: none; }
+#playtest-cue:empty { display: none; }
+#playtest-feedback { margin: 16px 0; padding-top: 12px; border-top: 1px solid #5553; }
+#playtest-feedback label { display: block; margin: 12px 0 5px; }
+#playtest-feedback select { display: block; width: 100%; min-height: 44px; color: var(--ink); background: var(--bg); border: 1px solid #7778; border-radius: 6px; font: inherit; padding: 8px; }
+#btn-playtest-feedback { margin-top: 12px; }
+@media (max-height: 500px) { .touch-mode #playtest-cue { bottom: 74px; width: min(390px, 46vw); font-size: 12px; padding: 6px 10px; } }

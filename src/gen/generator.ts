@@ -116,6 +116,8 @@ export interface LevelData {
   traps: Array<{ i: number; j: number }>;
   torches: TorchSpawn[];
   practice: boolean;
+  /** Isolated public playtest; never serialized as a campaign RunState. */
+  publicPlaytest?: 'calibration' | 'core';
   /** Fixed encounter trial; absent from campaign and ordinary practice. */
   practiceTrial?: PracticeTrialId;
   encounter?: { roomKey: string };
