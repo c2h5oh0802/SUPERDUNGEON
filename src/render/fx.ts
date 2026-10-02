@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { itemColor } from '../sim/items';
+import { wardenBraced, wardenWindup } from '../sim/enemySys';
 import { ENEMIES, PLAYER, SMOKE } from '../config';
 import { clamp, forwardFromYaw, smoothstep } from '../core/math';
 import type { Enemy, GameEvent, Projectile } from '../sim/types';
@@ -432,6 +433,10 @@ export class FxVisual {
     if (!preparing && !live) return;
     const yaw = e.locked ? e.lockedYaw : e.yaw;
     const locked = e.locked || live;
+    const braced = wardenBraced(e);
+    // Magenta denotes visible interruption resistance, not damage protection.
+    // The HUD also states the rule; reach, lock and opacity remain unchanged.
+    const braceColor = locked ? 0xff46ab : 0xe875da;
     const opacity = live ? 0.42 : locked ? 0.3 + 0.12 * Math.abs(Math.sin(realTime * 16)) : 0.14;
     if (attack === 'cleave') {
       wedge.add(e.id);
@@ -447,7 +452,7 @@ export class FxVisual {
       m.rotation.y = yaw;
       const mat = m.material as THREE.MeshBasicMaterial;
       mat.opacity = opacity;
-      mat.color.setHex(locked ? 0xff612f : 0xeec77d);
+      mat.color.setHex(braced ? braceColor : e.warden?.followup ? locked ? 0xff4935 : 0xffa16f : locked ? 0xff612f : 0xeec77d);
       m.visible = true;
       return;
     }
@@ -488,8 +493,8 @@ export class FxVisual {
       m.rotateY(Math.PI);
       m.scale.set(locked ? 1.8 : 1, locked ? 1.8 : 1, Math.hypot(target.x - ox, target.y - oy, target.z - oz));
       const mat = m.material as THREE.MeshBasicMaterial;
-      mat.color.setHex(locked ? 0xff4425 : 0xffc674);
-      mat.opacity = locked ? 0.85 : 0.25 + 0.3 * clamp(e.phaseT / b.lanceAim, 0, 1);
+      mat.color.setHex(braced ? braceColor : locked ? 0xff4425 : 0xffc674);
+      mat.opacity = locked ? 0.85 : 0.25 + 0.3 * clamp(e.phaseT / wardenWindup(e), 0, 1);
       m.visible = true;
     }
     lane.add(e.id);
@@ -507,7 +512,7 @@ export class FxVisual {
     m.rotation.y = Math.atan2(-dx, -dz);
     m.scale.set(radius * 2, 1, length + radius * 2);
     const mat = m.material as THREE.MeshBasicMaterial;
-    mat.color.setHex(attack === 'lance' ? locked ? 0xff4425 : 0xffc674 : locked ? 0xff8b35 : 0xf0cf8f);
+    mat.color.setHex(braced ? braceColor : attack === 'lance' ? locked ? 0xff4425 : 0xffc674 : locked ? 0xff8b35 : 0xf0cf8f);
     mat.opacity = attack === 'lance' ? opacity * 0.65 : opacity;
     m.visible = true;
   }

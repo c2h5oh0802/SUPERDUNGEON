@@ -40,6 +40,7 @@ export function runWardenScenario(policy: WardenPolicy, fps = 60, seed = 'WARDEN
     if (w.pendingChoice) break;
     const dx = e.x - p.x, dz = e.z - p.z, d = Math.hypot(dx, dz), yaw = yawFromDir(dx, dz);
     const head = policy === 'headspam' || policy === 'read-bow';
+    const knifeFallback = policy === 'recovery-knife' || (policy === 'read-bow' && p.arrows === 0);
     const out: Partial<FrameInput> = { yaw, pitch: Math.atan2((head ? ENEMIES.warden.headY : 1.2) - AIM_EYE_Y, d) };
     const open = e.phase === 'recovery' || e.phase === 'stagger';
     if (e.phase !== lastPhase) { if (open) recoveryAttack = false; lastPhase = e.phase; }
@@ -55,7 +56,7 @@ export function runWardenScenario(policy: WardenPolicy, fps = 60, seed = 'WARDEN
         return along > 0 && perp < PLAYER.radius + b.radius + .35;
       });
       if (!e.locked && !projectile) dodgeDirection = null;
-      if (e.warden!.attack === 'cleave' && (e.locked || e.phase === 'active' || (policy === 'recovery-knife' && e.phase === 'windup')) && d < 3.05) dodge = { x: -dx, z: -dz };
+      if (e.warden!.attack === 'cleave' && (e.locked || e.phase === 'active' || (knifeFallback && e.phase === 'windup')) && d < 3.05) dodge = { x: -dx, z: -dz };
       if ((e.warden!.attack === 'rush' && (e.locked || e.phase === 'charge')) ||
           (e.warden!.attack === 'lance' && e.locked) || projectile) {
         const f = projectile ? projectile.vel : forwardFromYaw(e.lockedYaw);
@@ -66,7 +67,7 @@ export function runWardenScenario(policy: WardenPolicy, fps = 60, seed = 'WARDEN
       const counter = policy === 'counter-sword' && !p.action ? counterThreat(w) : null;
       if (counter) { out.fire = true; out.firePressed = true; }
       else if (dodge) Object.assign(out, move(yaw, dodge.x, dodge.z));
-      else if (policy === 'recovery-knife' && e.warden!.attack === 'cleave' && (e.phase === 'windup' || e.phase === 'active')) out.wait = true;
+      else if (knifeFallback && e.warden!.attack === 'cleave' && (e.phase === 'windup' || e.phase === 'active')) out.wait = true;
       else if (policy === 'read-bow' && p.arrows > 0) {
         if (!p.action && !wardenCrownClosed(e) && open && e.phaseT < .65) { out.fire = true; out.firePressed = true; }
         else out.wait = true;

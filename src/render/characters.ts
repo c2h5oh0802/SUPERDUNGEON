@@ -3,7 +3,7 @@ import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferG
 import { ENEMIES } from '../config';
 import { clamp, lerp, smoothstep } from '../core/math';
 import type { Enemy } from '../sim/types';
-import { wardenCrownClosed } from '../sim/enemySys';
+import { wardenBraced, wardenCrownClosed, wardenLockBefore, wardenWindup } from '../sim/enemySys';
 import { createCharMaterial, createLightRig, createOutlineMaterial, paint, type LightRig, type SharedUniforms } from './materials';
 
 // 敵人的程序角色：不同輪廓、武器與姿勢；動畫直接由模擬狀態（世界時間）計算，
@@ -537,14 +537,17 @@ export class EnemyVisual {
     } else if (e.kind === 'warden') {
       const b = ENEMIES.warden;
       const attack = e.warden?.attack;
+      const followup = attack === 'cleave' && !!e.warden?.followup;
       if (e.phase === 'windup' || e.phase === 'aim') {
         snap = true;
-        const duration = attack === 'cleave' ? b.cleaveWindup : attack === 'lance' ? b.lanceAim : b.rushWindup;
+        const duration = wardenWindup(e);
         const k = smoothstep(0, duration, p);
         if (attack === 'cleave') {
-          t.j.torso = [0, lerp(0, -0.65, k), 0];
-          t.j.armR = [lerp(0.18, 0.75, k), 0, lerp(-0.15, -0.6, k)];
-          t.j.elbowR = [lerp(0.35, -0.2, k), 0, 0];
+          // The second tell winds back from the completed first swing. It uses
+          // the simulation's full follow-up duration, never a shortened visual tell.
+          t.j.torso = [0, followup ? lerp(0.65, 0.85, k) : lerp(0, -0.65, k), 0];
+          t.j.armR = [followup ? lerp(-1, 0.95, k) : lerp(0.18, 0.75, k), 0, followup ? lerp(0.5, 0.65, k) : lerp(-0.15, -0.6, k)];
+          t.j.elbowR = [followup ? lerp(-0.6, -0.2, k) : lerp(0.35, -0.2, k), 0, 0];
           t.j.armL = [lerp(0.4, 1.35, k), 0, 0.35];
         } else if (attack === 'lance') {
           t.j.armR = [lerp(0.18, -0.85, k), 0, -0.1];
@@ -560,12 +563,15 @@ export class EnemyVisual {
           t.j.legL = [0.4 * k, 0, 0];
           t.j.legR = [-0.5 * k, 0, 0];
         }
-        glow = 0.3 + 0.9 * k;
+        // Lock brightness changes at the actual state transition. The accent
+        // then develops over that move's configured fixed-direction window.
+        const lockedK = smoothstep(duration - wardenLockBefore(e), duration, p);
+        glow = e.locked ? 1.05 + 0.15 * lockedK : 0.3 + 0.45 * k;
       } else if (e.phase === 'active') {
         snap = true;
         const k = clamp(p / b.cleaveActive, 0, 1);
-        t.j.torso = [-0.12, lerp(-0.65, 0.65, k), 0];
-        t.j.armR = [lerp(0.75, -1, k), 0, lerp(-0.6, 0.5, k)];
+        t.j.torso = [-0.12, followup ? lerp(0.85, -0.65, k) : lerp(-0.65, 0.65, k), 0];
+        t.j.armR = [lerp(followup ? 0.95 : 0.75, -1, k), 0, followup ? lerp(0.65, -0.5, k) : lerp(-0.6, 0.5, k)];
         t.j.elbowR = [lerp(-0.2, -0.6, k), 0, 0];
         t.j.armL = [1.3, 0, 0.35];
         glow = 1.2;
@@ -580,7 +586,7 @@ export class EnemyVisual {
         snap = true;
         const duration = attack === 'cleave' ? b.cleaveRecovery : attack === 'lance' ? b.lanceRecovery : b.rushRecovery;
         const k = smoothstep(0, duration, p);
-        t.j.torso = [lerp(-0.16, 0, k), lerp(attack === 'cleave' ? 0.65 : 0, 0, k), 0];
+        t.j.torso = [lerp(-0.16, 0, k), lerp(attack === 'cleave' ? followup ? -0.65 : 0.65 : 0, 0, k), 0];
         t.j.armR = [lerp(0.6, 0.18, k), 0, lerp(0.45, -0.15, k)];
         t.j.head = [0.05, 0, 0];
       } else if (e.phase === 'stagger') {
@@ -589,6 +595,15 @@ export class EnemyVisual {
         t.j.head = [0.08, 0, 0.1];
         t.j.armR = [0.3, 0, 0.65];
         t.j.armL = [0.1, 0, -0.8];
+      }
+      if (wardenBraced(e) && wardenCrownClosed(e)) {
+        // A visibly planted stance distinguishes resistance from another stagger.
+        // Earned exposed recovery/stagger poses always take precedence.
+        t.hipsY -= 0.07;
+        t.j.legL[2] -= 0.1;
+        t.j.legR[2] += 0.1;
+        t.j.kneeL[0] -= 0.12;
+        t.j.kneeR[0] -= 0.12;
       }
     } else {
       const c = ENEMIES.charger;
@@ -637,6 +652,8 @@ export class EnemyVisual {
     this.root.rotation.y = e.yaw;
     const u = this.mat.uniforms;
     const crownClosed = e.kind === 'warden' && wardenCrownClosed(e);
+    const braced = crownClosed && wardenBraced(e);
+    const exposed = e.kind === 'warden' && !crownClosed;
     for (const [i, panel] of this.crown.entries()) {
       // Immediate open/close is intentional: visible protection never lags its hit rule.
       panel.rotation.set(crownClosed ? 0 : -0.3, 0, crownClosed ? 0 : i === 0 ? -1.1 : 1.1);
@@ -661,15 +678,16 @@ export class EnemyVisual {
     this.applyPose(this.pose);
     // 預備動作發光（橘→紅），受擊閃白；麻痺＝紫色定格、冰寒＝冰藍
     u.uGlowAmt!.value = e.paralyzeT > 0 ? 0 : glow;
-    (u.uGlow!.value as THREE.Color).setRGB(1.0, lerp(0.45, 0.12, clamp(glow - 0.2, 0, 1)), 0.05);
+    if (braced) (u.uGlow!.value as THREE.Color).setHex(0xff46ab);
+    else (u.uGlow!.value as THREE.Color).setRGB(1.0, lerp(0.45, 0.12, clamp(glow - 0.2, 0, 1)), 0.05);
     // 麻痺紫、冰寒藍；老兵平常帶一點金色（頭盔）
-    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : e.warden?.phaseTwo ? 0.18 : e.veteran ? 0.22 : 0;
-    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : e.warden?.phaseTwo ? 0xff7840 : 0xf2c14e);
+    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : braced ? 0.4 : exposed ? 0.12 : e.warden?.phaseTwo ? 0.18 : e.veteran ? 0.22 : 0;
+    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : braced ? 0xdf58b2 : exposed ? 0x9bf7e8 : e.warden?.phaseTwo ? 0xff7840 : 0xf2c14e);
     this.rig.uFlash.value = e.hurtT > 0 ? (e.hurtT / 0.3) * 0.75 : 0;
     this.rig.uDim.value = 1;
     this.eyes.visible = e.state !== 'sleep';
     const ec = e.state === 'alert' ? 0xff5a1e : e.state === 'search' || e.state === 'investigate' ? 0xffc040 : 0xb08a50;
-    this.eyeMat.color.setHex(e.kind === 'warden' ? crownClosed ? 0xff852e : 0x9bf7e8 : ec);
+    this.eyeMat.color.setHex(e.kind === 'warden' ? crownClosed ? braced ? 0xff75d0 : 0xff852e : 0x9bf7e8 : ec);
   }
 
   private applyPose(p: Pose): void {

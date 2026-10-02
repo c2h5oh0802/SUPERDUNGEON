@@ -18,6 +18,8 @@ export interface ActionState {
   targetId: number;
   /** 戰士：這一劍是反擊斬（出手更快）。 */
   counter: boolean;
+  /** Warden only: this swing began with a fresh press while its Counter cue was valid. */
+  wardenCounter?: boolean;
   /** 戰士：這一劍已成功反擊或擊開（跳過收招）。 */
   countered: boolean;
   /** 獵手：這一發是藥劑箭（null 表示一般箭）。 */
@@ -189,7 +191,17 @@ export interface Enemy {
   pendingSleep: boolean;
   boss: boolean;
   /** Disposable encounter runtime. Saves remain floor-start snapshots. */
-  warden: { attack: 'cleave' | 'lance' | 'rush' | null; phaseTwo: boolean; rangedCount: number } | null;
+  warden: {
+    attack: 'cleave' | 'lance' | 'rush' | null;
+    phaseTwo: boolean;
+    rangedCount: number;
+    /** One earned interrupt, then a visibly steady attack cycle. Damage remains unchanged. */
+    braced: boolean;
+    followup: boolean;
+    cleavesLeft: number;
+    /** Only a completed threat plus its full recovery releases the steady stance. */
+    sequenceResolved: boolean;
+  } | null;
 }
 
 export type ProjectileKind = 'arrow' | 'stone' | 'bottle' | 'bolt';

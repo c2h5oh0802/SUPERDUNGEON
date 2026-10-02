@@ -50,6 +50,8 @@ describe('Warden Warrior counterplay', () => {
     e.locked = true;
     expect(counterThreat(w)).toEqual({ kind: 'warden', id: e.id });
     const hp = e.hp;
+    startActions(w, { ...emptyInput(), fire: true, firePressed: true });
+    expect(w.player.action?.wardenCounter).toBe(true);
     expect(applyCounter(w, e)).toBe(true);
     expect(e.phase).toBe('stagger');
     expect(e.staggerDur).toBe(1.1);

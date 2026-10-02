@@ -89,14 +89,18 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     corpseFound: false,
     pendingSleep: false,
     boss: !!s.boss,
-    warden: s.kind === 'warden' ? { attack: null, phaseTwo: false, rangedCount: 0 } : null,
+    warden: s.kind === 'warden' ? { attack: null, phaseTwo: false, rangedCount: 0,
+      braced: false, followup: false, cleavesLeft: 0, sequenceResolved: false } : null,
   };
 }
 
 /** 打斷敵人目前的出手（盾推、踉蹌）。 */
 export function interruptEnemy(e: Enemy): void {
   stopArcherMove(e);
-  if (e.warden) e.warden.attack = null;
+  if (e.warden) {
+    e.warden.attack = null; e.warden.followup = false;
+    e.warden.cleavesLeft = 0; e.warden.sequenceResolved = false;
+  }
   e.locked = false;
   e.aimPoint = null;
   e.hitDone = true;
@@ -105,8 +109,12 @@ export function interruptEnemy(e: Enemy): void {
 }
 
 /** 失衡或踉蹌：一段時間不能行動（盾衛的盾牌放下）。 */
-export function staggerEnemy(e: Enemy, dur: number): void {
+export function staggerEnemy(e: Enemy, dur: number, wallCrash = false): void {
+  // Ordinary heavy hits cannot repeatedly reset the Boss's timeline. A committed
+  // rush crashing into real geometry still earns its explicit, visible opening.
+  if (wardenBraced(e) && !wallCrash) return;
   interruptEnemy(e);
+  if (e.warden) e.warden.braced = true;
   e.push = null;
   e.shieldUp = false;
   e.phase = 'stagger';
@@ -134,19 +142,26 @@ function updatePush(w: World, e: Enemy, dt: number): void {
   const nx = e.x + pu.dx * step;
   const nz = e.z + pu.dz * step;
   if (w.grid.circleBlocked(nx, nz, e.radius)) {
+    // Collision consumes the physical push even when the Boss resists stagger.
+    e.push = null;
+    const resisted = wardenBraced(e);
     staggerEnemy(e, SHIELD.wallStagger + (SHIELD.enabled && hasTalent(w.player, 'heavyShield') ? TALENT_FX.heavyShieldStagger : 0));
     w.stats.wallSlams++;
-    w.emit({ type: 'bump', id: e.id, kind: 'wall', x: e.x + pu.dx * e.radius, y: 1.0, z: e.z + pu.dz * e.radius });
+    w.emit({ type: 'bump', id: e.id, kind: 'wall', x: e.x + pu.dx * e.radius, y: 1.0, z: e.z + pu.dz * e.radius,
+      text: resisted ? '撞牆，守心者穩勢未被打斷' : undefined });
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
     return;
   }
   for (const o of w.enemies) {
     if (o === e || !o.alive || o.perched) continue;
     if (Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius) {
+      e.push = null;
+      const resisted = wardenBraced(e) || wardenBraced(o);
       staggerEnemy(e, SHIELD.bumpStumble);
       staggerEnemy(o, SHIELD.bumpStumble);
       if (o.state !== 'alert') investigate(w, o, { x: e.x, z: e.z });
-      w.emit({ type: 'bump', id: e.id, kind: 'ally', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
+      w.emit({ type: 'bump', id: e.id, kind: 'ally', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2,
+        text: resisted ? '碰撞，守心者穩勢未被打斷' : undefined });
       w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'impact');
       return;
     }
@@ -872,7 +887,26 @@ export function wardenCrownClosed(e: Enemy): boolean {
     ['none', 'windup', 'aim', 'active', 'charge'].includes(e.phase);
 }
 
-function wardenRecovery(e: Enemy): void {
+export function wardenBraced(e: Enemy): boolean {
+  return e.kind === 'warden' && e.alive && !!e.warden?.braced;
+}
+
+/** Shared with the pose, ground warning and Counter readiness prediction. */
+export function wardenWindup(e: Enemy): number {
+  const s = ENEMIES.warden;
+  return e.warden?.attack === 'lance' ? s.lanceAim : e.warden?.attack === 'rush' ? s.rushWindup :
+    e.warden?.followup ? s.followupWindup : s.cleaveWindup;
+}
+
+export function wardenLockBefore(e: Enemy): number {
+  const s = ENEMIES.warden;
+  return e.warden?.attack === 'lance' ? s.lanceLockBefore : e.warden?.attack === 'rush' ? s.rushLockBefore :
+    e.warden?.followup ? s.followupLockBefore : s.cleaveLockBefore;
+}
+
+function wardenRecovery(e: Enemy, resolved = false): void {
+  e.warden!.sequenceResolved = resolved;
+  e.warden!.cleavesLeft = 0;
   e.phase = 'recovery'; e.phaseT = 0; e.locked = false; e.aimPoint = null; e.moving = false;
 }
 
@@ -897,7 +931,7 @@ function fireWardenLance(w: World, e: Enemy): void {
     damage: s.damage, source: '守心者的心槍', lifetime: s.lanceRange / s.lanceSpeed });
   w.emit({ type: 'enemyFire', id: e.id, kind: e.kind, source: 'lance', x: pos.x, y: pos.y, z: pos.z });
   w.emitNoise(e.x, pos.y, e.z, NOISE.combatHit, 'combat', e.id);
-  wardenRecovery(e);
+  wardenRecovery(e, true);
 }
 
 /** One selected, committed attack at a time. No phase transition can cut recovery. */
@@ -910,13 +944,16 @@ function wardenAlert(w: World, e: Enemy, dt: number): void {
     case 'none': {
       if (!b.phaseTwo && e.hp <= e.maxHp * s.phaseThreshold) {
         b.phaseTwo = true; b.rangedCount = 0;
-        w.emit({ type: 'buff', kind: 'encounter', text: '守心者裂冠：遠距出手開始交替直線衝刺；閃開光帶後反擊' });
+        w.emit({ type: 'buff', kind: 'encounter', text: '守心者裂冠：近身橫斬後還有重斬；遠距交替直線衝刺，等整套收招再反擊' });
       }
       if (!visible || p.dead) { chase(w, e, dt, s.speed, s.cleaveRange * .85); return; }
       const d = Math.hypot(p.x - e.x, p.z - e.z);
       // Selecting a move may face visible information, never a hidden player.
       facePlayer(w, e, 6, dt);
       if (d > s.lanceRange) { chase(w, e, dt, s.speed, s.cleaveRange * .85); return; }
+      if (d > s.cleaveRange && d <= s.closePressureRange) {
+        chase(w, e, dt, s.speed, s.cleaveRange * .85); return;
+      }
       e.yaw = yawFromDir(p.x - e.x, p.z - e.z);
       const target = { x: p.x, y: 1.2, z: p.z };
       if (d <= s.cleaveRange) b.attack = 'cleave';
@@ -927,6 +964,8 @@ function wardenAlert(w: World, e: Enemy, dt: number): void {
         b.rangedCount++;
       }
       e.phase = b.attack === 'lance' ? 'aim' : 'windup';
+      b.followup = false; b.cleavesLeft = b.phaseTwo && b.attack === 'cleave' ? 1 : 0;
+      b.sequenceResolved = false;
       e.phaseT = 0; e.locked = false; e.hitDone = false; e.chargeDist = 0;
       e.aimPoint = b.attack === 'lance' ? target : null;
       w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, source: b.attack, x: e.x, y: e.y, z: e.z });
@@ -934,8 +973,7 @@ function wardenAlert(w: World, e: Enemy, dt: number): void {
     }
     case 'windup':
     case 'aim': {
-      const duration = b.attack === 'cleave' ? s.cleaveWindup : b.attack === 'rush' ? s.rushWindup : s.lanceAim;
-      const lockBefore = b.attack === 'cleave' ? s.cleaveLockBefore : b.attack === 'rush' ? s.rushLockBefore : s.lanceLockBefore;
+      const duration = wardenWindup(e), lockBefore = wardenLockBefore(e);
       if (!e.locked) {
         if (!visible || (b.attack === 'lance' && !wardenLanceClear(w, e, { x: p.x, y: 1.2, z: p.z }))) {
           // Abandoning an uncommitted attack pays recovery too, not instant retargeting.
@@ -968,9 +1006,16 @@ function wardenAlert(w: World, e: Enemy, dt: number): void {
       if (!e.hitDone && !p.dead && d <= s.cleaveReach + PLAYER.radius &&
           angle <= s.cleaveArcDeg * Math.PI / 360 &&
           !w.grid.segmentHit({ x: e.x, y: 1.2, z: e.z }, { x: p.x, y: 1.2, z: p.z })) {
-        e.hitDone = true; w.damagePlayer(s.damage, '守心者的橫斬', e.x, e.z);
+        e.hitDone = true;
+        w.damagePlayer(b.followup ? s.followupDamage : s.cleaveDamage, b.followup ? '守心者的追擊重斬' : '守心者的橫斬', e.x, e.z);
       }
-      if (e.phaseT >= s.cleaveActive) wardenRecovery(e);
+      if (e.phaseT >= s.cleaveActive) {
+        if (b.cleavesLeft > 0) {
+          b.cleavesLeft--; b.followup = true;
+          e.phase = 'windup'; e.phaseT = 0; e.locked = false; e.hitDone = false;
+          w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, source: 'cleave-followup', x: e.x, y: e.y, z: e.z });
+        } else wardenRecovery(e, true);
+      }
       return;
     }
     case 'charge': {
@@ -979,27 +1024,31 @@ function wardenAlert(w: World, e: Enemy, dt: number): void {
       const step = Math.min(s.rushSpeed * dt, s.rushDist - e.chargeDist);
       const nx = e.x + f.x * step, nz = e.z + f.z * step;
       if (w.grid.circleBlocked(nx, nz, e.radius)) {
-        staggerEnemy(e, s.wallStagger);
+        staggerEnemy(e, s.wallStagger, true);
         w.emit({ type: 'stun', id: e.id, x: e.x, y: 1, z: e.z });
         return;
       }
       if (!p.dead && Math.hypot(p.x - nx, p.z - nz) <= e.radius + PLAYER.radius) {
-        if (!e.hitDone) { e.hitDone = true; w.damagePlayer(s.damage, '守心者的衝刺', e.x, e.z); }
-        wardenRecovery(e); return;
+        if (!e.hitDone) { e.hitDone = true; w.damagePlayer(s.rushDamage, '守心者的衝刺', e.x, e.z); }
+        wardenRecovery(e, true); return;
       }
       // Although the encounter is solo, retained world fixtures cannot be phased through.
       if (w.enemies.some(o => o !== e && o.alive && !o.perched && Math.hypot(o.x - nx, o.z - nz) < o.radius + e.radius)) {
-        wardenRecovery(e); return;
+        wardenRecovery(e, true); return;
       }
       e.x = nx; e.z = nz; e.moving = step > 0; e.walkPhase += step * 1.5;
       enemyFootsteps(w, e, step); e.chargeDist += step;
-      if (e.chargeDist >= s.rushDist - 1e-8) wardenRecovery(e);
+      if (e.chargeDist >= s.rushDist - 1e-8) wardenRecovery(e, true);
       return;
     }
     case 'recovery': {
       e.phaseT += dt;
       const duration = b.attack === 'lance' ? s.lanceRecovery : b.attack === 'rush' ? s.rushRecovery : s.cleaveRecovery;
-      if (e.phaseT >= duration) { e.phase = 'none'; e.phaseT = 0; b.attack = null; }
+      if (e.phaseT >= duration) {
+        e.phase = 'none'; e.phaseT = 0; b.attack = null; b.followup = false;
+        if (b.sequenceResolved) b.braced = false;
+        b.sequenceResolved = false;
+      }
       return;
     }
     default:

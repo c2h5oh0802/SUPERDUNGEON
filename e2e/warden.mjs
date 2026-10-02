@@ -43,8 +43,8 @@ try {
     let s = await bot.st();
     assert.equal(s.practiceTrial, 'heart-warden'); assert.equal(s.seed, 'TRIAL-WARDEN');
     assert.equal(s.floor, 5); assert.equal(s.template, 'arena'); assert.equal(s.run, null);
-    assert.equal(s.enemies.length, 1); assert.equal(s.enemies[0].kind, 'warden'); assert.equal(s.enemies[0].hp, 32);
-    assert.deepEqual(s.enemies[0].warden, { attack: null, phaseTwo: false, rangedCount: 0 });
+    assert.equal(s.enemies.length, 1); assert.equal(s.enemies[0].kind, 'warden'); assert.equal(s.enemies[0].hp, 80);
+    assert.deepEqual(s.enemies[0].warden, { attack: null, phaseTwo: false, rangedCount: 0, braced: false, followup: false, cleavesLeft: 0, sequenceResolved: false });
     assert.equal(s.encounterState, 'dormant'); assert.equal(s.player.cls, cls);
     assert.deepEqual(s.player.items, []); assert.deepEqual(s.player.talents, []);
     assert.equal(s.player.arrows, cls === 'huntress' ? 8 : 0);
@@ -53,7 +53,7 @@ try {
     assert.equal(s.player.known.includes('potion:gas'), false);
     const signature = await page.evaluate(() => window.__sd.level().signature);
     assert.equal(await page.locator('#boss').isVisible(), true);
-    assert.match(await page.textContent('#boss-health'), /32\s*\/\s*32/);
+    assert.match(await page.textContent('#boss-health'), /80\s*\/\s*80/);
     assert.match(await page.textContent('#boss-guide'), /正面頭部/);
     assert.match(await page.textContent('#boss-state'), /尚未開戰/);
     assert.equal(await saved(), campaignSave);
@@ -78,7 +78,7 @@ try {
     await pause(); await page.click('#btn-restart'); await playing();
     s = await bot.st();
     assert.equal(await page.evaluate(() => window.__sd.level().signature), signature);
-    assert.equal(s.enemies.length, 1); assert.equal(s.enemies[0].alive, true); assert.equal(s.enemies[0].hp, 32);
+    assert.equal(s.enemies.length, 1); assert.equal(s.enemies[0].alive, true); assert.equal(s.enemies[0].hp, 80);
     assert.equal(s.enemies[0].warden.phaseTwo, false); assert.equal(s.enemies[0].paralyzeT, 0);
     assert.equal(s.player.hp, s.player.maxHp); assert.equal(s.player.xp, 0);
     assert.equal(s.encounterState, 'dormant'); assert.equal(s.heartTaken, false);
@@ -94,7 +94,7 @@ try {
     assert.equal(await saved(), campaignSave);
     assert.match(await page.textContent('#res-sub'), /守心者/);
     await page.click('#btn-retry'); await playing();
-    s = await bot.st(); assert.equal(s.practiceTrial, 'heart-warden'); assert.equal(s.enemies[0].hp, 32);
+    s = await bot.st(); assert.equal(s.practiceTrial, 'heart-warden'); assert.equal(s.enemies[0].hp, 80);
     assert.equal(s.heartTaken, false); assert.equal(s.outcome, 'none');
     await menu();
   }

@@ -27,7 +27,7 @@ function faceHeart(w: World): void {
 }
 
 describe('single Warden final-floor contract', () => {
-  it('has fixed 32 HP, a reachable arena/Heart and zero supplies across seeds and mirrors', () => {
+  it('has fixed configured HP, a reachable arena/Heart and zero supplies across seeds and mirrors', () => {
     const mirrors = new Set<boolean>();
     for (let k = 0; k < 16; k++) {
       const l = generateLevel(`WARDEN-ARENA-${k}`, { floor: RUN.floors });
@@ -36,8 +36,8 @@ describe('single Warden final-floor contract', () => {
       expect(validateLevel(l)).toEqual({ ok: true, errors: [] });
       expect(l.templateId).toBe('arena'); expect(l.goal).toBe('heart');
       expect(l.enemies).toHaveLength(1);
-      expect(e).toMatchObject({ kind: 'warden', hp: 32, maxHp: 32, boss: true, veteran: false, state: 'idle', patrol: [] });
-      expect(e.warden).toEqual({ attack: null, phaseTwo: false, rangedCount: 0 });
+      expect(e).toMatchObject({ kind: 'warden', hp: ENEMIES.warden.hp, maxHp: ENEMIES.warden.hp, boss: true, veteran: false, state: 'idle', patrol: [] });
+      expect(e.warden).toEqual({ attack: null, phaseTwo: false, rangedCount: 0, braced: false, followup: false, cleavesLeft: 0, sequenceResolved: false });
       expect(l.pickups).toEqual([]); expect(l.chests).toEqual([]); expect(l.traps).toEqual([]);
       expect(l.resupply).toBeNull(); expect(l.specialRooms).toEqual([]);
       expect(w.encounterState).toBe('dormant'); expect(w.heartAvailable).toBe(false);
@@ -46,7 +46,7 @@ describe('single Warden final-floor contract', () => {
       const h = l.heart!;
       expect(seen.some((reachable, cell) => reachable && Math.hypot(nav.center(cell).x - h.x, nav.center(cell).z - h.z) <= PLAYER.interactRange)).toBe(true);
     }
-    expect(mirrors.size).toBe(2); expect(ENEMIES.warden.hp).toBe(32);
+    expect(mirrors.size).toBe(2); expect(ENEMIES.warden.hp).toBe(ENEMIES.warden.hp);
   });
 
   it.each(['warrior', 'huntress'] as const)('%s F5 save preserves carry but retries a fresh complete boss after runtime damage/phases/status/death', cls => {
@@ -65,7 +65,7 @@ describe('single Warden final-floor contract', () => {
     const signature = levelSignature(active.level);
     active.startEncounter();
     Object.assign(boss, { hp: 9, phase: 'charge', phaseT: .3, locked: true, paralyzeT: 2, slowT: 4, pendingSleep: true });
-    Object.assign(boss.warden!, { attack: 'rush', phaseTwo: true, rangedCount: 5 });
+    Object.assign(boss.warden!, { attack: 'rush', phaseTwo: true, rangedCount: 5, braced: true, followup: true, cleavesLeft: 1, sequenceResolved: true });
     boss.aimPoint = { x: active.player.x, y: 1.2, z: active.player.z };
     active.player.hp = 1; active.player.items.length = 0; active.time = 33;
     for (const afterKill of [false, true]) {
@@ -75,15 +75,15 @@ describe('single Warden final-floor contract', () => {
       expect(retry.carry()).toEqual(before.carry()); expect(retry.stats).toEqual(checkpoint.stats);
       expect(retry.enemies).toHaveLength(1);
       expect(retry.enemies[0]).toMatchObject({
-        kind: 'warden', hp: 32, maxHp: 32, alive: true, state: 'idle', phase: 'none', phaseT: 0,
+        kind: 'warden', hp: ENEMIES.warden.hp, maxHp: ENEMIES.warden.hp, alive: true, state: 'idle', phase: 'none', phaseT: 0,
         locked: false, paralyzeT: 0, slowT: 0, pendingSleep: false, aimPoint: null, lastKnown: null, target: null,
-        warden: { attack: null, phaseTwo: false, rangedCount: 0 },
+        warden: { attack: null, phaseTwo: false, rangedCount: 0, braced: false, followup: false, cleavesLeft: 0, sequenceResolved: false },
       });
       expect(retry.encounterState).toBe('dormant'); expect(retry.outcome).toBe('none');
       expect(retry.heartTaken).toBe(false); expect(retry.heartAvailable).toBe(false); expect(retry.time).toBe(0);
     }
     expect(serializeRun(parsed)).toBe(encoded);
-    expect(encoded).not.toMatch(/phaseTwo|rangedCount|aimPoint|paralyzeT|encounterState|heartTaken/);
+    expect(encoded).not.toMatch(/phaseTwo|rangedCount|braced|cleavesLeft|followup|sequenceResolved|aimPoint|paralyzeT|encounterState|heartTaken/);
   });
 
   it('awards exactly 9 XP once, with no random loot or loot RNG draw', () => {
@@ -118,7 +118,7 @@ describe('isolated Heart Warden practice', () => {
     p.arrows = 0; p.stones = 0; p.bottles = 0; p.tipped = { paralysis: 0, chill: 0 };
     faceHeart(w); w.updateEncounter();
     expect(w.encounterState).toBe('active'); expect(w.outcome).toBe('none');
-    expect(w.enemies[0]!.hp).toBe(32); expect(w.heartAvailable).toBe(false);
+    expect(w.enemies[0]!.hp).toBe(ENEMIES.warden.hp); expect(w.heartAvailable).toBe(false);
     expect(serializeRun(parseRun(save)!)).toBe(save);
     expect(createFloorWorld(parseRun(save)!).carry()).toEqual(createFloorWorld(newRun('KEEP-CAMPAIGN', cls)).carry());
   });
@@ -132,7 +132,7 @@ describe('isolated Heart Warden practice', () => {
     expect(first.outcome).toBe('win');
     const reset = createTrialWorld('heart-warden', cls);
     expect(levelSignature(reset.level)).toBe(signature); expect(reset.enemies).toHaveLength(1);
-    expect(reset.enemies[0]).toMatchObject({ hp: 32, maxHp: 32, alive: true, paralyzeT: 0, phase: 'none', warden: { attack: null, phaseTwo: false, rangedCount: 0 } });
+    expect(reset.enemies[0]).toMatchObject({ hp: ENEMIES.warden.hp, maxHp: ENEMIES.warden.hp, alive: true, paralyzeT: 0, phase: 'none', warden: { attack: null, phaseTwo: false, rangedCount: 0, braced: false, followup: false, cleavesLeft: 0, sequenceResolved: false } });
     expect(reset.player.hp).toBe(PLAYER.maxHp); expect(reset.player.items).toEqual([]);
     expect(reset.player.arrows).toBe(CLASSES[cls].start.arrows); expect(reset.player.talents).toEqual([]);
     expect(reset.player.known).toEqual(CLASS_KNOWLEDGE[cls]);

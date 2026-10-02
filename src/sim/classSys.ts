@@ -3,7 +3,7 @@ import { meleeCandidates } from './meleeTargets';
 import { hasTalent } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, aimPoint, crosshairPoint } from './aim';
-import { becomeAlert } from './enemySys';
+import { becomeAlert, wardenBraced, wardenWindup } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
@@ -88,6 +88,7 @@ export function counterThreat(w: World): CounterThreat | null {
     .slice(0, WEAPONS[p.weapon.id].maxTargets).map(e => e.id));
   for (const e of w.enemies) {
     if (!attackCommitted(e)) continue;
+    if (wardenBraced(e)) continue;
     if (!hittable.has(e.id)) continue;
     const dx = e.x - p.x;
     const dz = e.z - p.z;
@@ -96,8 +97,7 @@ export function counterThreat(w: World): CounterThreat | null {
     const reach = meleeReach(w) + c.counterLunge + e.radius;
     if (e.kind === 'warden' && e.phase !== 'charge') {
       // Each fixed tell must leave enough time for the counter swing to connect.
-      const s = ENEMIES.warden;
-      const duration = e.warden?.attack === 'lance' ? s.lanceAim : e.warden?.attack === 'rush' ? s.rushWindup : s.cleaveWindup;
+      const duration = wardenWindup(e);
       if (d <= reach && duration - e.phaseT >= cs.windup) return { kind: 'warden', id: e.id };
     } else if (e.kind === 'guard') {
       // 反擊斬的作用要在盾衛揮下之前開始
@@ -148,6 +148,7 @@ export function counterThreat(w: World): CounterThreat | null {
 /** 戰士的劍命中一個鎖定中的攻擊：打斷它。回傳是否構成反擊。 */
 export function applyCounter(w: World, e: Enemy): boolean {
   if (w.player.cls !== 'warrior' || !attackCommitted(e)) return false;
+  if (e.kind === 'warden' && (!w.player.action?.wardenCounter || wardenBraced(e))) return false;
   e.locked = false;
   e.phaseT = 0;
   e.moving = false;
@@ -159,7 +160,10 @@ export function applyCounter(w: World, e: Enemy): boolean {
     e.staggerDur = e.kind === 'warden' ? ENEMIES.warden.stagger : e.kind === 'guard' ? ENEMIES.guard.stagger : ENEMIES.archer.stagger;
     e.aimPoint = null;
     e.hitDone = true;
-    if (e.warden) e.warden.attack = null;
+    if (e.warden) {
+      e.warden.attack = null; e.warden.braced = true;
+      e.warden.followup = false; e.warden.cleavesLeft = 0; e.warden.sequenceResolved = false;
+    }
   }
   w.stats.counters++;
   w.emit({ type: 'counter', id: e.id, kind: e.kind, x: e.x, y: e.y + 1.2, z: e.z });

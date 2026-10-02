@@ -9,7 +9,7 @@ describe('Warden actual-arena policy probes (not human balance proof)', () => {
     const [spam, bow, sword, knife] = results;
     for (const r of [bow!, sword!, knife!]) { expect(r.cleared).toBe(true); expect(r.dead).toBe(false); expect(r.damage).toBe(0); }
     expect(spam!.damage).toBeGreaterThan(bow!.damage); expect(spam!.blockedHeads).toBeGreaterThan(0);
-    expect(bow!.arrowsUsed).toBe(6); expect(bow!.attackKinds).toContain('rush');
+    expect(bow!.arrowsUsed).toBe(8); expect(bow!.attackKinds).toContain('cleave-followup');
     expect(sword!.counters).toBeGreaterThan(0); expect(sword!.deflects).toBeGreaterThan(0);
     expect(knife!.arrowsUsed).toBe(0);
     expect(runWardenScenario('read-bow')).toEqual(bow);

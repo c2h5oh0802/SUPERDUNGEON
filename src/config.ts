@@ -322,9 +322,13 @@ export const ENEMIES = {
   },
   /** Chapter-one final exam. Fixed HP; all timings use enemy AI/world time. */
   warden: {
-    hp: 32, radius: 0.5, height: 2.1, headY: 1.86, headR: 0.22, speed: 2.7,
+    hp: 80, radius: 0.5, height: 2.1, headY: 1.86, headR: 0.22, speed: 2.7,
     cleaveRange: 2.6, cleaveReach: 2.35, cleaveArcDeg: 90,
+    /** Close the long-weapon gap by walking, never by enlarging an invisible hitbox. */
+    closePressureRange: 4,
     cleaveWindup: 0.8, cleaveLockBefore: 0.35, cleaveActive: 0.15, cleaveRecovery: 1.1,
+    followupWindup: 1, followupLockBefore: 0.45,
+    cleaveDamage: 8, followupDamage: 8, rushDamage: 8,
     lanceRange: 16, lanceAim: 1, lanceLockBefore: 0.4, lanceSpeed: 18, lanceRecovery: 1.15,
     lanceHeight: 1.55, lanceMuzzle: 0.6, lanceRadius: 0.1,
     rushTriggerDist: 8, rushWindup: 1, rushLockBefore: 0.45, rushSpeed: 8, rushDist: 6, rushRecovery: 1.2,

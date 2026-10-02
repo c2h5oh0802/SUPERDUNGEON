@@ -73,7 +73,7 @@ describe('Heart Warden committed attack state machine', () => {
       expect(e.warden!.attack).toBe('cleave');
       if (dodge) { w.player.x = e.x + 2.2; w.player.z = e.z; }
       ticks(w, .6);
-      expect(w.player.hp).toBe(PLAYER.maxHp - (dodge ? 0 : ENEMIES.warden.damage));
+      expect(w.player.hp).toBe(PLAYER.maxHp - (dodge ? 0 : ENEMIES.warden.cleaveDamage));
       expect({ x: e.x, z: e.z }).toEqual(start); expect(e.phase).toBe('recovery');
     }
   });
@@ -86,7 +86,7 @@ describe('Heart Warden committed attack state machine', () => {
 
   it('phase two waits for attack and complete recovery, then adds a bounded nonhoming rush', () => {
     const { w, e } = fixture(); until(w, () => e.locked);
-    damageEnemy(w, e, 16, { source: 'arrow', sneak: false, head: false, x: e.x, y: 1, z: e.z });
+    damageEnemy(w, e, e.maxHp * ENEMIES.warden.phaseThreshold, { source: 'arrow', sneak: false, head: false, x: e.x, y: 1, z: e.z });
     expect(e.warden!.phaseTwo).toBe(false); expect(e.warden!.attack).toBe('lance');
     until(w, () => e.phase === 'recovery');
     ticks(w, ENEMIES.warden.lanceRecovery - .02);
@@ -99,6 +99,9 @@ describe('Heart Warden committed attack state machine', () => {
     expect(Math.hypot(e.x - start.x, e.z - start.z)).toBeCloseTo(ENEMIES.warden.rushDist, 5);
     expect(w.player.hp).toBe(PLAYER.maxHp);
     expect(w.events.filter(x => x.type === 'buff' && x.text?.includes('裂冠'))).toHaveLength(1);
+    // A player still inside the new close-pressure band is approached. Move to
+    // real ranged distance to isolate the alternating ranged selection rule.
+    w.player.x = e.x + 6; w.player.z = e.z;
     until(w, () => e.phase === 'aim'); expect(e.warden!.attack).toBe('lance');
   });
 
@@ -142,14 +145,17 @@ describe('Heart Warden committed attack state machine', () => {
   });
 
   it.each([30, 60, 120])('rush is bounded and committed at %i FPS through the world substep pipeline', (fps) => {
-    const { w, e } = fixture(); e.hp = 16;
+    const { w, e } = fixture(); e.hp = e.maxHp * ENEMIES.warden.phaseThreshold;
+    let dodged = false;
     for (let k = 0; k < fps * 4; k++) {
-      if (e.locked && e.warden!.attack === 'rush') {
+      if (!dodged && e.locked && e.warden!.attack === 'rush') {
+        dodged = true;
         const f = forwardFromYaw(e.lockedYaw); w.player.x = e.x - f.z * 3; w.player.z = e.z + f.x * 3;
       }
       w.advance(1 / fps);
       expect(e.chargeDist).toBeLessThanOrEqual(ENEMIES.warden.rushDist + 1e-8);
       expect(w.grid.circleBlocked(e.x, e.z, e.radius - 1e-7)).toBe(false);
+      if (dodged && (e.phase === 'recovery' || e.phase === 'stagger')) break;
     }
     expect(w.player.hp).toBe(PLAYER.maxHp);
   });

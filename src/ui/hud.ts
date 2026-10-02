@@ -3,7 +3,7 @@ import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAP
 import { knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
-import { wardenCrownClosed } from '../sim/enemySys';
+import { wardenBraced, wardenCrownClosed } from '../sim/enemySys';
 import { angleDiff, dirFromYawPitch, yawFromDir } from '../core/math';
 import type { GameRenderer } from '../render/renderer';
 import type { GameEvent, Player } from '../sim/types';
@@ -46,6 +46,7 @@ export class Hud {
   private bossHealth = $('boss-health');
   private bossFill = $('boss-fill');
   private bossState = $('boss-state');
+  private bossGuide = $('boss-guide');
   private flowFill = $('flow-fill');
   private flowLabel = $('flow-label');
   private ring = document.getElementById('action-ring') as unknown as SVGCircleElement;
@@ -239,7 +240,8 @@ export class Hud {
           this.toast(e.kind === 'charger' ? '擋下衝撞！' : e.kind === 'bolt' ? '盾擋下弩矢' : '盾擋下攻擊', 'good', 1.3);
           break;
         case 'bump':
-          if (e.kind === 'wall') this.toast('撞牆！失衡', 'good', 1.3);
+          if (e.text) this.toast(e.text, '', 1.3);
+          else if (e.kind === 'wall') this.toast('撞牆！失衡', 'good', 1.3);
           else if (e.kind === 'ally') this.toast('撞在一起！踉蹌', 'good', 1.3);
           else this.toast('突進者撞到同伴！', 'good', 1.3);
           break;
@@ -270,7 +272,9 @@ export class Hud {
         case 'enemyWindup':
           if (e.kind === 'archer') this.hint('archer', '紅線是弩手的瞄準線：線變亮代表已鎖定方向，側移就能躲開弩矢。');
           if (e.kind === 'charger') this.hint('charger', '突進者低頭蓄勢後會沿地上的橘線直線衝撞：閃開，讓它撞牆會暈眩。');
-          if (e.kind === 'warden') this.hint('warden-lock', '守心者的攻擊變亮後鎖定方向：側移離開扇形或直線；收招與失衡時，冠甲會打開。', 7);
+          if (e.kind === 'warden') this.hint('warden-lock', p.cls === 'warrior'
+            ? '守心者：攻擊變亮後方向鎖定，側移閃開；反擊亮起時鬆開再按攻擊。紫紅穩勢只抗打斷、不減傷；第二階段連斬兩次，收招再追擊。'
+            : '守心者：攻擊變亮後方向鎖定，側移閃開。紫紅穩勢只抗打斷、不減傷；第二階段連斬兩次，收招與失衡時露頭。', 9);
           if (e.kind === 'guard') this.hint('guard', '盾衛舉劍後，揮擊方向會鎖定：側移或後退就能躲開。');
           break;
         case 'hitEnemy':
@@ -440,10 +444,12 @@ export class Hud {
     const phaseTwo = !!boss.warden?.phaseTwo;
     const closed = wardenCrownClosed(boss);
     const attack = boss.warden?.attack;
+    const braced = wardenBraced(boss);
+    const cleave = boss.warden?.followup ? '追斬 2/2' : (boss.warden?.cleavesLeft ?? 0) > 0 ? '橫斬 1/2' : '橫斬';
     const action = boss.phase === 'stagger' ? '失衡' : boss.phase === 'recovery' ? '收招' :
-      boss.phase === 'charge' ? '衝撞中' : boss.phase === 'active' ? '斬擊中' :
+      boss.phase === 'charge' ? '衝撞中' : boss.phase === 'active' ? `${cleave}・${(boss.warden?.cleavesLeft ?? 0) > 0 ? '還有追斬' : '斬擊中'}` :
       boss.phase === 'windup' || boss.phase === 'aim'
-        ? `${attack === 'cleave' ? '橫斬' : attack === 'lance' ? '槍矢' : '衝撞'}・${boss.locked ? '方向已鎖定' : '準備中'}`
+        ? `${attack === 'cleave' ? cleave : attack === 'lance' ? '槍矢' : '衝撞'}・${boss.locked ? '方向已鎖定' : '準備中'}`
         : w.encounterState === 'dormant' ? '尚未開戰' : '逼近中';
     this.set('boss-hp', `${boss.hp}|${boss.maxHp}`, () => {
       const hp = Math.max(0, boss.hp);
@@ -451,11 +457,19 @@ export class Hud {
       this.bossFill.style.width = `${Math.min(100, 100 * hp / boss.maxHp)}%`;
       this.bossEl.setAttribute('aria-label', `守心者，生命 ${hp} / ${boss.maxHp}`);
     });
-    this.set('boss-state', `${action}|${closed}|${phaseTwo}`, () => {
+    this.set('boss-state', `${action}|${closed}|${phaseTwo}|${braced}|${w.encounterState}`, () => {
       this.bossName.textContent = phaseTwo ? '守心者 · 第二階段' : '守心者';
       this.bossEl.classList.toggle('exposed', !closed);
       this.bossEl.classList.toggle('phase-two', phaseTwo);
-      this.bossState.textContent = `${action} · ${closed ? '冠甲閉合' : '冠甲開啟，可射頭'}`;
+      this.bossEl.classList.toggle('braced', braced);
+      const poise = w.encounterState === 'dormant' ? '' : braced ? ' · 穩勢：抗打斷' : closed ? ' · 可打斷' : '';
+      this.bossState.textContent = `${action} · ${closed ? '冠甲閉合' : '冠甲開啟，可追擊／射頭'}${poise}`;
+    });
+    this.set('boss-guide', `${braced}|${phaseTwo}|${w.player.cls}|${this.touch}`, () => {
+      const rule = braced ? '穩勢不減傷；完成攻擊與收招後解除' : w.player.cls === 'warrior'
+        ? '反擊亮起時鬆開再按；長按只會普通攻擊' : '打斷一次後進入穩勢：抗打斷、不減傷';
+      const pattern = phaseTwo ? '冠甲擋正面頭部；連斬的第二斬後才收招露頭' : '冠甲只擋正面頭部；身體、側後方可打';
+      this.bossGuide.textContent = `${pattern}。${rule}`;
     });
   }
 
@@ -480,11 +494,12 @@ export class Hud {
     if (!p.dead && !p.action) {
       if (p.cls === 'warrior' && w.cue.counter && p.tool === 'melee') {
         cls = 'counter';
-        text = '反擊';
-        this.hint('cls-warrior-counter', '戰士：敵人的攻擊鎖定、就在眼前時，準星下出現「反擊」——現在揮劍會更快出手並打斷它（弩矢會被打回去）。', 7);
+        text = w.cue.counter.kind === 'warden' ? '反擊：鬆開再按' : '反擊';
+        if (w.cue.counter.kind === 'warden') this.hint('warden-counter', '守心者鎖定後，鬆開再按攻擊可反擊；長按只會普通攻擊。成功打斷後仍可追擊，但穩勢期間不能再次打斷。', 8);
+        else this.hint('cls-warrior-counter', '戰士：敵人的攻擊鎖定、就在眼前時，準星下出現「反擊」——現在揮劍會更快出手並打斷它（弩矢會被打回去）。', 7);
       } else if (p.cls === 'warrior' && w.cue.counter) {
         cls = 'dim';
-        text = '1 換劍：反擊';
+        text = w.cue.counter.kind === 'warden' ? '1 換劍：鬆開再按反擊' : '1 換劍：反擊';
       } else if (p.cls === 'warrior' && w.cue.push >= 0) {
         cls = 'push';
         text = '推擊';

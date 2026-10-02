@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Input, type InputHandlers, type RawFrame } from '../src/input/input';
+import { ENEMIES } from '../src/config';
+import { emptyInput } from '../src/sim/types';
+import { makeWorld, OPEN_ROOM } from './helpers';
 
 type Mode = 'playing' | 'map' | 'choice' | 'inventory' | 'paused';
 
@@ -70,6 +73,22 @@ afterEach(() => {
 });
 
 describe('inventory uses native HTML input without queuing gameplay', () => {
+  it('routes gameplay mouse-down and held input to the same explicit Boss Counter contract as touch', () => {
+    for (const held of [false, true]) {
+      const { input, down, up } = setup('playing');
+      const w = makeWorld(OPEN_ROOM, [{ kind: 'warden', x: 9.5, z: 12.5, yaw: Math.PI }]);
+      const e = w.enemies[0]!;
+      Object.assign(e, { state: 'alert', seesPlayer: true, awareness: 1, phase: 'windup', locked: true,
+        lockedYaw: Math.PI, phaseT: ENEMIES.warden.cleaveWindup - ENEMIES.warden.cleaveLockBefore });
+      e.warden!.attack = 'cleave';
+      down(0);
+      if (held) input.consume();
+      w.frame(1 / 60, { ...emptyInput(), ...input.consume() });
+      up(0);
+      for (let i = 0; i < 12; i++) w.frame(1 / 60, { ...emptyInput(), ...input.consume() });
+      expect(w.stats.counters).toBe(held ? 0 : 1);
+    }
+  });
   it.each(['Tab', 'Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])(
     'leaves %s keydown, repeat, and keyup defaults intact',
     (code) => {

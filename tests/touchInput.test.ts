@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TouchInput } from '../src/input/touch';
 import type { RawFrame } from '../src/input/input';
+import { ENEMIES } from '../src/config';
+import { emptyInput } from '../src/sim/types';
+import { makeWorld, OPEN_ROOM } from './helpers';
 
 const idle: RawFrame = {
   moveX: 0, moveZ: 0, lookDX: 0, lookDY: 0, keyYaw: 0, keyPitch: 0,
@@ -134,6 +137,22 @@ describe('touch joystick and pointer ownership', () => {
 });
 
 describe('touch action semantics', () => {
+  it('routes a new Boss Counter tap distinctly from an already-held attack contact', () => {
+    for (const held of [false, true]) {
+      const { input, pointer } = setup();
+      const w = makeWorld(OPEN_ROOM, [{ kind: 'warden', x: 9.5, z: 12.5, yaw: Math.PI }]);
+      const e = w.enemies[0]!;
+      Object.assign(e, { state: 'alert', seesPlayer: true, awareness: 1, phase: 'windup', locked: true,
+        lockedYaw: Math.PI, phaseT: ENEMIES.warden.cleaveWindup - ENEMIES.warden.cleaveLockBefore });
+      e.warden!.attack = 'cleave';
+      pointer('pointerdown', 'fire', 1);
+      if (held) input.consume(); // The earlier contact edge has already been consumed.
+      w.frame(1 / 60, { ...emptyInput(), ...input.consume() });
+      pointer('pointerup', 'fire', 1);
+      for (let i = 0; i < 12; i++) w.frame(1 / 60, { ...emptyInput(), ...input.consume() });
+      expect(w.stats.counters).toBe(held ? 0 : 1);
+    }
+  });
   it('commits fire at press, repeats while held, and retains a short tap for one frame', () => {
     const { input, pointer } = setup();
     pointer('pointerdown', 'fire', 1);

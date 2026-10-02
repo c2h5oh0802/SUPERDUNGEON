@@ -153,14 +153,17 @@ export function startActions(w: World, input: FrameInput): void {
     if (input.firePressed) w.emit({ type: 'dryFire', text });
   };
   switch (p.tool) {
-    case 'melee':
+    case 'melee': {
       // 戰士：威脅已鎖定、就在眼前 → 反擊斬（任何近戰武器都可以；出手固定很快、收招 ×0.7）
-      if (counterThreat(w)) {
+      const threat = counterThreat(w);
+      if (threat && (threat.kind !== 'warden' || input.firePressed)) {
         const wp = WEAPONS[p.weapon.id];
         startAction(w, 'melee', -1, { windup: CLASSES.warrior.counterSwing.windup, active: wp.active, recovery: wp.recovery * 0.7 });
         p.action!.counter = true;
+        p.action!.wardenCounter = threat.kind === 'warden' && input.firePressed;
       } else startAction(w, 'melee');
       return;
+    }
     case 'bow':
       if (p.arrows <= 0) return dry('沒有箭');
       startAction(w, 'bow');
