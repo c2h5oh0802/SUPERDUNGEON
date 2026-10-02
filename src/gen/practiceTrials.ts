@@ -15,7 +15,7 @@ export const PRACTICE_TRIALS = [
     objective: '到北端開啟空寶箱（E）；左側長路可避開敵群，不必清場。',
     hint: '正前方是短窄道，左側是遮蔽長路。比較普通箭逐個處理、冰霜／氣體或藥劑箭控制，以及完全繞行的時間與受傷。' },
   { id: 'heart-warden', seed: 'TRIAL-WARDEN', name: '守心者試煉',
-    objective: '以職業起始裝備擊倒守心者，再按 E 取走沉眠之心。',
+    objective: '擊倒守心者，再按 E 取走沉眠之心。',
     hint: '近身看扇形橫斬、遠距看紅線槍矢；半血裂冠後留意直線衝撞。觀察鎖定方向，閃開後利用收招空檔反擊。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];

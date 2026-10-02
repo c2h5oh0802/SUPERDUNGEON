@@ -8,6 +8,7 @@ import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
 import { installDevApi } from './dev/devapi';
+import { BOSS_TEST_PRESETS, BOSS_TEST_SEED, bossTestLoadout, createBossTestWorld, type BossTestPreset } from './dev/bossTest';
 import { PRACTICE_TRIALS, trialForSeed } from './gen/practiceTrials';
 import { createTrialWorld } from './sim/practiceTrials';
 import { generateLevel } from './gen/validate';
@@ -28,7 +29,7 @@ type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inve
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const SCREENS = ['screen-menu', 'screen-trials', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
+const SCREENS = ['screen-menu', 'screen-boss-test', 'screen-trials', 'screen-help', 'screen-class', 'screen-choice', 'screen-inventory', 'screen-settings', 'screen-pause', 'screen-map', 'screen-results', 'screen-loading', 'screen-mobile'];
 
 export class App {
   readonly canvas = $<HTMLCanvasElement>('game');
@@ -59,6 +60,12 @@ export class App {
   private outcomeT = 0;
   private settingsReturn: 'menu' | 'pause' = 'menu';
   private runCount = 0;
+  private worldTransition = 0;
+  readonly devEnabled = new URLSearchParams(location.search).has('dev');
+  bossTestActive = this.devEnabled && new URLSearchParams(location.search).get('boss') === '1';
+  bossTestPreset: BossTestPreset = 'starting';
+  private bossTestClass: PlayerClass = 'warrior';
+  private bossTestInitialLoadout = '';
 
   constructor() {
     this.settings.load();
@@ -91,6 +98,7 @@ export class App {
     });
     this.applySettings();
     this.cls = this.settings.value.cls;
+    this.bossTestClass = this.cls;
     this.fillClassTexts();
     this.bindUi();
     this.refreshContinue();
@@ -114,7 +122,9 @@ export class App {
     });
     this.resize();
     if (!this.settings.persistent) $('storage-note').textContent = '瀏覽器封鎖了本機儲存：設定只在本次遊玩有效。';
-    this.show(this.touchMode ? 'screen-mobile' : 'screen-menu');
+    $('btn-boss-test').classList.toggle('hidden', !this.devEnabled);
+    if (this.bossTestActive) this.openBossTest();
+    else this.show(this.touchMode ? 'screen-mobile' : 'screen-menu');
     this.loop.start((dt) => this.frame(dt));
   }
 
@@ -254,6 +264,7 @@ export class App {
       this.startRun(raw || randomSeed(), false);
     });
     click('btn-continue', () => {
+      if (this.bossTestActive) return;
       const saved = App.loadRun();
       if (!saved) return this.refreshContinue();
       this.selectClass(saved.cls);
@@ -262,6 +273,19 @@ export class App {
     click('btn-seed-random', () => (($('seed-input') as HTMLInputElement).value = randomSeed()));
     click('btn-practice', () => this.startRun('PRACTICE', true));
     click('btn-trials', () => this.show('screen-trials'));
+    click('btn-boss-test', () => this.openBossTest());
+    click('btn-boss-test-start', () => this.startBossTest());
+    click('btn-boss-test-exit', () => this.toMenu());
+    click('btn-boss-test-options', () => this.openBossTest());
+    click('btn-boss-test-result-options', () => this.openBossTest());
+    click('btn-boss-test-swap', () => this.swapBossTest());
+    for (const id of ['boss-test-class', 'boss-test-preset']) $(id).addEventListener('change', () => {
+      const cls = $<HTMLSelectElement>('boss-test-class').value;
+      const preset = $<HTMLSelectElement>('boss-test-preset').value;
+      if (cls === 'warrior' || cls === 'huntress') this.bossTestClass = cls;
+      if (preset === 'starting' || preset === 'split') this.bossTestPreset = preset;
+      this.refreshBossTestLoadout();
+    });
     for (const trial of PRACTICE_TRIALS) click(`btn-${trial.id}`, () => this.startRun(trial.seed, true));
     click('btn-settings', () => this.openSettings('menu'));
     click('btn-help', () => this.show('screen-help'));
@@ -272,15 +296,16 @@ export class App {
         else this.show('screen-menu');
       });
     click('btn-resume', () => this.resume());
-    click('btn-restart', () => this.startRun(this.seed, this.practice));
+    click('btn-restart', () => this.retryWorld());
     click('btn-pause-settings', () => this.openSettings('pause'));
     click('btn-pause-class', () => this.openClassScreen());
     click('btn-inv-close', () => this.closeInventory());
     click('btn-map-close', () => { if (this.mode === 'map') this.backToPlay(); });
     click('btn-class-back', () => this.show('screen-pause'));
     click('btn-quit', () => this.toMenu());
-    click('btn-retry', () => this.startRun(this.seed, this.practice));
+    click('btn-retry', () => this.retryWorld());
     click('btn-swap', () => {
+      if (this.bossTestActive) return this.swapBossTest();
       this.selectClass(this.otherClass());
       this.startRun(this.seed, this.practice);
     });
@@ -369,6 +394,7 @@ export class App {
   }
 
   private saveRun(run: RunState | null): void {
+    if (this.bossTestActive) return;
     try {
       if (run) window.localStorage.setItem(App.SAVE_KEY, serializeRun(run));
       else window.localStorage.removeItem(App.SAVE_KEY);
@@ -379,14 +405,52 @@ export class App {
   }
 
   private refreshContinue(): void {
-    const saved = App.loadRun();
+    const saved = this.bossTestActive ? null : App.loadRun();
     const btn = $<HTMLButtonElement>('btn-continue');
     btn.classList.toggle('hidden', !saved);
     if (saved) btn.textContent = `繼續：第 ${saved.floor} / ${RUN.floors} 層 · ${classInfo(saved.cls).name} · 種子 ${saved.seed}`;
   }
 
+  private refreshBossTestLoadout(): void {
+    $('boss-test-loadout').textContent = bossTestLoadout(createBossTestWorld(this.bossTestClass, this.bossTestPreset));
+  }
+
+  private openBossTest(): void {
+    if (!this.devEnabled) return;
+    this.bossTestActive = true;
+    this.discardWorld();
+    $<HTMLSelectElement>('boss-test-class').value = this.bossTestClass;
+    $<HTMLSelectElement>('boss-test-preset').value = this.bossTestPreset;
+    this.refreshBossTestLoadout();
+    this.show('screen-boss-test');
+  }
+
+  private startBossTest(): void {
+    if (!this.devEnabled || !this.bossTestActive) return;
+    this.cls = this.bossTestClass;
+    this.run = null;
+    const cls = this.cls, preset = this.bossTestPreset;
+    this.startWorld(BOSS_TEST_SEED, true, true, () => {
+      const w = createBossTestWorld(cls, preset);
+      this.bossTestInitialLoadout = bossTestLoadout(w);
+      return w;
+    });
+  }
+
+  private retryWorld(): void {
+    if (this.bossTestActive) this.startBossTest();
+    else this.startRun(this.seed, this.practice);
+  }
+
+  private swapBossTest(): void {
+    if (!this.bossTestActive) return;
+    this.bossTestClass = this.otherClass();
+    this.startBossTest();
+  }
+
   /** 必須在使用者手勢中呼叫（取得滑鼠鎖定與啟用音訊）。 */
   startRun(seed: string, practice: boolean, fromGesture = true): void {
+    if (this.bossTestActive) return;
     if (practice) {
       this.run = null;
       this.startWorld(seed, true, fromGesture, () => {
@@ -406,6 +470,7 @@ export class App {
 
   /** 開始（或繼續）一局的某一層；進入時自動存檔。 */
   private startFloor(run: RunState, fromGesture: boolean): void {
+    if (this.bossTestActive) return;
     this.run = run;
     this.cls = run.cls;
     this.saveRun(run);
@@ -413,6 +478,7 @@ export class App {
   }
 
   private startWorld(seed: string, practice: boolean, fromGesture: boolean, make: () => World): void {
+    const transition = ++this.worldTransition;
     this.sfx.unlock();
     this.intentionalUnlock = false;
     this.pauseAfterLoading = false;
@@ -428,6 +494,7 @@ export class App {
     $('loading-seed').textContent = `${info.name} · ${practice ? (trialForSeed(seed)?.name ?? '練習場') : `種子 ${seed} · 第 ${floor} / ${RUN.floors} 層`}`;
     this.show('screen-loading');
     window.setTimeout(() => {
+      if (transition !== this.worldTransition || this.mode !== 'loading') return;
       this.renderer.clearWorld();
       this.world = null;
       const w = make();
@@ -439,13 +506,21 @@ export class App {
       this.renderer.setWorld(w);
       this.hud.reset();
       this.outcomeT = 0;
+      this.lastTouchHud = '';
+      this.devEvents.length = 0;
+      $('boss-test-badge').classList.toggle('hidden', !this.bossTestActive);
+      $('boss-test-badge').textContent = this.bossTestActive ? `開發者測試・${BOSS_TEST_PRESETS[this.bossTestPreset]}・不存檔` : '';
       this.runCount++;
       void lockP.then((ok) => {
-        if (this.world !== w) return;
+        if (transition !== this.worldTransition || this.world !== w) return;
         this.input.fallback = !ok && !this.touchMode;
         this.hud.setLockBanner(!ok && !this.touchMode);
         if (!ok && !this.touchMode) this.flashLockFail();
         this.enterPlaying();
+        if (this.bossTestActive) {
+          this.hud.hint(`boss-test${this.runCount}`, '開發者 Boss 測試：Esc／暫停可立即重打、換職業或調整配裝。物資有限，不會戰中補滿；正式存檔不受影響。', 8);
+          return;
+        }
         if (!practice && floor > 1) {
           this.hud.hint(
             `floor${this.runCount}`,
@@ -508,7 +583,10 @@ export class App {
       $('pause-info').textContent += ` · 世界 ${w.time.toFixed(1)} 秒 · 承傷 ${damage} · 射擊 ${w.stats.shots} · 道具 ${w.stats.itemsUsed}`;
     }
     $('resume-msg').classList.add('hidden');
-    $('btn-restart').textContent = this.practice ? '重置練習' : '重新開始（同種子）';
+    $('btn-restart').textContent = this.bossTestActive ? '立即重打 Boss（同配裝）' : this.practice ? '重置練習' : '重新開始（同種子）';
+    for (const id of ['btn-boss-test-swap', 'btn-boss-test-options', 'boss-test-pause-loadout']) $(id).classList.toggle('hidden', !this.bossTestActive);
+    $('btn-boss-test-swap').textContent = `換成${classInfo(this.otherClass()).name}並重打 Boss`;
+    $('boss-test-pause-loadout').textContent = `測試起始配裝（每次重打還原）：\n${this.bossTestInitialLoadout}`;
     this.show('screen-pause');
     this.sfx.suspend();
     // 暫停時一定釋放滑鼠，讓玩家能點「繼續」
@@ -540,7 +618,10 @@ export class App {
     });
   }
 
-  private toMenu(): void {
+  private discardWorld(): void {
+    ++this.worldTransition;
+    this.clearInput();
+    this.run = null;
     this.intentionalUnlock = true;
     this.input.exitLock();
     this.renderer.clearWorld();
@@ -550,11 +631,27 @@ export class App {
     $('touch-rotate').classList.add('hidden');
     this.hud.show(false);
     this.hud.reset();
+    this.sfx.suspend();
+  }
+
+  private toMenu(): void {
+    this.discardWorld();
+    this.bossTestActive = false;
+    this.practice = false;
+    this.selectClass(this.settings.value.cls);
+    this.refreshContinue();
     this.show('screen-menu');
   }
 
   private onLockChange(locked: boolean): void {
-    if (locked) return;
+    if (locked) {
+      // A cancelled asynchronous start must not capture the menu/picker later.
+      if (this.mode === 'menu' || this.mode === 'results') {
+        this.intentionalUnlock = true;
+        this.input.exitLock();
+      }
+      return;
+    }
     if (this.intentionalUnlock) {
       this.intentionalUnlock = false;
       return;
@@ -672,7 +769,7 @@ export class App {
     $('res-title').textContent = win ? '取得沉眠之心！' : '你倒下了';
     const tpl = `${w.level.templateName}${w.level.mirrored ? '（鏡像）' : ''}`;
     const info = classInfo(w.player.cls);
-    $('res-sub').textContent = `${info.name} · ${this.practice ? (trialForSeed(this.seed)?.name ?? '練習場') : `種子 ${this.seed} · 地城「${tpl}」`}`;
+    $('res-sub').textContent = `${this.bossTestActive ? `開發者 Boss 測試・${BOSS_TEST_PRESETS[this.bossTestPreset]}・` : ''}${info.name} · ${this.practice ? (trialForSeed(this.seed)?.name ?? '練習場') : `種子 ${this.seed} · 地城「${tpl}」`}`;
     const s = w.stats;
     const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
     const dmg = Object.entries(s.damageTaken)
@@ -699,8 +796,10 @@ export class App {
       ['受到傷害', dmg || '無'],
     ];
     $('res-stats').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
-    $('btn-retry').textContent = this.practice ? '重置練習' : '同種子再試';
-    $('btn-swap').textContent = `換成${classInfo(this.otherClass()).name}${this.practice ? '重置練習' : '（同種子）'}`;
+    $('btn-retry').textContent = this.bossTestActive ? '立即重打 Boss（同配裝）' : this.practice ? '重置練習' : '同種子再試';
+    $('btn-new').classList.toggle('hidden', this.bossTestActive);
+    $('btn-boss-test-result-options').classList.toggle('hidden', !this.bossTestActive);
+    $('btn-swap').textContent = `換成${classInfo(this.otherClass()).name}${this.bossTestActive ? '重打 Boss' : this.practice ? '重置練習' : '（同種子）'}`;
     this.show('screen-results');
   }
 
@@ -763,7 +862,7 @@ export class App {
           this.outcomeT += realDt;
           const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
           if (this.outcomeT >= delay) {
-            if (this.practice && w.outcome === 'dead') this.startRun(this.seed, true, false);
+            if (this.practice && !this.bossTestActive && w.outcome === 'dead') this.startRun(this.seed, true, false);
             else if (w.outcome === 'descend' && this.run) this.startFloor(nextFloor(this.run, w), false);
             else this.showResults();
           }
@@ -810,11 +909,9 @@ export class App {
     }
     if (this.devEvents.length > 400) this.devEvents.splice(0, this.devEvents.length - 400);
   }
-  devEnabled = false;
 }
 
 const app = new App();
-if (new URLSearchParams(location.search).has('dev')) {
-  app.devEnabled = true;
+if (app.devEnabled) {
   installDevApi(app);
 }

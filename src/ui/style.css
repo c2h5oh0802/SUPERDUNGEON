@@ -1600,3 +1600,11 @@ body.touch-mode .screen {
 .fullscreen-actions button { min-height: 44px; }
 .fullscreen-actions [data-fullscreen-note] { margin: 5px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
 html:fullscreen { background: var(--bg); }
+
+/* Opt-in developer Boss fixture. Existing screen scrolling and safe areas apply. */
+.boss-test-fields { display: flex; flex-wrap: wrap; gap: 16px; }
+.boss-test-fields label { display: grid; gap: 6px; flex: 1 1 180px; }
+.boss-test-fields select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--panel-edge); border-radius: 6px; min-height: 44px; padding: 8px; width: 100%; }
+.boss-test-loadout { white-space: pre-line; line-height: 1.65; color: var(--teal); }
+#boss-test-badge { color: var(--gold); font-size: 12px; line-height: 1.4; }
+.boss-test-panel button { min-height: 44px; }

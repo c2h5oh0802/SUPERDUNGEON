@@ -20,6 +20,7 @@
         </div>
       </div>
       <div class="hud-top-center">
+        <div id="boss-test-badge" class="hidden"></div>
         <div id="objective">目標：深入地城，取得沉眠之心</div>
         <div id="boss" class="hidden" aria-label="守心者生命">
           <div class="boss-title"><span id="boss-name">守心者</span><span id="boss-health"></span></div>
@@ -113,6 +114,7 @@
           <div class="menu-row">
             <button id="btn-practice">操作練習</button>
             <button id="btn-trials">固定遭遇試玩</button>
+            <button id="btn-boss-test" class="hidden">開發者：快速測 Boss</button>
             <button id="btn-settings">設定</button>
             <button id="btn-help">玩法說明</button>
           </div>
@@ -124,6 +126,28 @@
         </div>
       </div>
       <p class="footnote" id="storage-note"></p>
+    </section>
+
+    <section id="screen-boss-test" class="screen hidden">
+      <div class="panel wide boss-test-panel">
+        <p class="sub">DEVELOPER · 第五層實際遭遇</p>
+        <h2>快速測 Boss</h2>
+        <p>選職業後直接挑戰守心者。相同場地、80 HP 與正式招式；沒有無敵、戰中補滿或傷害加成。</p>
+        <div class="boss-test-fields">
+          <label for="boss-test-class">職業
+            <select id="boss-test-class"><option value="warrior">戰士</option><option value="huntress">獵手</option></select>
+          </label>
+          <label for="boss-test-preset">測試配裝
+            <select id="boss-test-preset"><option value="starting">職業初始裝備</option><option value="split">Lv5・四張強化測試配裝</option></select>
+          </label>
+        </div>
+        <p id="boss-test-loadout" class="boss-test-loadout" aria-live="polite"></p>
+        <p class="muted">Lv5 配裝是固定比較條件，不代表一般玩家抵達首領時的強度：70 XP、無天賦，兩張強化給主攻武器／弓，兩張給皮甲；另帶兩瓶已知治療。初始裝備完全沿用職業起始物資。</p>
+        <p class="muted">固定種子 TRIAL-WARDEN。重打／換職業會完整重建世界、滿血與起始物資；開戰後照常消耗。此模式不讀取、覆蓋或刪除正式冒險存檔。</p>
+        <button id="btn-boss-test-start" class="primary">進入第五層 Boss</button>
+        <button id="btn-boss-test-exit">返回主選單</button>
+        <p class="muted small">鍵鼠：Esc → 立即重打／換職業。手機：點「暫停」後使用相同按鈕。倒下或通關後保留結算，方便比較。</p>
+      </div>
     </section>
 
     <section id="screen-trials" class="screen hidden">
@@ -236,6 +260,9 @@
         <button id="btn-resume" class="primary">繼續</button>
         <p class="warn hidden" id="resume-msg"></p>
         <button id="btn-restart">重新開始（同種子）</button>
+        <button id="btn-boss-test-swap" class="hidden">換職業並重打</button>
+        <button id="btn-boss-test-options" class="hidden">調整測試配裝</button>
+        <p id="boss-test-pause-loadout" class="boss-test-loadout hidden"></p>
         <button id="btn-pause-class">職業說明</button>
         <button id="btn-pause-settings">設定</button>
         <button id="btn-quit">回主畫面</button>
@@ -286,6 +313,7 @@
           <button id="btn-retry" class="primary">同種子再試</button>
           <button id="btn-swap">換職業（同種子）</button>
           <button id="btn-new">新種子</button>
+          <button id="btn-boss-test-result-options" class="hidden">調整測試配裝</button>
           <button id="btn-menu">回主畫面</button>
         </div>
       </div>

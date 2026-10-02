@@ -32,6 +32,7 @@ export function installDevApi(app: App): void {
         mode: app.mode,
         seed: app.seed,
         practice: app.practice,
+        bossTest: app.bossTestActive ? { preset: app.bossTestPreset } : null,
         practiceTrial: w.level.practiceTrial ?? null,
         template: w.level.templateId,
         mirrored: w.level.mirrored,
