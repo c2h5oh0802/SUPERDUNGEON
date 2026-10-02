@@ -10,11 +10,11 @@ const identifyId: ItemId = 'scroll:identify';
 const dt = 1 / 60;
 
 describe('single-item identification scroll', () => {
-  it('is a clearly named, always-known utility for both classes', () => {
+  it('starts unknown for both classes until learned', () => {
     for (const cls of ['warrior', 'huntress'] as const) {
       const w = makeWorld(undefined, [], cls);
-      expect(isKnown(w, identifyId)).toBe(true);
-      expect(itemName(w, identifyId)).toBe('鑑定卷軸');
+      expect(isKnown(w, identifyId)).toBe(false);
+      expect(itemName(w, identifyId)).toMatch(/符文卷軸$/);
     }
   });
 
@@ -29,7 +29,7 @@ describe('single-item identification scroll', () => {
   });
 
   it('refuses with no eligible target and spends no item or action time', () => {
-    const w = makeWorld(); addItem(w, identifyId); addItem(w, 'potion:healing');
+    const w = makeWorld(); identify(w, identifyId); addItem(w, identifyId); addItem(w, 'potion:healing');
     queueUse(w, 0, 'use'); w.frame(dt, emptyInput());
     expect(w.player.action).toBeNull();
     expect(w.player.items.find(it => it.id === identifyId)?.count).toBe(1);
@@ -53,6 +53,8 @@ describe('single-item identification scroll', () => {
 const countScrolls = (w: ReturnType<typeof makeWorld>) => w.player.items.filter(it => it.id === identifyId).reduce((n, it) => n + it.count, 0);
 const recoverableScrolls = (w: ReturnType<typeof makeWorld>) => countScrolls(w) + w.pickups.filter(it => !it.taken && it.item === identifyId).reduce((n, it) => n + it.amount, 0);
 function begin(w: ReturnType<typeof makeWorld>) {
+  // Existing reservation tests exercise a previously learned Identify scroll.
+  identify(w, identifyId);
   addItem(w, identifyId);
   queueUse(w, w.player.items.findIndex(it => it.id === identifyId), 'use');
   w.frame(dt, emptyInput());
@@ -93,13 +95,13 @@ describe('identification owns one reservation and one explicit target', () => {
   });
 
   it('revalidates no-target refusal at action start without trusting an earlier queued offer', () => {
-    const w = makeWorld(); addItem(w, 'potion:fire'); addItem(w, identifyId); queueUse(w, 1, 'use');
+    const w = makeWorld(); identify(w, identifyId); addItem(w, 'potion:fire'); addItem(w, identifyId); queueUse(w, 1, 'use');
     identify(w, 'potion:fire'); w.frame(dt, emptyInput());
     expect(countScrolls(w)).toBe(1); expect(w.player.action).toBeNull(); expect(w.stats.itemsUsed).toBe(0);
   });
 
   it('never reads the replacement at a reused queued inventory index', () => {
-    const w = makeWorld(); addItem(w, 'potion:fire'); addItem(w, identifyId); queueUse(w, 1, 'use');
+    const w = makeWorld(); identify(w, identifyId); addItem(w, 'potion:fire'); addItem(w, identifyId); queueUse(w, 1, 'use');
     w.player.items[1] = { id: 'scroll:mapping', count: 2, level: 0 };
     w.frame(dt, emptyInput());
     expect(w.player.action).toBeNull(); expect(w.player.items[1]!.count).toBe(2); expect(w.mapped).toBe(false);
@@ -176,7 +178,7 @@ describe('identification owns one reservation and one explicit target', () => {
   });
 
   it('direct helper calls cannot invent a refundable scroll', () => {
-    const w = makeWorld(); readScroll(w, 'identify'); expect(w.pendingChoice).toBeNull();
+    const w = makeWorld(); identify(w, identifyId); readScroll(w, 'identify'); expect(w.pendingChoice).toBeNull();
     addItem(w, 'potion:fire'); readScroll(w, 'identify'); w.cancelIdentifyChoice(); w.cancelIdentifyChoice();
     expect(recoverableScrolls(w)).toBe(0); expect(w.stats.itemsUsed).toBe(0);
   });
@@ -184,7 +186,7 @@ describe('identification owns one reservation and one explicit target', () => {
 
 describe('identification timing, interruption and existing knowledge benefits', () => {
   it.each([30, 60, 120])('normal read costs 0.6 world seconds at %i FPS; choice freezes world and hunger', fps => {
-    const w = makeWorld(); addItem(w, 'potion:fire'); addItem(w, identifyId); queueUse(w, 1, 'use');
+    const w = makeWorld(); identify(w, identifyId); addItem(w, 'potion:fire'); addItem(w, identifyId); queueUse(w, 1, 'use');
     w.frame(1 / fps, emptyInput()); finishAction(w, 1 / fps);
     expect(w.time).toBeCloseTo(ACTIONS.read.recovery, 8); expect(w.player.hunger).toBeCloseTo(w.time, 8);
     w.player.hunger = HUNGER.starvingAt; w.player.starvationT = HUNGER.damageEvery - .01;

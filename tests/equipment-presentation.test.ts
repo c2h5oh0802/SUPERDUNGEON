@@ -159,7 +159,7 @@ describe('inventory equipment rendering preserves ordinary actions and unknown i
     w.player.known = [];
     addItem(w, `scroll:${id}`);
     const html = inventoryHtml(w).list;
-    expect(html).toContain('未知的卷軸：可用鑑定卷軸辨識，或讀了才知道效果。');
+    expect(html).toContain('未知的卷軸：可先辨識，或讀了才知道效果。');
     expect(html).toContain('data-m="use">讀');
     expect(html).not.toMatch(/equipment-compare|equipment-details|disabled/);
     expect(w.player.known).toEqual([]);

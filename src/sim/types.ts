@@ -48,7 +48,7 @@ export interface PendingUse {
 /** 選擇畫面：天賦、裝備強化，或單一未知物品鑑定。 */
 export type UpgradeTarget = 'weapon' | 'armor' | 'bow' | 'shield';
 export type PendingChoice = { kind: 'talent'; options: TalentId[]; level?: number } | { kind: 'upgrade'; options: UpgradeTarget[]; reservedScroll?: boolean }
-  | { kind: 'identify'; options: InvItem[]; reservedScroll?: boolean; settled?: boolean };
+  | { kind: 'identify'; options: InvItem[]; reservedScroll?: boolean; settled?: boolean; learnedScroll?: boolean };
 
 /** 丟出的藥水碎開後留在地上的區域。 */
 export interface Area {

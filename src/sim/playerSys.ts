@@ -320,7 +320,7 @@ export function updatePlayerAction(w: World, dt: number): void {
     case 'read':
       if (!a.fired && done && a.item) {
         a.fired = true;
-        readScroll(w, a.item.split(':')[1] as ScrollId | 'upgrade' | 'identify', a.item === 'scroll:upgrade' || a.item === 'scroll:identify');
+        readScroll(w, a.item.split(':')[1] as ScrollId | 'upgrade', a.item === 'scroll:upgrade' || a.item === 'scroll:identify');
       }
       break;
     case 'convert':

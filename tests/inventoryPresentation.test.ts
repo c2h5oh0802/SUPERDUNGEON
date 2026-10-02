@@ -24,7 +24,7 @@ const ALL_ITEMS: ItemId[] = [
   ...ALL_WEAPONS.map((id): ItemId => `weapon:${id}`),
   ...ALL_ARMORS.map((id): ItemId => `armor:${id}`),
   'food:ration', ...ALL_POTIONS.map((id): ItemId => `potion:${id}`),
-  ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`), 'scroll:upgrade', 'scroll:identify',
+  ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`), 'scroll:upgrade',
 ];
 const UNKNOWN_ITEMS: ItemId[] = [
   ...ALL_POTIONS.map((id): ItemId => `potion:${id}`), ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`),
@@ -134,7 +134,7 @@ describe('inventory art catalog and every supported item', () => {
       expect(itemArt(w, id)).toBe('ration');
       expect(itemAppearance(w, id)).toBe('');
       expect(itemCategoryLabel(w, id)).toBe('食物');
-    } else if (id === 'scroll:upgrade' || id === 'scroll:identify') {
+    } else if (id === 'scroll:upgrade') {
       expect(itemArt(w, id)).toBe(id.replace(':', '-'));
       expect(itemAppearance(w, id)).toBe('');
       expect(itemCategoryLabel(w, id)).toBe('卷軸 · 已辨識');
@@ -193,18 +193,48 @@ describe('unknown inventory markup preserves the identification boundary', () =>
       w.player.talents.push('apothecary');
       w.player.items = UNKNOWN_ITEMS.map(id => item(id, 2));
       const html = inventoryDom(w).list;
+      // File-URL test roots may contain task names; only the asset path is player-facing.
+      const publicMarkup = html.replace(/src="[^"]*\/assets\/inventory\//g, 'src="/assets/inventory/');
       for (const name of EFFECT_NAMES) expect(html).not.toContain(name);
-      for (const key of EFFECT_KEYS) expect(html).not.toMatch(new RegExp(`(?:[:/\\-]|["'])${key}(?:[.\\-"'<:]|$)`));
+      for (const key of EFFECT_KEYS) expect(publicMarkup).not.toMatch(new RegExp(`(?:[:/\\-]|["'])${key}(?:[.\\-"'<:]|$)`));
       expect(html).not.toMatch(/data-item|data-effect|potion:|scroll:|\btitle=|轉化|藥劑師|<script|onerror=|javascript:/);
-      expect(matchCount(html, /class="inv-unknown"/g)).toBe(9);
+      expect(matchCount(html, /class="inv-unknown"/g)).toBe(UNKNOWN_ITEMS.length);
       expect(matchCount(html, /data-m="throw"/g)).toBe(6);
-      expect(matchCount(html, /data-m="use"/g)).toBe(9);
+      expect(matchCount(html, /data-m="use"/g)).toBe(UNKNOWN_ITEMS.length);
       for (const tag of html.matchAll(/<img\b[^>]*>/g)) {
         expect(tag[0]).toContain('alt=""');
         expect(tag[0]).toContain('draggable="false"');
         expect(tag[0]).toMatch(/src="[^"<>]+\/(?:potion|scroll)-look-[a-z]+\.webp"/);
       }
       expect(w.player.known).toEqual([]);
+    }
+  });
+
+  it.each([1, 2] as const)('never reveals or disables an unknown Identify with no other unknown bag items (v%i)', version => {
+    for (const cls of ['warrior', 'huntress'] as const) {
+      const w = makeWorld(OPEN_ROOM, [], cls);
+      w.level.potionLooksVersion = version;
+      w.player.items = [item('scroll:identify', 2), item('food:ration')];
+      expect(w.player.known).not.toContain('scroll:identify');
+      const before = inventoryDom(w);
+      const read = before.actions.find(a => a.dataset.k === '0' && a.dataset.m === 'use')!;
+      expect(read.disabled).toBe(false);
+      expect(before.actions.filter(a => a.dataset.k === '0').map(a => a.dataset.m)).toEqual(['use', 'drop', 'dropAll']);
+      expect(before.list).not.toMatch(/鑑定卷軸|scroll.identify|背包沒有未知|卷軸已保留|取消鑑定|data-item|data-effect|\btitle=/);
+      expect(before.list).toContain('卷軸 · 未辨識');
+      expect(before.list).toContain(`${itemAppearance(w, 'scroll:identify')}卷軸`);
+      expect(before.tiles[0]!.attrs['aria-label']).toBe(`查看${itemName(w, 'scroll:identify')}，數量 2`);
+      expect(artSources(before.list).filter(src => src!.includes('/scroll-'))).toHaveLength(2);
+      for (const src of artSources(before.list).filter(src => src!.includes('/scroll-'))) expect(src).toMatch(/\/scroll-look-[a-z]+\.webp$/);
+      read.click(); read.click();
+      expect(before.onAction).toHaveBeenCalledExactlyOnceWith(0, 'use');
+      // Once knowledge is explicit, the same appearance may show the real action guard.
+      identify(w, 'scroll:identify');
+      const after = inventoryDom(w);
+      expect(artSources(after.list)).toEqual(artSources(before.list));
+      expect(after.actions.find(a => a.dataset.k === '0' && a.dataset.m === 'use')!.disabled).toBe(true);
+      expect(after.list).toContain('背包沒有未知的藥水或卷軸可鑑定；鑑定卷軸已保留。');
+      expect(after.tiles[0]!.attrs['aria-label']).toBe('查看鑑定卷軸，數量 2');
     }
   });
 

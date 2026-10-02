@@ -23,7 +23,7 @@ function itemActions(w: World, it: InvItem, k: number): string {
   const p = w.player, c = categoryOf(it.id);
   const upgradeBlocked = it.id === 'scroll:upgrade' && upgradeTargets(w).length === 0;
   const upgradeReason = '目前沒有能提升效果的已裝備目標，卷軸已保留。可先換上仍能強化的裝備。';
-  const identifyBlocked = it.id === 'scroll:identify' && identifyTargets(w).length === 0;
+  const identifyBlocked = it.id === 'scroll:identify' && isKnown(w, it.id) && identifyTargets(w).length === 0;
   const identifyReason = '背包沒有未知的藥水或卷軸可鑑定；鑑定卷軸已保留。';
   const readReason = upgradeBlocked ? upgradeReason : identifyBlocked ? identifyReason : '';
   let acts = c === 'potion'
@@ -46,9 +46,9 @@ function itemActions(w: World, it: InvItem, k: number): string {
 }
 
 /** No item IDs or effect descriptions are embedded in choice controls. */
-export function renderIdentifyChoice(w: World, options: readonly InvItem[], onChoose: (index: number) => void, onCancel: () => void): void {
+export function renderIdentifyChoice(w: World, options: readonly InvItem[], onChoose: (index: number) => void, onCancel: () => void, learnedScroll = false): void {
   const box = $('choice-cards')!;
-  box.innerHTML = identifyChoiceMarkup(w, options);
+  box.innerHTML = identifyChoiceMarkup(w, options, learnedScroll);
   let dispatched = false;
   for (const button of Array.from(box.querySelectorAll<HTMLButtonElement>('.choice-card'))) {
     button.addEventListener('click', () => {

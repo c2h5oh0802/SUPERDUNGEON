@@ -54,7 +54,7 @@ describe('Identify supply preserves existing generation', () => {
   });
 
   it('uses one draw for a separate four-entry scroll pool without adding Identify to appearance IDs', () => {
-    expect(ALL_SCROLLS).toEqual(['teleport', 'mapping', 'sleep']);
+    expect(ALL_SCROLLS).toEqual(['teleport', 'mapping', 'sleep', 'identify']);
     const rng = new Rng('IDENTIFY-ROLL');
     const next = vi.spyOn(rng, 'next');
     try {
@@ -197,7 +197,7 @@ const LOOKS_BEFORE = [
 it.each(LOOKS_BEFORE)('%s appearance version %i retains every historical potion and glyph mapping', (seed, version, potions, scrolls) => {
   const looks = looksFor(seed, version);
   expect(ALL_POTIONS.map((id) => looks.potion[id])).toEqual(potions);
-  expect(ALL_SCROLLS.map((id) => looks.scroll[id])).toEqual(scrolls);
-  expect(Object.keys(looks.scroll)).toEqual(['teleport', 'mapping', 'sleep']);
-  expect(looks.scroll).not.toHaveProperty('identify');
+  expect(ALL_SCROLLS.slice(0, 3).map((id) => looks.scroll[id])).toEqual(scrolls);
+  expect(Object.keys(looks.scroll)).toEqual(['teleport', 'mapping', 'sleep', 'identify']);
+  expect(looks.scroll.identify).toBe([0, 1, 2, 3].find(slot => !(scrolls as readonly number[]).includes(slot)));
 });

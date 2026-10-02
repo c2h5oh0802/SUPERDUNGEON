@@ -3,7 +3,7 @@ import { Sfx } from './audio/sfx';
 import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
 import { focusChoice, focusInventory, renderIdentifyChoice, renderInventory } from './ui/inventory';
-import { canPresentChoice } from './ui/inventoryPresentation';
+import { canPresentChoice, identifyChoiceDescription } from './ui/inventoryPresentation';
 import { clampRealDt } from './core/time';
 import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
@@ -577,8 +577,8 @@ export class App {
     const cancel = c.kind === 'identify' ? () => { if (canPresentChoice(w, c)) this.cancelIdentify(); } : undefined;
     if (c.kind === 'identify') {
       $('choice-title').textContent = '選一件未知物品鑑定';
-      $('choice-sub').textContent = '只選一疊，物品不會消耗。本局同種類一起變已知，其他種類不受影響。世界與飢餓暫停。按數字鍵或點選；取消／Esc 保留卷軸。';
-      renderIdentifyChoice(w, c.options, choose, cancel!);
+      $('choice-sub').textContent = identifyChoiceDescription(c.learnedScroll);
+      renderIdentifyChoice(w, c.options, choose, cancel!, c.learnedScroll);
     } else {
       const cards = c.kind === 'talent'
         ? c.options.map((t) => ({ name: TALENTS[t].name, text: TALENTS[t].text }))

@@ -59,13 +59,15 @@ export function nextFloor(run: RunState, w: World): RunState {
 const SAVE_VERSION = 2;
 // Additive v2 marker: only migrated healing can occupy one extra bag slot.
 const INVENTORY_VERSION = 1;
+// Distinguish unknown ownership from the brief always-known Identify release.
+const IDENTIFY_KNOWLEDGE_VERSION = 1;
 const LEGACY_MAX_POTIONS = 3;
 
 const ITEM_IDS = new Set<string>([
   'food:ration',
   ...ALL_POTIONS.map((k) => `potion:${k}`),
   ...ALL_SCROLLS.map((k) => `scroll:${k}`),
-  'scroll:upgrade', 'scroll:identify',
+  'scroll:upgrade',
   // Accepted only as migration input; neither remains in the active pool.
   'scroll:timeStop', 'scroll:lure',
   ...ALL_WEAPONS.map((k) => `weapon:${k}`),
@@ -77,7 +79,7 @@ export function serializeRun(run: RunState): string {
   const carry = run.carry ? { ...run.carry } : null;
   // Do not reintroduce retired numeric stock even if an old runtime caller passed it.
   if (carry) Reflect.deleteProperty(carry, 'potions');
-  return JSON.stringify({ v: SAVE_VERSION, chapter: 2, inventoryVersion: INVENTORY_VERSION, ...run,
+  return JSON.stringify({ v: SAVE_VERSION, chapter: 2, inventoryVersion: INVENTORY_VERSION, identifyKnowledgeVersion: IDENTIFY_KNOWLEDGE_VERSION, ...run,
     potionLooksVersion: run.potionLooksVersion ?? 2, carry });
 }
 
@@ -94,6 +96,7 @@ export function parseRun(text: string | null): RunState | null {
   }
   if (!o || o.v !== SAVE_VERSION || (o.chapter !== undefined && o.chapter !== 2)) return null;
   if (o.inventoryVersion !== undefined && o.inventoryVersion !== INVENTORY_VERSION) return null;
+  if (o.identifyKnowledgeVersion !== undefined && o.identifyKnowledgeVersion !== IDENTIFY_KNOWLEDGE_VERSION) return null;
   if (o.potionLooksVersion !== undefined && o.potionLooksVersion !== 1 && o.potionLooksVersion !== 2) return null;
   const potionLooksVersion = o.potionLooksVersion === undefined ? 1 : o.potionLooksVersion;
   // Legacy floor-4 checkpoints keep their carry and resume exploration floor 4;
@@ -163,7 +166,8 @@ export function parseRun(text: string | null): RunState | null {
       shieldLevel: c.shieldLevel as number,
       items: migrateItems(c.items as Array<{ id: string; count: number; level: number }>, legacyPotions),
       known: [...new Set([...(c.known as string[]).filter((id) => id !== 'scroll:lure').map((id) => id === 'scroll:timeStop' ? 'scroll:sleep' : id),
-        ...(legacyPotions > 0 ? ['potion:healing'] : [])])] as ItemId[],
+        ...(legacyPotions > 0 ? ['potion:healing'] : []),
+        ...(o.identifyKnowledgeVersion === undefined && (c.items as Array<{ id: string }>).some(it => it.id === 'scroll:identify') ? ['scroll:identify'] : [])])] as ItemId[],
       xp: c.xp as number,
       level: c.level as number,
       talents: (c.talents as TalentId[]).slice(),

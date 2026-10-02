@@ -120,16 +120,16 @@ describe('knowledge, appearances and conservative v2 migration', () => {
     }
   });
 
-  it('old glyphs and potion colors never remap; Sleep inherits old timeStop slot, retired lure slot stays unused', () => {
+  it('old glyphs and potion colors never remap; Sleep inherits old timeStop slot, Identify fills the unused former lure slot', () => {
     for (let k = 0; k < 50; k++) {
       const seed = `OLD-LOOK${k}`, rng = new Rng(`${seed}#looks`);
       const pi = rng.shuffle([0, 1, 2, 3, 4]), si = rng.shuffle([0, 1, 2, 3]);
       const looks = looksFor(seed, 1);
       ALL_POTIONS.filter((id) => id !== 'healing').forEach((id, index) => expect(looks.potion[id]).toBe(pi[index]));
       expect(looks.potion.healing).toBe(5);
-      expect(looks.scroll).toEqual({ teleport: si[0], mapping: si[1], sleep: si[2] });
+      expect(looks.scroll).toEqual({ teleport: si[0], mapping: si[1], sleep: si[2], identify: si[3] });
     }
-    expect(ALL_SCROLLS).toEqual(['teleport', 'mapping', 'sleep']);
+    expect(ALL_SCROLLS).toEqual(['teleport', 'mapping', 'sleep', 'identify']);
     const rng = new Rng('POOLS');
     for (let k = 0; k < 500; k++) expect(rollConsumable(rng).id).not.toMatch(/lure|timeStop|upgrade/);
   });

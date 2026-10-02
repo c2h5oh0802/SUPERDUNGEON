@@ -1,9 +1,6 @@
 import { ALL_ARMORS, ALL_POTIONS, ALL_SCROLLS, ALL_WEAPONS, type ItemId } from '../config';
 import type { Rng } from '../core/rng';
 
-// Keep always-known Identify separate from the unknown-scroll appearance pool.
-const SCROLL_LOOT = [...ALL_SCROLLS, 'identify'] as const;
-
 // 掉落表：生成器（地上、寶箱）與敵人掉落共用。與職業無關，同一個種子兩個職業拿到的一樣。
 
 export interface LootRoll {
@@ -17,7 +14,7 @@ export function rollPotion(rng: Rng, source: 'floor' | 'enemy' = 'floor'): LootR
 }
 
 export function rollScroll(rng: Rng): LootRoll {
-  return { id: `scroll:${rng.pick(SCROLL_LOOT)}`, level: 0 };
+  return { id: `scroll:${rng.pick(ALL_SCROLLS)}`, level: 0 };
 }
 
 /** 裝備：越深越可能已經強化過。 */

@@ -48,13 +48,13 @@ describe('Identify saves and floor carry', () => {
       while (true) {
         const encoded = serializeRun(current), raw = JSON.parse(encoded);
         expect(raw).toMatchObject({ v: 2, chapter: 2, inventoryVersion: 1, potionLooksVersion: version });
-        expect(raw).not.toHaveProperty('identifyVersion');
+        expect(raw).toHaveProperty('identifyKnowledgeVersion', 1);
         const parsed = parseRun(encoded)!;
         expect(parsed).toEqual(current);
         const world = createFloorWorld(parsed);
         expect(world.player.items).toEqual(items);
         expect(world.player.known).toEqual(known);
-        expect(isKnown(world, 'scroll:identify')).toBe(true);
+        expect(isKnown(world, 'scroll:identify')).toBe(false);
         expect(looksFor(parsed.seed, world.level.potionLooksVersion)).toEqual(looks);
         expect(parsed.carry).not.toHaveProperty('guaranteedIdentify');
         expect(parsed.carry!.items.every((item) => !('guaranteedIdentify' in item))).toBe(true);
@@ -64,13 +64,13 @@ describe('Identify saves and floor carry', () => {
     }
   });
 
-  it('accepts an explicitly known Identify ID but never needs to add it to type knowledge', () => {
+  it('retains explicit Identify knowledge while current unlearned ownership stays unknown', () => {
     const save = checkpoint();
     save.carry!.known.push('scroll:identify');
     expect(parseRun(serializeRun(save))).toEqual(save);
     const withoutKnown = checkpoint();
     expect(withoutKnown.carry!.known).not.toContain('scroll:identify');
-    expect(isKnown(createFloorWorld(parseRun(serializeRun(withoutKnown))!), 'scroll:identify')).toBe(true);
+    expect(isKnown(createFloorWorld(parseRun(serializeRun(withoutKnown))!), 'scroll:identify')).toBe(false);
   });
 
   it('keeps all old migrations, version markers and cosmetics without synthesizing Identify', () => {
@@ -88,7 +88,7 @@ describe('Identify saves and floor carry', () => {
     const resumed = createFloorWorld(parsed);
     expect(resumed.player.items).toEqual(parsed.carry!.items);
     expect(resumed.level.potionLooksVersion).toBe(1);
-    expect(isKnown(resumed, 'scroll:identify')).toBe(true);
+    expect(isKnown(resumed, 'scroll:identify')).toBe(false);
     const next = parseRun(serializeRun(nextFloor(parsed, resumed)))!;
     expect(next.floor).toBe(5);
     expect(next.carry!.items).toEqual(parsed.carry!.items);

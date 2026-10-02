@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ALL_POTIONS, ALL_SCROLLS, POTIONS, SCROLLS, type ItemId } from '../src/config';
-import { identify, identifyTargets, isKnown, readScroll } from '../src/sim/items';
+import { identify, identifyTargets, isKnown, itemColor, itemName, looksFor, readScroll } from '../src/sim/items';
 import { queueChoice } from '../src/sim/progress';
 import type { InvItem } from '../src/sim/types';
 import { focusChoice, renderIdentifyChoice, renderInventory } from '../src/ui/inventory';
-import { canPresentChoice, identifyChoiceMarkup, inventoryArtUrl, itemAppearance, itemArt, itemCategoryLabel } from '../src/ui/inventoryPresentation';
+import { canPresentChoice, identifyChoiceDescription, identifyChoiceMarkup, inventoryArtUrl, itemAppearance, itemArt, itemCategoryLabel } from '../src/ui/inventoryPresentation';
 import { makeWorld } from './helpers';
 
 const item = (id: ItemId, count = 1): InvItem => ({ id, count, level: 0 });
@@ -18,17 +18,19 @@ describe('Identify choice presentation privacy', () => {
       const w = makeWorld();
       w.level.seed = seed; w.level.potionLooksVersion = version;
       w.player.known = []; w.player.items = unknowns.map(id => item(id, 3));
-      const html = identifyChoiceMarkup(w, identifyTargets(w));
+      const options = identifyTargets(w);
+      const html = identifyChoiceMarkup(w, options);
       for (const name of effects) expect(html).not.toContain(name);
       for (const id of unknowns) expect(html).not.toContain(id);
-      for (const key of [...ALL_POTIONS, ...ALL_SCROLLS]) expect(html).not.toMatch(new RegExp(`(?:[:/\\-]|["'])${key}(?:[.\\-"'<:]|$)`));
+      for (const key of [...ALL_POTIONS, ...ALL_SCROLLS.filter(id => id !== 'identify')]) expect(html).not.toMatch(new RegExp(`(?:[:/\\-]|["'])${key}(?:[.\\-"'<:]|$)`));
       expect(html).not.toMatch(/data-item|data-effect|\btitle=|onerror=|javascript:/);
-      expect([...html.matchAll(/data-idx="(\d+)"/g)].map(m => Number(m[1]))).toEqual(unknowns.map((_, k) => k));
+      expect([...html.matchAll(/data-idx="(\d+)"/g)].map(m => Number(m[1]))).toEqual(options.map((_, k) => k));
       for (const img of html.matchAll(/<img\b[^>]*>/g)) {
         expect(img[0]).toContain('alt=""');
         expect(img[0]).toMatch(/src="[^"<>]+\/(?:potion|scroll)-look-[a-z]+\.webp"/);
       }
-      for (const it of w.player.items) expect(html).toContain(itemAppearance(w, it.id));
+      for (const it of options) expect(html).toContain(itemAppearance(w, it.id));
+      expect(options.every(it => it.id !== 'scroll:identify')).toBe(true);
       expect(html).toContain('這一疊 ×3 · 物品完整保留');
       expect(html).toContain('取消鑑定，保留卷軸');
       expect(w.player.known).toEqual([]);
@@ -43,16 +45,45 @@ describe('Identify choice presentation privacy', () => {
     expect(identifyChoiceMarkup(w, options)).toBe(before);
   });
 
-  it('always shows Identify as known, with its own fixed art across seeds and save-era appearances', () => {
-    for (const version of [1, 2] as const) for (const seed of ['ONE', 'TWO', 'THREE']) {
-      const w = makeWorld(); w.player.known = []; w.level.seed = seed; w.level.potionLooksVersion = version;
+  it('uses a normal unknown seeded rune, with no identity-specific color or art before or after learning', () => {
+    const seen = new Set<string>();
+    for (const version of [1, 2] as const) for (let n = 0; n < 48; n++) {
+      const w = makeWorld(); w.player.known = []; w.level.seed = `IDENTIFY-LOOK-${n}`; w.level.potionLooksVersion = version;
+      const before = { art: itemArt(w, 'scroll:identify'), appearance: itemAppearance(w, 'scroll:identify'), color: itemColor(w.level.seed, 'scroll:identify', version) };
+      expect(isKnown(w, 'scroll:identify')).toBe(false);
+      expect(looksFor(w.level.seed, version).scroll.identify).toBeGreaterThanOrEqual(0);
+      expect(itemCategoryLabel(w, 'scroll:identify')).toBe('卷軸 · 未辨識');
+      expect(itemName(w, 'scroll:identify')).toBe(`${before.appearance}卷軸`);
+      expect(before.color).toBe(itemColor(w.level.seed, 'scroll:sleep', version));
+      expect(inventoryArtUrl(before.art)).toMatch(/\/scroll-look-[a-z]+\.webp$/);
+      seen.add(before.art);
+      identify(w, 'scroll:identify');
       expect(isKnown(w, 'scroll:identify')).toBe(true);
-      expect(itemArt(w, 'scroll:identify')).toBe('scroll-identify');
-      expect(itemArt(w, 'scroll:upgrade')).toBe('scroll-upgrade');
-      expect(itemAppearance(w, 'scroll:identify')).toBe('');
       expect(itemCategoryLabel(w, 'scroll:identify')).toBe('卷軸 · 已辨識');
-      expect(inventoryArtUrl(itemArt(w, 'scroll:identify'))).toMatch(/\/scroll-identify\.webp$/);
+      expect(itemName(w, 'scroll:identify')).toBe('鑑定卷軸');
+      expect({ art: itemArt(w, 'scroll:identify'), appearance: itemAppearance(w, 'scroll:identify'), color: itemColor(w.level.seed, 'scroll:identify', version) }).toEqual(before);
+      expect(itemArt(w, 'scroll:upgrade')).toBe('scroll-upgrade');
     }
+    expect([...seen].sort()).toEqual(['scroll-look-ash', 'scroll-look-star', 'scroll-look-thorn', 'scroll-look-tide']);
+  });
+
+  it.each([false, true])('explains whether cancellation can return the scroll after a read (learned=%s)', learned => {
+    const w = makeWorld();
+    const markup = identifyChoiceMarkup(w, [item('potion:fire')], learned);
+    const empty = identifyChoiceMarkup(w, [], learned);
+    const description = identifyChoiceDescription(learned);
+    for (const copy of [markup, empty, description]) {
+      if (learned) {
+        expect(copy).toContain('已使用');
+        expect(copy).not.toContain('保留卷軸');
+        expect(copy).not.toContain('保留鑑定卷軸');
+      } else expect(copy).toContain('保留');
+    }
+    expect(description).toContain('同種類一起變已知');
+    expect(description).toContain('其他種類不受影響');
+    expect(empty).toContain('role="status"');
+    expect(empty).not.toContain('data-idx');
+    if (learned) expect(description).toContain('不退還卷軸');
   });
 
   it('renders a recoverable empty choice and an informative disabled inventory read when none qualify', () => {
@@ -66,8 +97,9 @@ describe('Identify choice presentation privacy', () => {
     vi.stubGlobal('document', { getElementById: (id: string) => nodes[id] ?? null });
     renderInventory(w, vi.fn());
     expect(nodes['inv-list']!.innerHTML).toMatch(/data-k="0" data-m="use" disabled title="背包沒有未知的藥水或卷軸可鑑定；鑑定卷軸已保留。"/);
-    expect(nodes['inv-list']!.innerHTML).toContain('scroll-identify.webp');
-    w.player.known = [];
+    expect(nodes['inv-list']!.innerHTML).not.toContain('scroll-identify.webp');
+    expect(nodes['inv-list']!.innerHTML).toContain('scroll-look-');
+    w.player.known = unknowns.filter(id => id !== 'scroll:identify');
     renderInventory(w, vi.fn());
     expect(nodes['inv-list']!.innerHTML).toContain('data-k="0" data-m="use">讀</button>');
     expect(nodes['inv-list']!.innerHTML).not.toContain('背包沒有未知的藥水或卷軸可鑑定');
@@ -98,7 +130,7 @@ describe('Identify choice buttons and native keyboard access', () => {
     expect(canPresentChoice(w)).toBe(false);
   });
 
-  it.each(['choose', 'cancel'] as const)('dispatches exactly once after %s, including stale repeated button callbacks', action => {
+  it.each([['choose', false], ['cancel', false], ['choose', true], ['cancel', true]] as const)('dispatches exactly once after %s, including stale repeated button callbacks (learned=%s)', (action, learned) => {
     type Button = { dataset: { idx: string }; addEventListener: (event: string, callback: () => void) => void; click: () => void };
     const button = (idx: number): Button => {
       let fn = () => {};
@@ -107,7 +139,8 @@ describe('Identify choice buttons and native keyboard access', () => {
     const cards = [button(0), button(1)], cancel = button(-1), box = { innerHTML: '', querySelectorAll: () => cards };
     vi.stubGlobal('document', { getElementById: (id: string) => id === 'choice-cards' ? box : id === 'btn-identify-cancel' ? cancel : null });
     const choose = vi.fn(), onCancel = vi.fn();
-    renderIdentifyChoice(makeWorld(), [item('potion:fire'), item('scroll:sleep')], choose, onCancel);
+    renderIdentifyChoice(makeWorld(), [item('potion:fire'), item('scroll:sleep')], choose, onCancel, learned);
+    expect(box.innerHTML).toContain(learned ? '卷軸已使用' : '保留卷軸');
     if (action === 'choose') cards[1]!.click(); else cancel.click();
     cancel.click(); cards[0]!.click(); cards[1]!.click();
     expect(choose).toHaveBeenCalledTimes(action === 'choose' ? 1 : 0);

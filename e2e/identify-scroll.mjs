@@ -15,7 +15,7 @@ const count = (s, id) => s.player.items.filter(it => it.id === id).reduce((n, it
 const idle = p => p.waitForFunction(() => {
   const s = window.__sd.state(); return s.mode === 'playing' && !s.player.action && !s.player.pendingUse;
 });
-async function fixtures(p, targets = ids, scrolls = 2) {
+async function fixtures(p, targets = ids, scrolls = 3) {
   const injected = await p.evaluate(({ targets, scrolls }) => {
     const d = window.__sd.debug; d.setInvisible(1000);
     return [...Array.from({ length: scrolls }, () => d.giveItem('scroll:identify')),
@@ -23,7 +23,7 @@ async function fixtures(p, targets = ids, scrolls = 2) {
   }, { targets, scrolls });
   assert.ok(injected.every(Boolean));
 }
-async function readIdentify(p, touch = false) {
+async function inspectIdentify(p, touch = false) {
   if (touch) await p.locator('#touch-inventory').tap(); else await p.keyboard.press('KeyI');
   await mode(p, 'inventory');
   const index = (await state(p)).player.items.findIndex(it => it.id === 'scroll:identify');
@@ -32,6 +32,20 @@ async function readIdentify(p, touch = false) {
   if (touch) await tile.tap(); else await tile.click();
   const button = p.locator(`#inv-list button[data-k="${index}"][data-m="use"]`);
   assert.equal(await button.isEnabled(), true);
+  const inspection = await p.locator(`#inv-detail-${index}`).innerHTML();
+  const sources = await p.locator(`#inv-detail-${index} img`).evaluateAll(images => images.map(img => img.currentSrc || img.src));
+  for (const src of sources) assert.match(src, /\/scroll-look-[a-z]+(?:-[a-zA-Z0-9_-]+)?\.webp$/);
+  if (!(await state(p)).player.known.includes('scroll:identify')) {
+    const markup = `${await tile.evaluate(el => el.outerHTML)}${inspection}`;
+    assert.ok(!/鑑定卷軸|scroll.identify|背包沒有未知|卷軸已保留|data-item|data-effect|\btitle=/.test(markup));
+    assert.ok(markup.includes('未辨識'));
+    assert.ok(markup.includes('符文卷軸'));
+    for (const alt of await p.locator(`#inv-detail-${index} img`).evaluateAll(images => images.map(img => img.alt))) assert.equal(alt, '');
+  }
+  return { button, index, sources };
+}
+async function readIdentify(p, touch = false) {
+  const { button } = await inspectIdentify(p, touch);
   if (touch) await button.tap(); else await button.click();
   await mode(p, 'choice');
   const s = await state(p);
@@ -39,6 +53,14 @@ async function readIdentify(p, touch = false) {
   assert.equal(await p.textContent('#choice-title'), '選一件未知物品鑑定');
   const copy = await p.textContent('#choice-sub');
   assert.ok(copy.includes('同種類一起變已知') && copy.includes('其他種類不受影響'));
+  const cancel = await p.textContent('#btn-identify-cancel');
+  if (s.pendingChoice.learnedScroll) {
+    assert.ok(copy.includes('已使用') && copy.includes('不退還卷軸'));
+    assert.ok(cancel.includes('卷軸已使用') && !cancel.includes('保留卷軸'));
+  } else {
+    assert.ok(copy.includes('保留卷軸') && cancel.includes('保留卷軸'));
+  }
+  assert.ok(!s.pendingChoice.options.some(it => it.id === 'scroll:identify'));
   return s;
 }
 async function privateFrozen(p) {
@@ -71,7 +93,8 @@ try {
   await startRun(page, 'IDENTIFY-UI'); await fixtures(page);
   const initial = await state(page);
   for (const method of ['button', 'escape']) {
-    await readIdentify(page); await privateFrozen(page);
+    const choice = await readIdentify(page); await privateFrozen(page);
+    assert.equal(Boolean(choice.pendingChoice.learnedScroll), method === 'button');
     const first = page.locator('#choice-cards .choice-card').first(), cancel = page.locator('#btn-identify-cancel');
     await first.focus(); await page.keyboard.press('Shift+Tab');
     assert.equal(await cancel.evaluate(el => document.activeElement === el), true);
@@ -79,9 +102,10 @@ try {
     if (method === 'button') await cancel.click(); else await page.keyboard.press('Escape');
     await idle(page);
     const after = await state(page);
-    assert.equal(count(after, 'scroll:identify'), count(initial, 'scroll:identify'));
-    assert.deepEqual(after.player.known, initial.player.known);
-    assert.equal(after.stats.itemsUsed, initial.stats.itemsUsed);
+    assert.equal(count(after, 'scroll:identify'), count(initial, 'scroll:identify') - 1);
+    assert.deepEqual(after.player.known, [...initial.player.known, 'scroll:identify']);
+    assert.equal(after.stats.itemsUsed, initial.stats.itemsUsed + 1);
+    assert.equal(after.pendingChoice, null);
     assert.deepEqual(await page.evaluate(() => window.__sd.inputState().held), []);
   }
   const pending = await readIdentify(page);
@@ -93,25 +117,35 @@ try {
   // Numeric selection beyond the previous three-option keyboard limit.
   await page.keyboard.press('Digit7'); await idle(page);
   const identified = await state(page);
-  assert.deepEqual(identified.player.known.filter(id => !initial.player.known.includes(id)), [target]);
+  assert.deepEqual(identified.player.known.filter(id => !initial.player.known.includes(id)), ['scroll:identify', target]);
   for (const id of ids) assert.equal(count(identified, id), count(initial, id), 'selected and unrelated stacks are intact');
-  assert.equal(count(identified, 'scroll:identify'), count(initial, 'scroll:identify') - 1);
-  assert.equal(identified.stats.itemsUsed, initial.stats.itemsUsed + 1);
+  assert.equal(count(identified, 'scroll:identify'), count(initial, 'scroll:identify') - 2);
+  assert.equal(identified.stats.itemsUsed, initial.stats.itemsUsed + 2);
   // Native Space invokes the focused appearance card without leaking a wait key.
   const second = await readIdentify(page); await page.locator('.identify-card').first().focus();
   await page.keyboard.press('Space'); await idle(page);
   assert.ok((await state(page)).player.known.includes(second.pendingChoice.options[0].id));
   assert.deepEqual(await page.evaluate(() => window.__sd.inputState().held), []);
 
-  // A new empty-bag run proves the no-target read action is disabled before consuming.
+  // No-target status cannot leak an unknown Identify: first ordinary read still teaches it.
   await page.goto(`${BASE}?dev=1&gfx=low`); await startRun(page, 'IDENTIFY-EMPTY'); await fixtures(page, []);
+  const emptyInitial = await state(page);
+  const unknownEmpty = await inspectIdentify(page);
+  const appearanceBefore = unknownEmpty.sources;
+  await unknownEmpty.button.click(); await idle(page);
+  const firstEmptyRead = await state(page);
+  assert.ok(firstEmptyRead.player.known.includes('scroll:identify'));
+  assert.equal(count(firstEmptyRead, 'scroll:identify'), count(emptyInitial, 'scroll:identify') - 1);
+  assert.equal(firstEmptyRead.stats.itemsUsed, emptyInitial.stats.itemsUsed + 1);
+  assert.equal(firstEmptyRead.pendingChoice, null);
   await page.keyboard.press('KeyI'); await mode(page, 'inventory');
-  const noTarget = await state(page), index = noTarget.player.items.findIndex(it => it.id === 'scroll:identify');
+  const index = firstEmptyRead.player.items.findIndex(it => it.id === 'scroll:identify');
   await selectInventoryItem(page, index);
   assert.equal(await page.locator(`#inv-list button[data-k="${index}"][data-m="use"]`).isDisabled(), true);
   assert.ok((await page.locator(`#inv-detail-${index}`).innerText()).includes('背包沒有未知的藥水或卷軸可鑑定'));
+  assert.deepEqual(await page.locator(`#inv-detail-${index} img`).evaluateAll(images => images.map(img => img.currentSrc || img.src)), appearanceBefore);
   await page.keyboard.press('Escape'); await idle(page);
-  assert.equal(count(await state(page), 'scroll:identify'), count(noTarget, 'scroll:identify'));
+  assert.equal(count(await state(page), 'scroll:identify'), count(firstEmptyRead, 'scroll:identify'));
 
   // Existing upgrade/talent offers keep their mandatory choice semantics.
   await page.evaluate(() => window.__sd.debug.giveItem('scroll:upgrade'));
@@ -143,11 +177,13 @@ try {
   await mp.screenshot({ path: `${OUT}identify-touch-portrait.png` });
   await mp.setViewportSize({ width: 844, height: 390 });
   await mp.locator('#btn-identify-cancel').tap(); await idle(mp);
-  assert.equal(count(await state(mp), 'scroll:identify'), count(mobileInitial, 'scroll:identify'));
+  assert.equal(count(await state(mp), 'scroll:identify'), count(mobileInitial, 'scroll:identify') - 1);
+  assert.equal((await state(mp)).pendingChoice, null);
+  assert.deepEqual(await mp.evaluate(() => window.__sd.inputState().held), []);
   const touchChoice = await readIdentify(mp, true);
   await mp.locator('.identify-card[data-idx="1"]').tap(); await idle(mp);
-  assert.deepEqual((await state(mp)).player.known.filter(id => !mobileInitial.player.known.includes(id)), [touchChoice.pendingChoice.options[1].id]);
+  assert.deepEqual((await state(mp)).player.known.filter(id => !mobileInitial.player.known.includes(id)), ['scroll:identify', touchChoice.pendingChoice.options[1].id]);
   await mobile.close();
   assert.deepEqual(errors, []);
-  console.log('PASS Identify: private appearance cards, paused time/hunger, cancel/refund, single-kind selection, intact stacks, native keyboard, no-target guard, mandatory choices, touch reachability');
+  console.log('PASS Identify: private appearance cards, paused time/hunger, unknown Identify privacy, first-read discovery/spend, known cancel/refund, single-kind selection, intact stacks, native keyboard, no-target guard, mandatory choices, touch reachability');
 } finally { await browser.close(); }

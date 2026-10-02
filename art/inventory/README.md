@@ -48,3 +48,7 @@ Packaging can use existing WebPs for unselected assets when their intermediate P
 ## Provenance
 
 Created specifically for SUPERDUNGEON by procedural mesh/material construction. Generator seed: `91304`. The script, scene, and rendered assets may be used and modified with the project. There are no external asset attribution requirements.
+
+## Identify rule correction (2026-10-02)
+
+Identify is now an ordinary unknown scroll and always uses its seeded rune appearance, including after discovery. The earlier silver-eye asset remains as editable historical artwork; it is not selected for a live inventory item. No existing asset bytes changed in this correction.

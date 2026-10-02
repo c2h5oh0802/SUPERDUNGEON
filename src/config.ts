@@ -577,12 +577,12 @@ export const RENDER = {
 
 /** 六種藥水共用隨種子外觀；職業僅決定初始知識。 */
 export type PotionId = 'healing' | 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
-/** 未知卷軸；強化與鑑定是固定已知的工具，不參與外觀洗牌。 */
-export type ScrollId = 'teleport' | 'mapping' | 'sleep';
-export type ItemId = 'food:ration' | `potion:${PotionId}` | 'scroll:upgrade' | 'scroll:identify' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
+/** 四種未知卷軸共用種子外觀；只有強化卷軸固定已知。 */
+export type ScrollId = 'teleport' | 'mapping' | 'sleep' | 'identify';
+export type ItemId = 'food:ration' | `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
 
 export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste', 'healing'];
-export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'sleep'];
+export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'sleep', 'identify'];
 
 /** 每一局隨機對應的外觀（第一次使用才知道是什麼）。 */
 export const POTION_LOOKS = [
@@ -608,9 +608,9 @@ export const POTIONS: Record<PotionId, { name: string; drink: string; thrown: st
 
 export const IDENTIFY = { guaranteedPerFloor: [1, 0, 0, 0, 0], practiceCount: 0 } as const;
 
-export const SCROLLS: Record<ScrollId | 'upgrade' | 'identify', { name: string; text: string }> = {
+export const SCROLLS: Record<ScrollId | 'upgrade', { name: string; text: string }> = {
   upgrade: { name: '強化卷軸', text: `選一件仍有收益的裝備強化一級；武器與獵弓最高 +${UPGRADE.maxLevel}，護甲減傷達 ${UPGRADE.armorMaxReduce} 後封頂，沒有可用目標時保留卷軸` },
-  identify: { name: '鑑定卷軸', text: '選一件背包裡的未知藥水或卷軸辨識種類，物品保留；本局同類也會認得，其他種類仍未知。無目標或取消時保留卷軸' },
+  identify: { name: '鑑定卷軸', text: '選一件背包裡的未知藥水或卷軸辨識種類，物品保留；本局同類也會認得，其他種類仍未知。已知鑑定在無目標或取消時保留；首次試讀已辨識卷軸自身，不退回' },
   teleport: { name: '傳送卷軸', text: '傳送到這一層遠離敵人的地方' },
   mapping: { name: '地圖卷軸', text: '顯示整層地圖與往下的路' },
   sleep: { name: '沉睡卷軸', text: '令附近 6 公尺內的普通敵人入睡；已鎖定的攻擊先完成，首領免疫；聲音、靠近與受擊仍會喚醒' },
