@@ -182,7 +182,7 @@ Session/install identity remains provider-managed. The app sends no chosen user 
 - Results numeric values: `real_time`, `damage`, `kills`
 - Hints: `hint_inactivity`, `hint_no_attack`, `hint_repeated_damage`
 - Lifecycle: `blur`, `pagehide_unknown`
-- Feedback fun: slow_time/dodge_counter/position/none; issue: unclear/controls/hard/easy/slow/performance/none
+- Feedback fun: slow_time/dodge_counter/arrow_deflect/position/none; issue: unclear/controls/hard/easy/slow/performance/none. `arrow_deflect` is the fixed 「彈反敵人箭矢」 answer to 「哪一刻最有趣？」, distinct from both `dodge_counter` and the factual `deflect_observed` event. Existing choices, optional submission, once-per-result behavior and retry reset are unchanged
 
 Post-validation engagement has a separate method and closed vocabulary: `retry_core`, `continue_adventure`, `extended_play_start`, `extended_play_exit`, `extended_play_real_time`, `extended_play_floor`. IDs are `playtest_engagement_v1:<event>` without calibration/core/assistance suffixes. The engagement method cannot change the current validation stage or sticky assistance state. Real time is the ordinary cumulative unpaused World statistic across floors; floor reached is a finite numeric value sent only at an observable exit/result. No unique seed/class data or per-frame engagement is sent. These are engagement facts, never fun/success/retention claims.
 

@@ -470,8 +470,9 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(eventCount('player_death')).toBe(1);
     expect(captured.setWorld).toHaveBeenCalledTimes(1);
     for (const id of ['btn-new', 'btn-swap', 'btn-boss-test-result-options']) expect(h.shown(id)).toBe(false);
-    h.node('playtest-fun').value = 'slow_time'; h.node('playtest-issue').value = 'controls';
+    h.node('playtest-fun').value = 'arrow_deflect'; h.node('playtest-issue').value = 'controls';
     h.node('btn-playtest-feedback').click();
+    expect(captured.telemetry.feedback).toHaveBeenCalledWith('arrow_deflect', 'controls');
     h.node('btn-retry').click(); h.node('btn-retry').click(); await tickLoad();
     const fresh = h.world(), reference = createPublicPlaytestWorld('core');
     expect(fresh).not.toBe(old);
@@ -487,12 +488,17 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(captured.telemetry.retry).toHaveBeenCalledTimes(1);
     expect(captured.setWorld).toHaveBeenCalledTimes(2);
     expect(captured.telemetry.engagement.mock.calls).toEqual([['retry_core']]);
+    finish(h);
+    h.node('playtest-fun').value = 'arrow_deflect';
+    h.node('btn-playtest-feedback').click(); h.node('btn-playtest-feedback').click();
+    expect(captured.telemetry.feedback).toHaveBeenCalledTimes(2);
+    expect(captured.telemetry.feedback).toHaveBeenLastCalledWith('arrow_deflect', undefined);
     expectNoCampaignStorage(h);
     if (touch) expect(captured.requestLock).not.toHaveBeenCalled();
   });
 
   it.each([
-    ['', '', 0], ['slow_time', '', 1], ['', 'controls', 1], ['dodge_counter', 'hard', 1], ['position', 'performance', 1], ['none', 'none', 1],
+    ['', '', 0], ['slow_time', '', 1], ['', 'controls', 1], ['dodge_counter', 'hard', 1], ['arrow_deflect', '', 1], ['position', 'performance', 1], ['none', 'none', 1],
     ['', 'unclear', 1], ['', 'easy', 1], ['', 'slow', 1],
   ])('keeps feedback optional and sends valid choices at most once (%s, %s)', async (fun, issue, calls) => {
     const h = await setup('?playtest=1', false, true);

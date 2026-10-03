@@ -34,13 +34,13 @@ export type PlaytestStage = 'calibration' | 'core';
 export type PlaytestCoreEntry = 'walk' | 'fresh_retry';
 export type PlaytestSource = 'x' | 'reddit' | 'discord' | 'direct' | 'unknown';
 export type PlaytestDevice = 'desktop' | 'touch';
-export type PlaytestFun = 'slow_time' | 'dodge_counter' | 'position' | 'none';
+export type PlaytestFun = 'slow_time' | 'dodge_counter' | 'arrow_deflect' | 'position' | 'none';
 export type PlaytestIssue = 'unclear' | 'controls' | 'hard' | 'easy' | 'slow' | 'performance' | 'none';
 export type PlaytestTelemetryStatus = 'disabled' | 'loading' | 'ready' | 'unavailable' | 'disposed';
 
 const SOURCES: PlaytestSource[] = ['x', 'reddit', 'discord', 'direct', 'unknown'];
 const DEVICES: PlaytestDevice[] = ['desktop', 'touch'];
-const FUN: PlaytestFun[] = ['slow_time', 'dodge_counter', 'position', 'none'];
+const FUN: PlaytestFun[] = ['slow_time', 'dodge_counter', 'arrow_deflect', 'position', 'none'];
 const ISSUES: PlaytestIssue[] = ['unclear', 'controls', 'hard', 'easy', 'slow', 'performance', 'none'];
 const EVENT_NAMES = new Set<string>(PLAYTEST_EVENT_NAMES);
 const ENGAGEMENT_EVENT_NAMES = new Set<string>(PLAYTEST_ENGAGEMENT_EVENT_NAMES);

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createBrowserPlaytestTelemetry, createPlaytestTelemetry, normalizePlaytestSource,
@@ -263,6 +264,38 @@ describe('post-validation engagement telemetry', () => {
 });
 
 describe('optional provider lifecycle and safe event mapping', () => {
+  it('keeps every HTML fun choice in the closed telemetry vocabulary', async () => {
+    const choices = {
+      slow_time: '停下觀察慢時間', dodge_counter: '閃避後反攻', arrow_deflect: '彈反敵人箭矢',
+      position: '換位置與選擇先後', none: '沒有特別有趣',
+    } satisfies Record<PlaytestFun, string>;
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const select = html.match(/<select id="playtest-fun">([\s\S]*?)<\/select>/)![1]!;
+    const options = [...select.matchAll(/<option value="([^"]*)">([^<]*)<\/option>/g)]
+      .map(([, value, label]) => [value, label]);
+    expect(options).toEqual([['', '略過'], ...Object.entries(choices)]);
+
+    const provider = mockProvider();
+    provider.ready();
+    const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+    telemetry.stage('core', 'walk');
+    telemetry.assistance(true);
+    for (const fun of Object.keys(choices) as PlaytestFun[]) telemetry.feedback(fun);
+    telemetry.stage('core', 'fresh_retry');
+    telemetry.feedback('arrow_deflect');
+    await flush();
+    const ids: string[] = provider.sdk.addDesignEvent.mock.calls.map(([id]) => id);
+    expect(ids.filter(id => id.includes(':feedback:'))).toEqual([
+      ...Object.keys(choices).map(fun => `playtest_connected_v3:feedback:fun:${fun}:core_walk_assisted`),
+      'playtest_connected_v3:feedback:fun:arrow_deflect:core_fresh_retry_unassisted',
+    ]);
+    for (const id of ids) {
+      expect(id.split(':').length).toBeLessThanOrEqual(5);
+      expect(id.split(':').every(part => part.length <= 32)).toBe(true);
+    }
+    telemetry.dispose();
+  });
+
   it('configures the build and three dimensions before initialization, then flushes early events in order', async () => {
     const provider = mockProvider();
     const loader = vi.fn(async () => provider.sdk);
