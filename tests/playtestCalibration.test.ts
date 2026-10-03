@@ -58,8 +58,9 @@ function finishDrink(d: ReturnType<typeof driver>) {
 describe('open public calibration fixtures', () => {
   it('keeps native guard/kit/knowledge and authors a disclosed initial wound', () => {
     const w = createPublicPlaytestWorld('calibration');
-    expect(PUBLIC_BUILD_ID).toBe('PublicCalibrationOpenV2');
-    expect(w.enemies).toHaveLength(1);
+    expect(PUBLIC_BUILD_ID).toBe('PublicConnectedV3');
+    expect(w.enemies).toHaveLength(3);
+    expect(w.enemies.map(enemy => enemy.roomKey)).toEqual(['C', 'T', 'T']);
     expect(w.enemies[0]!.hp).toBe(ENEMIES.guard.hp);
     expect(w.player.weapon).toEqual({ id: CLASSES.warrior.weapon, level: 0 });
     expect(w.player.hp).toBe(Math.ceil(w.player.maxHp / 2));
@@ -177,13 +178,13 @@ describe('factual open calibration and formal healing', () => {
     const d = driver();
     // Only fixture placement varies; the guard is defeated with ordinary attack
     // input, and both waiting and acquisition run the real World.frame pipeline.
-    Object.assign(d.world.player, { x: position.x, z: position.z });
-    Object.assign(d.world.enemies[0]!, { x: position.gx, z: position.gz });
+    Object.assign(d.world.player, { x: position.x, z: position.z + 23 });
+    Object.assign(d.world.enemies[0]!, { x: position.gx, z: position.gz + 23 });
     killGuard(d);
     const pickup = supplyHealing(d, position.yaw), p = d.world.player;
     expect(p.dead).toBe(false);
     // Native enemy contact may nudge the player slightly during the fight.
-    expect(Math.hypot(p.x - position.x, p.z - position.z)).toBeLessThan(.2);
+    expect(Math.hypot(p.x - position.x, p.z - (position.z + 23))).toBeLessThan(.2);
     const start = { x: p.x, z: p.z };
     expect(Math.hypot(pickup.x - p.x, pickup.z - p.z)).toBeCloseTo(PLAYER.pickupRadius + 1.5);
     expect(d.world.grid.circleBlocked(pickup.x, pickup.z, PLAYER.radius)).toBe(false);

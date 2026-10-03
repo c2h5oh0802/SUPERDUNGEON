@@ -483,7 +483,7 @@ function interact(w: World, t: InteractTarget): void {
   const it = w.interactables.find((i) => i.id === t.id);
   if (!it) return;
   if (!t.enabled) {
-    if (it.kind === 'door') w.emit({ type: 'barred', text: '門從另一側閂住了' });
+    if (it.kind === 'door') w.emit({ type: 'barred', text: t.label });
     if (it.kind === 'stairs') w.emit({ type: 'needHeart', text: '來時的階梯：回不去了，只能往下' });
     return;
   }
@@ -608,7 +608,9 @@ export function findInteractTarget(w: World): InteractTarget | null {
     switch (it.kind) {
       case 'door': {
         const door = w.grid.doors[it.ref]!;
-        if (door.barred) {
+        const gateHint = w.publicPlaytestDoorHint(door.id);
+        if (gateHint) { label = gateHint; enabled = false; }
+        else if (door.barred) {
           if (doorSide(w, it) === door.barSide) label = 'E 拉開門閂';
           else {
             label = '門從另一側閂住了';

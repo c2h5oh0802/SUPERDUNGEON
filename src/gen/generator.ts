@@ -118,6 +118,8 @@ export interface LevelData {
   practice: boolean;
   /** Isolated public playtest; never serialized as a campaign RunState. */
   publicPlaytest?: 'calibration' | 'core';
+  /** Same-floor public route only; no campaign serialization or navigation rule. */
+  publicPlaytestConnection?: { doorId: number; coreEntryZ: number; coreRoomKey: string };
   /** Fixed encounter trial; absent from campaign and ordinary practice. */
   practiceTrial?: PracticeTrialId;
   encounter?: { roomKey: string };

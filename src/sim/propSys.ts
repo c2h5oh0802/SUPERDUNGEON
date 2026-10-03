@@ -23,6 +23,11 @@ function doorOccupied(w: World, doorId: number): boolean {
 export function setDoor(w: World, doorId: number, open: boolean, by: 'player' | 'enemy', emitterId?: number): boolean {
   const d = w.grid.doors[doorId]!;
   if (d.arch) return false;
+  const gateHint = w.publicPlaytestDoorHint(doorId);
+  if (open && gateHint) {
+    if (by === 'player') w.emit({ type: 'doorBlocked', text: gateHint });
+    return false;
+  }
   if (!open && doorOccupied(w, doorId)) {
     if (by === 'player') w.emit({ type: 'doorBlocked', text: '門口有東西擋著' });
     return false;

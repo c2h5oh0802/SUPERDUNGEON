@@ -1,6 +1,46 @@
-# RemoteValidationV1: open calibration and disposable adventure
+# Public playtest: connected rooms on one floor
 
-Status: **Ready for Human Review**. Controlled design revision: **`open_v2`**; post-validation engagement: **`engagement_v1`**. The public URL and this report's filename remain stable. This report describes implementation and deterministic verification, not acceptance of fun, timing, or real-player understanding. Historical choreography telemetry must not be combined with this revision's completion or assistance cohorts.
+Current design revision: **`connected_v3`** (`PublicConnectedV3`). Public entry remains https://superdungeon.vercel.app/?playtest=1. The open-v2 text below is retained as historical background, not the current interaction contract.
+
+## Current route
+
+The calibration room and the existing shield-crossfire encounter now share **one Grid and one World**. The guard room is south of the unchanged Core map. A visible, ordinary two-cell door in its north wall joins a short corridor to Core's sheltered dog-leg entrance. Its collision, opening time, interaction distance, sound, desktop E and touch interaction use the existing door systems.
+
+Defeat the guard, experience actual stopped slowdown, walk to the normal healing pickup, and drink through H or inventory. The existing deliberate-resource-loss fallback also unlocks the door. The optional unknown haste bottle never gates entry. Nothing opens the inventory automatically, and there is no Continue-to-Core button in inventory or Pause. After healing, the cue and objective point toward the physical door. Opening it is not entry: **walking through the north threshold** starts Core, without replacing the World, reloading the level, resetting the player, or requesting pointer lock again.
+
+Before unlocking, the door's ordinary interaction prompt names the current factual goal: guard, stopped slowdown, or healing. This supplies no prescribed combat strategy. The healing placement still checks a player-width path and visibility; supplies are not silently teleported into the bag.
+
+The player naturally retains HP, inventory, known items, ammo, effects, action state and position through the doorway. The pre-entry cue discloses that the 1-HP protection ends on entry. The immutable Core-start marker is captured before that frame's attacks/projectiles advance. Protection is driven by the irreversible **World phase**, not the combined map's calibration tag or the player's current room: returning to the guard room cannot restore it. Core's existing enemies are constructed with the level but remain dormant to update/noise/damage before entry, so they cannot invade the tutorial or be pre-damaged through the open door. Core geometry, enemy classes and combat balance are unchanged.
+
+## Outcomes and retries
+
+Core's two enemies still determine the actual complete/dead result. Results remain sealed once, with optional feedback, explicit retry, disposable Continue Adventure and Return. This change does not convert the entire generated campaign into one floor or remove death/results. The optional ordinary adventure still uses its established generated floors and remains unsaved.
+
+**「滿血重試核心遭遇」 is deliberately a fresh attempt, not a copy of the walk-in loadout.** It uses the original shield-crossfire start, full HP, initial Warrior equipment and no calibration items or effects. The Results text explicitly explains this. Rebuilding an in-progress item/action state or introducing a save/snapshot format would add unnecessary risk. Retry skips calibration and retains the existing input/load guards.
+
+The public route still owns all persistence boundaries: no campaign save-key reads, writes or deletes, including after backtracking, death, retry, Continue Adventure and later floor transitions. No deployment, permission, credentials or analytics enablement configuration changes are part of this revision.
+
+## Measurements
+
+`calibration_complete` still means that factual milestones and the real healing/resource-loss resolution occurred. Calibration progression completes at the **door threshold**, where Core progression starts. Quitting/restarting while still in the guard room ends that calibration attempt, even if the door was unlocked.
+
+Core time, damage and kills subtract the immutable threshold baseline, so the first guard, tutorial damage and time spent drinking/walking to the door are excluded. First-action/factual observers, fallback clocks and sticky assistance reset at entry. Core metrics remain sealed in Results, and later adventure cannot rewrite them.
+
+The controlled namespace is **`playtest_connected_v3`**, distinct from v1 choreography and open-v2. Core design suffixes are `core_walk_unassisted`, `core_walk_assisted`, `core_fresh_retry_unassisted`, or `core_fresh_retry_assisted`; progression third keys use the corresponding entry/assistance pair without `core_`. These closed labels preserve both assistance and **different entry conditions on every terminal event**, including delayed SDK queues and feedback. Do not pool natural walk-in and full-health retry results as equivalent attempts. No new identifier, arbitrary text or personal data is sent. `playtest_engagement_v1` is unchanged. Disabled analytics still never imports the SDK or transmits events.
+
+## Verification
+
+Final connected revision: **1,287 / 1,287 tests across 66 files**, plus TypeScript, ESLint, production build and whitespace checks. Focused new coverage includes actual walking/door interaction, closed-door collision, reachable entry, open-door delay with no premature Core AI, same World/player/input-lock continuity, HP/items/known carry, optional unknown use/skip, thrown-resource fallback, irreversible lethal protection after backtracking, phase-relative metrics, exact clean retry, immutable Results/adventure save isolation, and queued analytics entry/assistance separation. Core patrol destinations remain canonical rather than inheriting the new guard-room center; global alarm propagation skips dormant Core enemies.
+
+An additional state-informed native-input end-to-end diagnostic went from the initial guard through pickup/healing/door to Core clear: 2 Core kills, 2 Core damage, 4.8 Core seconds, surviving at 8 HP. This establishes a reachable native simulation flow, not a human duration target or usability claim.
+
+Browser attempt: bundled Playwright Chromium is absent; the available system Chromium fails at startup with `socket() failed: Operation not permitted`. These are the same verified cloud restrictions, not game failures; no restriction was bypassed, no user computer was used, and rendered WebGL/touch playthrough is not claimed. Automated simulation/App tests establish state reachability and regressions, not human visual acceptance or enjoyment.
+
+---
+
+# Historical open-v2 baseline: open calibration and disposable adventure
+
+Historical implementation and verification below; superseded by connected-v3 above. Controlled design revision: **`open_v2`**; post-validation engagement: **`engagement_v1`**. The public URL and this report's filename remain stable. This report describes implementation and deterministic verification, not acceptance of fun, timing, or real-player understanding. Historical choreography telemetry must not be combined with this revision's completion or assistance cohorts.
 
 ## Entry and scope
 

@@ -26,7 +26,7 @@ const captured = vi.hoisted(() => ({
   telemetry: {
     engagement: vi.fn<(name: PlaytestEngagementEventName, value?: number) => void>(),
     assistance: vi.fn<(assisted: boolean) => void>(),
-    landing: vi.fn(), start: vi.fn(), stage: vi.fn<(stage: PlaytestStage) => void>(),
+    landing: vi.fn(), start: vi.fn(), stage: vi.fn<(stage: PlaytestStage, entry?: 'walk' | 'fresh_retry') => void>(),
     progression: vi.fn<(status: 'start' | 'complete' | 'fail', stage: PlaytestStage, score?: number) => void>(),
     event: vi.fn<(name: PlaytestEventName, value?: number) => void>(), retry: vi.fn(),
     feedback: vi.fn<(fun?: PlaytestFun, issue?: PlaytestIssue) => void>(),
@@ -204,27 +204,67 @@ function playCalibration(h: Harness) {
   expect(calibrationWorld.player.items.some(i => i.id === 'potion:healing')).toBe(true);
   return { calibrationWorld };
 }
-async function completeCalibration(h: Harness, path: 'hotkey' | 'inventory' = 'hotkey') {
+/** Finish the lesson while staying in the same ordinary playing view. */
+function finishCalibration(h: Harness, path: 'hotkey' | 'inventory' = 'hotkey') {
   const { calibrationWorld } = playCalibration(h);
   if (path === 'inventory') {
     h.frame({ inventory: true });
     expect(h.shown('screen-inventory')).toBe(true);
     captured.inventoryUse!(0, 'use');
   } else h.frame({ potion: true });
-  for (let f = 0; f < 180 && captured.handlers!.playing!(); f++) h.frame();
+  for (let f = 0; f < 180 && !calibrationWorld.publicPlaytestDoorReady; f++) h.frame();
   expect(eventCount('calibration_complete')).toBeGreaterThan(0);
   expect(calibrationWorld.stats.healingUsed).toBe(1);
-  expect(captured.telemetry.progression).toHaveBeenCalledWith('complete', 'calibration', calibrationWorld.realTime);
-  expect(h.shown('screen-inventory')).toBe(true);
-  expect(h.shown('btn-playtest-core')).toBe(true);
+  expect(captured.telemetry.progression).not.toHaveBeenCalledWith('complete', 'calibration', expect.any(Number));
+  expect(calibrationWorld.publicPlaytestPhase).toBe('calibration');
+  expect(calibrationWorld.publicPlaytestDoorReady).toBe(true);
+  expect(captured.handlers!.playing!()).toBe(true);
+  expect(h.shown('screen-inventory')).toBe(false);
+  expect(h.shown('screen-loading')).toBe(false);
   expect(calibrationWorld.player.items.some(i => i.id === 'potion:haste')).toBe(true);
   expect(isKnown(calibrationWorld, 'potion:haste')).toBe(false);
-  h.node('btn-playtest-core').click(); h.node('btn-playtest-core').click();
-  await tickLoad();
-  expect(h.world()).not.toBe(calibrationWorld);
-  expect(h.world().level.publicPlaytest).toBe('core');
   return { calibrationWorld };
 }
+
+function walkTo(h: Harness, x: number, z: number) {
+  for (let f = 0; f < 600 && Math.hypot(h.world().player.x - x, h.world().player.z - z) > .12; f++) {
+    const p = h.world().player;
+    const yaw = yawFromDir(x - p.x, z - p.z);
+    h.frame({ lookDX: -angleDiff(yaw, p.yaw) / .0022, moveZ: 1 });
+  }
+  expect(Math.hypot(h.world().player.x - x, h.world().player.z - z)).toBeLessThan(.13);
+}
+
+/** Native movement, E interaction, door animation and crossing, with no load. */
+function enterCore(h: Harness) {
+  const w = h.world(), p = w.player;
+  const connection = w.level.publicPlaytestConnection!;
+  const door = w.grid.doors[connection.doorId]!;
+  const hp = p.hp, items = structuredClone(p.items), known = [...p.known];
+  const worlds = captured.setWorld.mock.calls.length;
+  const locks = captured.requestLock.mock.calls.length;
+  walkTo(h, door.cx, door.cz + 1.3);
+  h.frame({ lookDX: -angleDiff(0, p.yaw) / .0022, interact: true });
+  expect(door.target).toBe(1);
+  for (let f = 0; f < 600 && w.publicPlaytestPhase !== 'core'; f++) h.frame({ moveZ: 1 });
+  expect(w.publicPlaytestPhase).toBe('core');
+  expect(captured.telemetry.progression).toHaveBeenCalledWith('complete', 'calibration', w.publicPlaytestCoreStart!.realTime);
+  expect(w.player.z).toBeLessThanOrEqual(connection.coreEntryZ);
+  expect(h.world()).toBe(w); expect(w.player).toBe(p);
+  expect(p.hp).toBe(hp); expect(p.items).toEqual(items); expect(p.known).toEqual(known);
+  expect(captured.setWorld).toHaveBeenCalledTimes(worlds);
+  expect(captured.requestLock).toHaveBeenCalledTimes(locks);
+  expect(h.shown('screen-loading')).toBe(false);
+  expect(h.shown('screen-inventory')).toBe(false);
+  expect(captured.handlers!.playing!()).toBe(true);
+}
+
+async function completeCalibration(h: Harness, path: 'hotkey' | 'inventory' = 'hotkey') {
+  const result = finishCalibration(h, path);
+  enterCore(h);
+  return result;
+}
+
 function finish(h: Harness, outcome: 'dead' | 'win' = 'dead') {
   h.world().outcome = outcome;
   for (let f = 0; f < 110; f++) h.frame({}, .02);
@@ -259,7 +299,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     finish(h);
     expectNoCampaignStorage(h);
     h.node('btn-retry').click(); await tickLoad();
-    expect(h.world().level.publicPlaytest).toBe('core');
+    expect(h.world().publicPlaytestPhase).toBe('core');
     expectNoCampaignStorage(h);
     h.frame({ escape: true }); h.node('btn-quit').click(); await tickLoad();
     expect(captured.world).toBeNull();
@@ -268,7 +308,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expectNoCampaignStorage(h);
   });
 
-  it.each(['hotkey', 'inventory'] as const)('accepts aggressive guard defeat, formal %s healing and immediate unknown skip', async path => {
+  it.each(['hotkey', 'inventory'] as const)('accepts aggressive guard defeat, formal %s healing and walking past the optional unknown', async path => {
     const h = await setup('?playtest=1&src=discord'); await start(h);
     expect(h.node('playtest-cue').textContent).toContain('半血');
     expect(h.node('playtest-cue').textContent).not.toMatch(/後退|收招|0\/2|先別攻擊/);
@@ -276,18 +316,33 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     for (const name of ['slow_time_observed', 'guard_defeated', 'healing_used', 'calibration_complete', 'core_start'] as const)
       expect(eventCount(name), name).toBe(1);
     expect(calibrationWorld.enemies[0]!.alive).toBe(false);
-    expect(h.world().carry()).toEqual(createPublicPlaytestWorld('core').carry());
-    expect(h.node('playtest-cue').textContent).toBe('');
+    expect(h.world()).toBe(calibrationWorld);
+    expect(h.world().player.items).toContainEqual({ id: 'potion:haste', count: 1, level: 0 });
+    expect(captured.setWorld).toHaveBeenCalledTimes(1);
+    expect(h.node('playtest-cue').textContent).toContain('核心遭遇');
     expect(captured.hint).not.toHaveBeenCalled();
-    expect(captured.telemetry.stage.mock.calls).toEqual([['calibration'], ['core']]);
+    expect(captured.telemetry.stage.mock.calls).toEqual([['calibration', undefined], ['core', 'walk']]);
     expectNoCampaignStorage(h);
   });
 
-  it('touch inventory can complete healing and skip the real unknown without desktop lock', async () => {
+  it('touch inventory can complete healing and walk through the gate without desktop lock', async () => {
     const h = await setup('?playtest=1', true); await start(h);
     await completeCalibration(h, 'inventory');
     expect(captured.requestLock).not.toHaveBeenCalled();
     expectNoCampaignStorage(h);
+  });
+
+  it('keeps pointer-lock fallback usable through the same-world gate without reacquiring the mouse', async () => {
+    const h = await setup();
+    captured.requestLock.mockResolvedValue(false);
+    await start(h);
+    expect(captured.requestLock).toHaveBeenCalledTimes(1);
+    expect(h.shown('lock-fail')).toBe(true);
+    await completeCalibration(h);
+    expect(captured.handlers!.playing!()).toBe(true);
+    expect(captured.requestLock).toHaveBeenCalledTimes(1);
+    expect(captured.setWorld).toHaveBeenCalledTimes(1);
+    expect(h.shown('screen-loading')).toBe(false);
   });
 
   it('does not strand a discarded healing resource or require unknown item use', async () => {
@@ -295,16 +350,69 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     const hp = calibrationWorld.player.hp;
     h.frame({ inventory: true }); captured.inventoryUse!(0, 'throw');
     for (let f = 0; f < 180 && captured.handlers!.playing!(); f++) h.frame();
-    expect(h.shown('btn-playtest-core')).toBe(true);
+    expect(calibrationWorld.publicPlaytestDoorReady).toBe(true);
+    expect(h.shown('screen-inventory')).toBe(false);
+    expect(captured.handlers!.playing!()).toBe(true);
     expect(eventCount('healing_skipped_resource_lost')).toBe(1);
     expect(eventCount('healing_used')).toBe(0);
     expect(calibrationWorld.player.hp).toBe(hp);
     expect(calibrationWorld.stats.healingUsed).toBe(0);
-    h.node('btn-inv-close').click(); h.frame({ escape: true });
-    expect(h.shown('btn-playtest-core-pause')).toBe(true);
-    h.node('btn-playtest-core-pause').click(); await tickLoad();
-    expect(h.world().level.publicPlaytest).toBe('core');
+    enterCore(h);
+    expect(h.world().publicPlaytestPhase).toBe('core');
     expectNoCampaignStorage(h);
+  });
+
+  it('does not complete progression or reset controls until the player crosses the physical door', async () => {
+    const h = await setup(); await start(h);
+    const w = h.world(), originalPlayer = w.player;
+    const { calibrationWorld } = finishCalibration(h);
+    expect(calibrationWorld).toBe(w);
+    expect(captured.setWorld).toHaveBeenCalledTimes(1);
+    expect(captured.requestLock).toHaveBeenCalledTimes(1);
+    expect(eventCount('core_start')).toBe(0);
+    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause']) h.node(id).click();
+    await tickLoad();
+    expect(h.world()).toBe(w); expect(w.player).toBe(originalPlayer);
+    expect(w.publicPlaytestPhase).toBe('calibration');
+    for (let f = 0; f < 60 * 40; f++) h.frame();
+    expect(eventCount('hint_inactivity')).toBe(0);
+    expect(eventCount('hint_no_attack')).toBe(0);
+    enterCore(h);
+    expect(eventCount('core_start')).toBe(1);
+    expect(eventCount('first_attack')).toBe(1);
+    expect(eventCount('first_move')).toBe(1);
+    expect(eventCount('hint_inactivity')).toBe(0);
+    expect(eventCount('hint_no_attack')).toBe(0);
+    expect(captured.setWorld).toHaveBeenCalledTimes(1);
+    expect(captured.requestLock).toHaveBeenCalledTimes(1);
+    expect(h.node('playtest-cue').textContent).toContain('核心遭遇');
+    // Stage-local factual milestones restart only on actual subsequent input.
+    for (let f = 0; f < 20; f++) h.frame({ moveZ: 1 });
+    expect(eventCount('first_move')).toBe(2);
+    h.frame({ fire: true, firePressed: true });
+    for (let f = 0; f < 120 && eventCount('first_attack') < 2; f++) h.frame();
+    expect(eventCount('first_attack')).toBe(2);
+    for (let f = 0; f < 180; f++) h.frame();
+    expect(eventCount('slow_time_observed')).toBe(2);
+    expect(eventCount('calibration_complete')).toBe(1);
+    expect(eventCount('guard_defeated')).toBe(1);
+  });
+
+  it('reports only post-entry damage, kills and time while retaining whole-world stats', async () => {
+    const h = await setup(); await start(h); await completeCalibration(h);
+    const w = h.world(), snapshot = w.publicPlaytestCoreStart!;
+    expect(snapshot.kills).toBe(1);
+    w.damagePlayer(1, 'post-entry-test', w.player.x + 1, w.player.z);
+    w.stats.kills += 2;
+    w.realTime = snapshot.realTime + 7.5;
+    finish(h, 'win');
+    expect(w.stats.kills).toBe(3);
+    expect(captured.telemetry.event).toHaveBeenCalledWith('damage', 1);
+    expect(captured.telemetry.event).toHaveBeenCalledWith('kills', 2);
+    expect(captured.telemetry.event).toHaveBeenCalledWith('real_time', 7.5);
+    expect(captured.telemetry.progression).toHaveBeenCalledWith('complete', 'core', 7.5);
+    expect(h.node('res-stats').innerHTML).toContain('<span>擊倒敵人</span><b>2</b>');
+    expect(h.node('res-stats').innerHTML).toContain('<span>受到傷害</span><b>1</b>');
   });
 
   it('real protected lethal hits never route calibration to death results or restart', async () => {
@@ -345,20 +453,20 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     old.player.items.push({ id: 'scroll:identify', count: 1, level: 0 });
     old.frame(DT, { ...emptyInput(), fire: true, firePressed: true });
     old.enemies[0]!.hp = 2; old.enemies[0]!.paralyzeT = 5;
-    old.time = 99; old.stats.damageTaken.guard = 9;
+    old.time = 99; old.stats.damageTaken.test_core = 9;
     finish(h);
     expect(h.node('res-title').textContent).toBe('你倒下了');
     expect(eventCount('player_death')).toBe(1);
-    expect(captured.telemetry.progression).toHaveBeenCalledWith('fail', 'core', old.realTime);
+    expect(captured.telemetry.progression).toHaveBeenCalledWith('fail', 'core', old.realTime - old.publicPlaytestCoreStart!.realTime);
     expect(captured.telemetry.event).toHaveBeenCalledWith('damage', 9);
-    expect(captured.setWorld).toHaveBeenCalledTimes(2);
+    expect(captured.setWorld).toHaveBeenCalledTimes(1);
     for (let f = 0; f < 300; f++) h.frame({}, .02);
     await vi.advanceTimersByTimeAsync(5000);
     expect(h.world()).toBe(old);
     expect(h.world().outcome).toBe('dead');
     expect(h.shown('screen-results')).toBe(true);
     expect(eventCount('player_death')).toBe(1);
-    expect(captured.setWorld).toHaveBeenCalledTimes(2);
+    expect(captured.setWorld).toHaveBeenCalledTimes(1);
     for (const id of ['btn-new', 'btn-swap', 'btn-boss-test-result-options']) expect(h.shown(id)).toBe(false);
     h.node('playtest-fun').value = 'slow_time'; h.node('playtest-issue').value = 'controls';
     h.node('btn-playtest-feedback').click();
@@ -375,7 +483,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(h.node('playtest-feedback-status').textContent).toBe('');
     expect(h.node('btn-playtest-feedback').disabled).toBe(false);
     expect(captured.telemetry.retry).toHaveBeenCalledTimes(1);
-    expect(captured.setWorld).toHaveBeenCalledTimes(3);
+    expect(captured.setWorld).toHaveBeenCalledTimes(2);
     expect(captured.telemetry.engagement.mock.calls).toEqual([['retry_core']]);
     expectNoCampaignStorage(h);
     if (touch) expect(captured.requestLock).not.toHaveBeenCalled();
@@ -436,10 +544,13 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     // Advance only the fallback clock. Real World frames still produce activity
     // and damage events; enemy AI is held harmless for this UI timer boundary.
     for (const e of w.enemies) e.paralyzeT = 999;
-    w.realTime = 22.1; h.frame(); h.frame();
+    // Crossing retains ordinary velocity; let its real deceleration finish
+    // before jumping the UI-only inactivity clock.
+    for (let f = 0; f < 60; f++) h.frame();
+    w.realTime += 22.1; h.frame(); h.frame();
     expect(eventCount('hint_inactivity')).toBe(1);
     expect(h.node('playtest-cue').textContent).toContain('有點卡住');
-    w.realTime = 35.1; h.frame(); h.frame();
+    w.realTime = w.publicPlaytestCoreStart!.realTime + 35.1; h.frame(); h.frame();
     expect(eventCount('hint_no_attack')).toBe(1);
     expect(h.node('playtest-cue').textContent).toContain('左鍵可以出手');
     for (let i = 0; i < 3; i++) { w.damagePlayer(1, 'guard', w.player.x + 1, w.player.z); h.frame(); }
@@ -465,7 +576,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     finish(h, 'win');
     expect(h.node('res-title').textContent).toBe('遭遇完成');
     expect(eventCount('core_complete')).toBe(1);
-    expect(captured.telemetry.progression).toHaveBeenCalledWith('complete', 'core', h.world().realTime);
+    expect(captured.telemetry.progression).toHaveBeenCalledWith('complete', 'core', h.world().realTime - h.world().publicPlaytestCoreStart!.realTime);
     h.win.dispatchEvent(new Event('pagehide')); h.win.dispatchEvent(new Event('blur'));
     h.node('btn-menu').click();
     expect(captured.telemetry.landing).toHaveBeenCalledTimes(2);
@@ -547,7 +658,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     await start(h);
     h.node('btn-playtest-adventure').click(); expect(h.world().level.publicPlaytest).toBe('calibration');
     await completeCalibration(h);
-    h.node('btn-playtest-adventure').click(); expect(h.world().level.publicPlaytest).toBe('core');
+    h.node('btn-playtest-adventure').click(); expect(h.world().publicPlaytestPhase).toBe('core');
     finish(h, 'win');
     h.node('btn-playtest-adventure').click(); await tickLoad();
     const first = h.world();
@@ -558,7 +669,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(h.world().level.publicPlaytest).toBeUndefined();
     expect(h.world().level.seed).toBe(first.level.seed);
     expect(captured.telemetry.engagement.mock.calls.filter(([name]) => name === 'extended_play_start')).toHaveLength(2);
-    expect(captured.telemetry.stage.mock.calls).toEqual([['calibration'], ['core']]);
+    expect(captured.telemetry.stage.mock.calls).toEqual([['calibration', undefined], ['core', 'walk']]);
     expect(captured.requestLock).not.toHaveBeenCalled();
     h.frame({ escape: true }); h.node('btn-restart').click(); h.node('btn-quit').click(); await tickLoad();
     expect(captured.world).toBeNull();

@@ -105,7 +105,7 @@ export class CalibrationObserver {
     }
     for (const [event, milestone] of [['counter', 'counter_observed'], ['deflect', 'deflect_observed'], ['playerHurt', 'hurt_observed']] as const)
       if (events.some(e => e.type === event)) emit(milestone);
-    if (world.level.publicPlaytest !== 'calibration' || this.value.complete) return { state: this.state, milestones };
+    if (world.publicPlaytestPhase !== 'calibration' || this.value.complete) return { state: this.state, milestones };
 
     const guard = world.enemies.find(e => e.kind === 'guard');
     if (guard && !guard.alive && !this.value.guardDefeated) {
@@ -147,12 +147,16 @@ export class CalibrationObserver {
       ? '盾衛已倒下。放開移動與行動，試試停下後時間變慢。'
       : this.value.phase === 'healing'
       ? '戰鬥結束，附近地上有一瓶治療藥水。走過去撿起後可從背包使用，或用補血快捷鍵。'
-      : '未知藥水與卷軸可透過使用或鑑定得知效果；這次可直接進入核心遭遇。';
+      : '前方的門已解鎖。走近開門，穿過去繼續探索；進門後不再保留 1 點生命。未知藥水可以留著，不必先試用。';
+    world.publicPlaytestGateCue = this.value.phase === 'combat' ? '先擊倒房內的盾衛'
+      : this.value.phase === 'slow' ? '放開移動與行動，試試停下後的慢動作'
+      : '走過去撿治療藥水，再從背包或補血快捷鍵使用';
     return { state: this.state, milestones };
   }
 
   private finish(world: World, emit: (type: CalibrationMilestoneType) => void): void {
     this.value.complete = true;
+    world.publicPlaytestDoorReady = true;
     this.value.phase = 'optional';
     // One real unknown consumable, displayed by the ordinary inventory.
     // No identification action, knowledge mutation or use is required to leave.

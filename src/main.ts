@@ -297,10 +297,6 @@ export class App {
       this.telemetry?.start();
       this.startPlaytest('calibration', true);
     });
-    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause']) click(id, () => {
-      if (this.controlledPlaytest && this.playtestStage === 'calibration' && this.calibration.state.complete
-        && (this.mode === 'inventory' || this.mode === 'paused')) this.startPlaytest('core', true);
-    });
     click('btn-playtest-feedback', () => this.submitPlaytestFeedback());
     click('btn-playtest-adventure', () => this.continueAdventure());
     click('btn-start', () => {
@@ -499,7 +495,7 @@ export class App {
       if (this.mode !== 'paused' && this.mode !== 'results') return;
       if (this.playtestStage === 'core' && this.playtestEnded) this.telemetry?.engagement('retry_core');
       this.telemetry?.retry();
-      if (!this.playtestEnded && !(this.playtestStage === 'calibration' && this.calibration.state.complete)) this.telemetry?.progression('fail', this.playtestStage);
+      if (!this.playtestEnded) this.telemetry?.progression('fail', this.playtestStage);
       this.startPlaytest(this.playtestStage, true);
     } else if (this.bossTestActive) this.startBossTest();
     else this.startRun(this.seed, this.practice);
@@ -667,7 +663,8 @@ export class App {
     $('boss-test-pause-loadout').textContent = `測試起始配裝（每次重打還原）：\n${this.bossTestInitialLoadout}`;
     if (this.controlledPlaytest) {
       $('pause-info').textContent = `${this.playtestStage === 'calibration' ? '操作校準' : '核心遭遇'} ${reason}`;
-      $('btn-restart').textContent = '重新試一次';
+      if (this.playtestStage === 'core') $('pause-info').textContent += ' · 重試以滿血與初始戰士配裝開始，不保留本次物品';
+      $('btn-restart').textContent = this.playtestStage === 'core' ? '滿血重試核心遭遇' : '重新試一次';
       $('btn-quit').textContent = '返回試玩入口';
     }
     if (this.extendedPlay) {
@@ -726,7 +723,7 @@ export class App {
       return;
     }
     if (this.playtestActive) {
-      if (this.world && !this.playtestEnded && !(this.playtestStage === 'calibration' && this.calibration.state.complete)) {
+      if (this.world && !this.playtestEnded) {
         this.telemetry?.event('voluntary_quit');
         this.telemetry?.progression('fail', this.playtestStage);
       }
@@ -1023,7 +1020,7 @@ export class App {
     if (stage === 'calibration') this.coreResult = null;
     this.playtestStage = stage;
     $('playtest-cue').textContent = '';
-    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note']) $(id).classList.add('hidden');
+    for (const id of ['playtest-unknown-note']) $(id).classList.add('hidden');
     this.cls = 'warrior';
     this.run = null;
     this.calibration = new CalibrationObserver();
@@ -1037,7 +1034,7 @@ export class App {
     $<HTMLSelectElement>('playtest-fun').value = '';
     $<HTMLSelectElement>('playtest-issue').value = '';
     $<HTMLButtonElement>('btn-playtest-feedback').disabled = false;
-    this.telemetry?.stage(stage);
+    this.telemetry?.stage(stage, stage === 'core' ? 'fresh_retry' : undefined);
     this.telemetry?.progression('start', stage);
     if (stage === 'core') this.telemetry?.event('core_start');
     this.startWorld(`PLAYTEST-${stage.toUpperCase()}`, true, gesture, () => createPublicPlaytestWorld(stage));
@@ -1048,18 +1045,33 @@ export class App {
     const state = this.calibration.state;
     const healing = this.touchMode ? '背包裡的「喝」' : '背包 I 裡的「喝」或 H';
     const wound = `練習以半血開始（${Math.ceil((this.world?.player.maxHp ?? 10) / 2)}/${this.world?.player.maxHp ?? 10}）；這裡受傷最低保留 1 生命。`;
-    const cue = state.phase === 'combat' ? `${wound}\n${state.cue}`
+    const door = this.touchMode ? '互動鍵' : 'E';
+    const cue = state.complete ? `${state.healingSkipped ? '治療藥水已用在別處，仍可繼續。' : '治療已完成。'}走到前方的門，按${door}開門後直接走進去。進門後不再保留 1 點生命。未知藥水可以留著。`
+      : state.phase === 'combat' ? `${wound}\n${state.cue}`
       : state.phase === 'healing' ? `受傷不會自動恢復。走過去撿治療藥水，再用${healing}補回生命。`
       : state.cue;
     // Keep the one-time safety notice stable, including for aria-live readers.
     if ($('playtest-cue').textContent !== cue) $('playtest-cue').textContent = cue;
-    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note'])
-      $(id).classList.toggle('hidden', !state.complete);
-    $('playtest-unknown-note').textContent = `${state.healingSkipped ? '治療藥水已用在別處，仍可繼續。' : '治療已完成。'}未知藥水與卷軸可透過使用或鑑定得知效果；不必試用，可以直接繼續。`;
+    $('playtest-unknown-note').classList.toggle('hidden', !state.complete);
+    $('playtest-unknown-note').textContent = `${state.healingSkipped ? '治療藥水已用在別處，仍可繼續。' : '治療已完成。'}未知藥水與卷軸可透過使用或鑑定得知效果；不必試用，關閉背包後到前方開門即可繼續。`;
   }
 
   private observePlaytest(w: World, input: FrameInput, events: ReturnType<World['drainEvents']>, before: ReturnType<CalibrationObserver['beforeFrame']> | null): void {
     if (!this.controlledPlaytest || this.playtestEnded) return;
+    if (this.playtestStage === 'calibration' && w.publicPlaytestPhase === 'core') {
+      this.telemetry?.progression('complete', 'calibration', w.publicPlaytestCoreStart!.realTime);
+      this.playtestStage = 'core';
+      this.calibration = new CalibrationObserver();
+      this.playtestAttacked = false;
+      this.playtestHurts = 0;
+      this.playtestLastActivity = w.realTime;
+      this.playtestHints.clear();
+      this.telemetry?.stage('core', 'walk');
+      this.telemetry?.progression('start', 'core');
+      this.telemetry?.event('core_start');
+      $('playtest-unknown-note').classList.add('hidden');
+      $('playtest-cue').textContent = '核心遭遇：清除兩名敵人。這裡受傷會正常扣至 0。';
+    }
     if (!this.playtestAttacked && events.some(e => e.type === 'swing' || e.type === 'fire')) {
       this.playtestAttacked = true;
       this.telemetry?.event('first_attack');
@@ -1075,12 +1087,6 @@ export class App {
       for (const milestone of update.milestones) this.telemetry?.event(milestoneNames[milestone.type]);
       if (this.playtestStage === 'calibration') {
         this.refreshPlaytestCue();
-        if (update.milestones.some(m => m.type === 'calibration_complete')) {
-          this.telemetry?.progression('complete', 'calibration', w.realTime);
-          // Ordinary bag exposes the optional unknown item, with an immediate
-          // continue button. No extra item action is a progression gate.
-          this.openInventory();
-        }
         return;
       }
     }
@@ -1088,7 +1094,7 @@ export class App {
       if (w.player.lastMoveDist > .002 || events.some(e => e.type === 'swing' || e.type === 'fire')) this.playtestLastActivity = w.realTime;
       this.playtestHurts += events.filter(e => e.type === 'playerHurt').length;
       const hint = this.playtestHurts >= 3 ? 'hint_repeated_damage'
-        : !this.playtestAttacked && w.realTime > 35 ? 'hint_no_attack'
+        : !this.playtestAttacked && this.playtestMetrics(w).realTime > 35 ? 'hint_no_attack'
         : w.realTime - this.playtestLastActivity > 22 ? 'hint_inactivity' : null;
       if (hint && !this.playtestHints.has(hint)) {
         this.playtestHints.add(hint);
@@ -1103,20 +1109,26 @@ export class App {
     }
   }
 
+  private playtestMetrics(w: World): { realTime: number; damage: number; kills: number } {
+    const start = w.publicPlaytestCoreStart;
+    return { realTime: w.realTime - (start?.realTime ?? 0),
+      damage: Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0) - (start?.damage ?? 0),
+      kills: w.stats.kills - (start?.kills ?? 0) };
+  }
+
   private showPlaytestResults(): void {
     const w = this.world!;
+    const metrics = this.playtestMetrics(w);
     if (!this.playtestEnded) {
       this.playtestEnded = true;
       if (this.playtestStage === 'core') this.coreResult = Object.freeze({
-        outcome: w.outcome === 'win' ? 'complete' : 'death', realTime: w.realTime,
-        damage: Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0),
-        kills: w.stats.kills, assisted: this.playtestHints.size > 0,
+        outcome: w.outcome === 'win' ? 'complete' : 'death', ...metrics, assisted: this.playtestHints.size > 0,
       });
       this.telemetry?.event(w.outcome === 'win' ? 'core_complete' : 'player_death');
-      this.telemetry?.progression(w.outcome === 'win' ? 'complete' : 'fail', this.playtestStage, w.realTime);
-      this.telemetry?.event('real_time', w.realTime);
-      this.telemetry?.event('damage', Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0));
-      this.telemetry?.event('kills', w.stats.kills);
+      this.telemetry?.progression(w.outcome === 'win' ? 'complete' : 'fail', this.playtestStage, metrics.realTime);
+      this.telemetry?.event('real_time', metrics.realTime);
+      this.telemetry?.event('damage', metrics.damage);
+      this.telemetry?.event('kills', metrics.kills);
     }
     this.releaseForUi();
     this.mode = 'results';
@@ -1124,11 +1136,11 @@ export class App {
     const result = this.playtestStage === 'core' ? this.coreResult : null;
     const won = result ? result.outcome === 'complete' : w.outcome === 'win';
     $('res-title').textContent = won ? '遭遇完成' : '你倒下了';
-    $('res-sub').textContent = this.playtestStage === 'core' ? '這一次，你怎麼決定下一步？' : '再試一次，看看停下腳步後會發生什麼。';
+    $('res-sub').textContent = this.playtestStage === 'core' ? '主測試已結束。重試會以滿血與初始戰士配裝開始，不保留本次物品。' : '再試一次，看看停下腳步後會發生什麼。';
     const damage = result?.damage ?? Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0);
     $('res-stats').innerHTML = [['結果', won ? '完成' : '死亡'], ['遊玩時間', `${(result?.realTime ?? w.realTime).toFixed(1)} 秒`], ['受到傷害', String(damage)], ['擊倒敵人', String(result?.kills ?? w.stats.kills)]]
       .map(([label, value]) => `<div><span>${label}</span><b>${value}</b></div>`).join('');
-    $('btn-retry').textContent = this.playtestStage === 'core' ? '再挑戰一次核心遭遇' : '再試一次';
+    $('btn-retry').textContent = this.playtestStage === 'core' ? '滿血重試核心遭遇' : '再試一次';
     $('btn-menu').textContent = '返回試玩入口';
     for (const id of ['btn-new', 'btn-swap', 'btn-boss-test-result-options']) $(id).classList.add('hidden');
     $('playtest-feedback').classList.remove('hidden');
@@ -1146,7 +1158,7 @@ export class App {
     document.body.classList.remove('public-playtest');
     document.body.classList.add('public-free-play');
     $('playtest-adventure-badge').classList.remove('hidden');
-    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note', 'playtest-cue', 'playtest-feedback', 'btn-playtest-adventure', 'playtest-complete-note']) $(id).classList.add('hidden');
+    for (const id of ['playtest-unknown-note', 'playtest-cue', 'playtest-feedback', 'btn-playtest-adventure', 'playtest-complete-note']) $(id).classList.add('hidden');
     this.startExtendedPlay(randomSeed());
   }
 

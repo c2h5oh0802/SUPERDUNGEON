@@ -322,10 +322,10 @@ export class Hud {
     const trialDone = trial && (trial.id === 'heart-warden' ? p.hasHeart : trial.id === 'cluster-bypass' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
     const trialGoal = trial?.id === 'heart-warden' && w.encounterState === 'resolved' && !p.hasHeart
       ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
-    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}`, () => {
+    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}|${w.publicPlaytestPhase}|${w.publicPlaytestDoorReady}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = controlText(w.level.publicPlaytest
-        ? (w.level.publicPlaytest === 'core' ? '核心遭遇：清除兩名敵人' : '開放練習：觀察時間與攻擊，擊倒盾衛')
+        ? (w.publicPlaytestPhase === 'core' ? '核心遭遇：清除兩名敵人' : w.publicPlaytestDoorReady ? '前方的門已解鎖：開門後走進去' : '開放練習：觀察時間與攻擊，擊倒盾衛')
         : trial
         ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
         : w.level.practice

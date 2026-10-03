@@ -35,7 +35,7 @@ npm run preview    # http://127.0.0.1:4173/ 預覽打包結果
 
 ## 玩法
 
-新增 [RemoteValidationV1 公開短篇試玩](docs/remote-validation-v1.md)：`?playtest=1` 直接進入短校準與固定戰士遭遇，正式存檔隔離；分析未設定時不傳送資料，死亡由玩家自行重試。
+新增 [RemoteValidationV1 公開短篇試玩](docs/remote-validation-v1.md)：`?playtest=1` 在同一層擊倒盾衛、撿藥補血後，開門直接走進固定戰士遭遇，正式存檔隔離；分析未設定時不傳送資料，死亡由玩家自行重試。
 
 新增 [手機瀏覽器橫向觸控](docs/mobile-controls.md)：左側搖桿、右側滑動視角與可拖曳瞄準的攻擊鍵，兩職業工具、背包／地圖／暫停與旋轉中斷保護。保留原本的行動承諾與時間規則；手機手感與效能仍待真機驗收。
 

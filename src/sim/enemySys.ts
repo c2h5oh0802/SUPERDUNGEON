@@ -23,7 +23,11 @@ function enemyFootsteps(w: World, e: Enemy, moved: number): void {
 
 export function createEnemy(w: World, s: EnemySpawn): Enemy {
   const spec = ENEMIES[s.kind];
-  const patrol = s.perched || s.boss ? [] : [...w.roamPoints, ...s.patrol].map((p) => ({ ...p }));
+  const connection = w.level.publicPlaytestConnection;
+  // Appending a tutorial room must not add a new patrol destination to Core.
+  const roam = connection ? w.roamPoints.filter(p =>
+    (p.z < connection.coreEntryZ) === (s.roomKey === connection.coreRoomKey)) : w.roamPoints;
+  const patrol = s.perched || s.boss ? [] : [...roam, ...s.patrol].map((p) => ({ ...p }));
   // 越深越硬；老兵再 ×1.5
   const hp = s.kind === 'warden' ? ENEMIES.warden.hp : Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
   return {
@@ -191,7 +195,7 @@ export interface DamageInfo {
 const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
-  if (!e.alive) return;
+  if (!e.alive || w.isDormantPublicEnemy(e)) return;
   if (e.boss) w.startEncounter();
   // A hit wakes a sleeper and cancels a not-yet-applied lull.
   e.pendingSleep = false;
@@ -288,7 +292,7 @@ function resumeWandering(e: Enemy): void {
 export function onNoise(w: World, x: number, y: number, z: number, radius: number, emitterId?: number, source = ''): void {
   const roomCells = combatRoomCells(w, x, z, radius, source);
   for (const e of w.enemies) {
-    if (!e.alive || e.state === 'alert' || e.id === emitterId) continue;
+    if (!e.alive || w.isDormantPublicEnemy(e) || e.state === 'alert' || e.id === emitterId) continue;
     const cell = Math.floor(e.z) * w.grid.w + Math.floor(e.x);
     if (roomCells.has(cell)) { investigate(w, e, { x, z }); continue; }
     const d = Math.hypot(e.x - x, e.z - z);
@@ -359,7 +363,7 @@ function findCorpses(w: World, e: Enemy): void {
 export function raiseAlarm(w: World): void {
   if (w.alarm) return;
   w.alarm = true;
-  for (const o of w.enemies) if (o.alive) o.awakened = true;
+  for (const o of w.enemies) if (o.alive && !w.isDormantPublicEnemy(o)) o.awakened = true;
   w.emit({ type: 'alarm' });
 }
 
@@ -1278,6 +1282,7 @@ export function lullEnemy(e: Enemy): void {
 
 export function updateEnemies(w: World, dt: number): void {
   for (const e of w.enemies) {
+    if (w.isDormantPublicEnemy(e)) continue;
     if (!e.alive) {
       e.deathT += dt;
       continue;

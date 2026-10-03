@@ -140,7 +140,7 @@ describe('public playtest telemetry configuration', () => {
 describe('post-validation engagement telemetry', () => {
   it('keeps the closed engagement vocabulary separate from factual validation events', () => {
     expect(PLAYTEST_ENGAGEMENT_NAMESPACE).toBe('playtest_engagement_v1');
-    expect(PLAYTEST_TELEMETRY_NAMESPACE).toBe('playtest_open_v2');
+    expect(PLAYTEST_TELEMETRY_NAMESPACE).toBe('playtest_connected_v3');
     expect(PLAYTEST_ENGAGEMENT_EVENT_NAMES).toEqual([
       'retry_core', 'continue_adventure', 'extended_play_start', 'extended_play_exit',
       'extended_play_real_time', 'extended_play_floor',
@@ -153,8 +153,8 @@ describe('post-validation engagement telemetry', () => {
 
   it.each([
     ['calibration', false, 'calibration', undefined],
-    ['core', false, 'core_unassisted', 'unassisted'],
-    ['core', true, 'core_assisted', 'assisted'],
+    ['core', false, 'core_fresh_retry_unassisted', 'fresh_retry_unassisted'],
+    ['core', true, 'core_fresh_retry_assisted', 'fresh_retry_assisted'],
   ] as const)('queues context-free engagement without changing %s assistance=%s', async (stage, assisted, context, assistance) => {
     const provider = mockProvider();
     const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
@@ -174,12 +174,46 @@ describe('post-validation engagement telemetry', () => {
       PLAYTEST_ENGAGEMENT_EVENT_NAMES.map(name => [`playtest_engagement_v1:${name}`, 2]),
     );
     expect(provider.sdk.addDesignEvent.mock.calls.slice(7, 10)).toEqual([
-      [`playtest_open_v2:real_time:${context}`, 12.5],
-      [`playtest_open_v2:feedback:fun:position:${context}`, undefined],
-      [`playtest_open_v2:feedback:issue:none:${context}`, undefined],
+      [`playtest_connected_v3:real_time:${context}`, 12.5],
+      [`playtest_connected_v3:feedback:fun:position:${context}`, undefined],
+      [`playtest_connected_v3:feedback:issue:none:${context}`, undefined],
     ]);
     expect(provider.sdk.addProgressionEvent.mock.calls).toEqual([
-      [2, 'playtest_open_v2', stage, assistance, 3],
+      [2, 'playtest_connected_v3', stage, assistance, 3],
+    ]);
+    telemetry.dispose();
+  });
+
+  it('snapshots walking entry separately from clean retries in queued events and progression', async () => {
+    const provider = mockProvider();
+    const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+    telemetry.stage('core', 'walk');
+    telemetry.progression('start', 'core');
+    telemetry.event('core_start');
+    telemetry.assistance(true);
+    telemetry.event('player_death');
+    telemetry.progression('fail', 'core', 12);
+    telemetry.retry();
+    telemetry.stage('core', 'fresh_retry');
+    telemetry.progression('start', 'core');
+    telemetry.event('core_start');
+    telemetry.event('core_complete');
+    telemetry.progression('complete', 'core', 5);
+    await flush(); provider.ready(); await flush();
+    expect(provider.sdk.addDesignEvent.mock.calls.map(([id]) => id)).toEqual([
+      'playtest_connected_v3:stage:core_walk_unassisted',
+      'playtest_connected_v3:core_start:core_walk_unassisted',
+      'playtest_connected_v3:player_death:core_walk_assisted',
+      'playtest_connected_v3:retry:core_walk_assisted',
+      'playtest_connected_v3:stage:core_fresh_retry_unassisted',
+      'playtest_connected_v3:core_start:core_fresh_retry_unassisted',
+      'playtest_connected_v3:core_complete:core_fresh_retry_unassisted',
+    ]);
+    expect(provider.sdk.addProgressionEvent.mock.calls).toEqual([
+      [1, 'playtest_connected_v3', 'core', 'walk_unassisted', undefined],
+      [3, 'playtest_connected_v3', 'core', 'walk_assisted', 12],
+      [1, 'playtest_connected_v3', 'core', 'fresh_retry_unassisted', undefined],
+      [2, 'playtest_connected_v3', 'core', 'fresh_retry_unassisted', 5],
     ]);
     telemetry.dispose();
   });
@@ -255,13 +289,13 @@ describe('optional provider lifecycle and safe event mapping', () => {
     await flush();
     expect(telemetry.status).toBe('ready');
     expect(provider.sdk.addDesignEvent.mock.calls).toEqual([
-      ['playtest_open_v2:landing', undefined], ['playtest_open_v2:start', undefined], ['playtest_open_v2:stage:calibration', undefined],
+      ['playtest_connected_v3:landing', undefined], ['playtest_connected_v3:start', undefined], ['playtest_connected_v3:stage:calibration', undefined],
     ]);
-    expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(1, 'playtest_open_v2', 'calibration', undefined, undefined);
+    expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(1, 'playtest_connected_v3', 'calibration', undefined, undefined);
     telemetry.progression('complete', 'calibration', 3);
     telemetry.progression('fail', 'core');
     expect(provider.sdk.addProgressionEvent.mock.calls.slice(-2)).toEqual([
-      [2, 'playtest_open_v2', 'calibration', undefined, 3], [3, 'playtest_open_v2', 'core', 'unassisted', undefined],
+      [2, 'playtest_connected_v3', 'calibration', undefined, 3], [3, 'playtest_connected_v3', 'core', 'fresh_retry_unassisted', undefined],
     ]);
     telemetry.dispose();
   });
@@ -278,8 +312,8 @@ describe('optional provider lifecycle and safe event mapping', () => {
     provider.ready();
     await flush();
     expect(provider.sdk.addDesignEvent).toHaveBeenCalledTimes(100);
-    expect(provider.sdk.addDesignEvent.mock.calls[0]).toEqual(['playtest_open_v2:landing', undefined]);
-    expect(provider.sdk.addDesignEvent.mock.calls[99]).toEqual(['playtest_open_v2:damage', 98]);
+    expect(provider.sdk.addDesignEvent.mock.calls[0]).toEqual(['playtest_connected_v3:landing', undefined]);
+    expect(provider.sdk.addDesignEvent.mock.calls[99]).toEqual(['playtest_connected_v3:damage', 98]);
     telemetry.dispose();
   });
 
@@ -304,8 +338,8 @@ describe('optional provider lifecycle and safe event mapping', () => {
     telemetry.feedback('none');
     telemetry.feedback(undefined, 'performance');
     expect(provider.sdk.addDesignEvent.mock.calls).toEqual([
-      ['playtest_open_v2:damage', 0], ['playtest_open_v2:real_time', 12.5],
-      ['playtest_open_v2:feedback:fun:none', undefined], ['playtest_open_v2:feedback:issue:performance', undefined],
+      ['playtest_connected_v3:damage', 0], ['playtest_connected_v3:real_time', 12.5],
+      ['playtest_connected_v3:feedback:fun:none', undefined], ['playtest_connected_v3:feedback:issue:performance', undefined],
     ]);
     expect(provider.sdk.addProgressionEvent).not.toHaveBeenCalled();
     telemetry.dispose();
@@ -326,7 +360,7 @@ describe('optional provider lifecycle and safe event mapping', () => {
     telemetry.visibility(true);
     telemetry.pagehide();
     expect(provider.sdk.addDesignEvent.mock.calls.map((call) => call[0])).toEqual([
-      'playtest_open_v2:blur', 'playtest_open_v2:pagehide_unknown', 'playtest_open_v2:blur', 'playtest_open_v2:pagehide_unknown',
+      'playtest_connected_v3:blur', 'playtest_connected_v3:pagehide_unknown', 'playtest_connected_v3:blur', 'playtest_connected_v3:pagehide_unknown',
     ]);
     expect(provider.sdk.addProgressionEvent).not.toHaveBeenCalled();
     telemetry.dispose();
@@ -343,9 +377,9 @@ describe('optional provider lifecycle and safe event mapping', () => {
     telemetry.event('calibration_complete');
     await flush();
     expect(provider.sdk.addDesignEvent.mock.calls.map((call) => call[0])).toEqual([
-      'playtest_open_v2:first_attack', 'playtest_open_v2:guard_defeated', 'playtest_open_v2:healing_used',
-      'playtest_open_v2:healing_skipped_resource_lost',
-      'playtest_open_v2:calibration_complete',
+      'playtest_connected_v3:first_attack', 'playtest_connected_v3:guard_defeated', 'playtest_connected_v3:healing_used',
+      'playtest_connected_v3:healing_skipped_resource_lost',
+      'playtest_connected_v3:calibration_complete',
     ]);
     telemetry.dispose();
   });
@@ -365,7 +399,7 @@ describe('optional provider lifecycle and safe event mapping', () => {
       telemetry.event(retired as PlaytestEventName);
     }
     expect(provider.sdk.addDesignEvent).not.toHaveBeenCalled();
-    expect(PLAYTEST_TELEMETRY_NAMESPACE).toBe('playtest_open_v2');
+    expect(PLAYTEST_TELEMETRY_NAMESPACE).toBe('playtest_connected_v3');
     telemetry.dispose();
   });
 
@@ -382,14 +416,14 @@ describe('optional provider lifecycle and safe event mapping', () => {
     }
     await flush();
     expect(provider.sdk.addDesignEvent.mock.calls.map(call => call[0])).toEqual([
-      'playtest_open_v2:stage:calibration', 'playtest_open_v2:first_move:calibration',
-      'playtest_open_v2:first_look:calibration', 'playtest_open_v2:first_attack:calibration',
-      'playtest_open_v2:slow_time_observed:calibration', 'playtest_open_v2:counter_observed:calibration',
-      'playtest_open_v2:deflect_observed:calibration', 'playtest_open_v2:hurt_observed:calibration',
-      'playtest_open_v2:stage:core_unassisted', 'playtest_open_v2:first_move:core_unassisted',
-      'playtest_open_v2:first_look:core_unassisted', 'playtest_open_v2:first_attack:core_unassisted',
-      'playtest_open_v2:slow_time_observed:core_unassisted', 'playtest_open_v2:counter_observed:core_unassisted',
-      'playtest_open_v2:deflect_observed:core_unassisted', 'playtest_open_v2:hurt_observed:core_unassisted',
+      'playtest_connected_v3:stage:calibration', 'playtest_connected_v3:first_move:calibration',
+      'playtest_connected_v3:first_look:calibration', 'playtest_connected_v3:first_attack:calibration',
+      'playtest_connected_v3:slow_time_observed:calibration', 'playtest_connected_v3:counter_observed:calibration',
+      'playtest_connected_v3:deflect_observed:calibration', 'playtest_connected_v3:hurt_observed:calibration',
+      'playtest_connected_v3:stage:core_fresh_retry_unassisted', 'playtest_connected_v3:first_move:core_fresh_retry_unassisted',
+      'playtest_connected_v3:first_look:core_fresh_retry_unassisted', 'playtest_connected_v3:first_attack:core_fresh_retry_unassisted',
+      'playtest_connected_v3:slow_time_observed:core_fresh_retry_unassisted', 'playtest_connected_v3:counter_observed:core_fresh_retry_unassisted',
+      'playtest_connected_v3:deflect_observed:core_fresh_retry_unassisted', 'playtest_connected_v3:hurt_observed:core_fresh_retry_unassisted',
     ]);
     telemetry.dispose();
   });
@@ -419,17 +453,17 @@ describe('optional provider lifecycle and safe event mapping', () => {
       provider.ready();
       await flush();
       const ids = provider.sdk.addDesignEvent.mock.calls.map(call => call[0]);
-      expect(ids).toContain(`playtest_open_v2:${outcome}:core_assisted`);
-      expect(ids).toContain(`playtest_open_v2:${outcome}:core_unassisted`);
-      expect(ids).toContain('playtest_open_v2:core_start:core_unassisted');
-      expect(ids).toContain('playtest_open_v2:feedback:fun:position:core_assisted');
-      expect(ids).toContain('playtest_open_v2:feedback:issue:none:core_assisted');
-      expect(ids).toContain('playtest_open_v2:retry:core_assisted');
+      expect(ids).toContain(`playtest_connected_v3:${outcome}:core_fresh_retry_assisted`);
+      expect(ids).toContain(`playtest_connected_v3:${outcome}:core_fresh_retry_unassisted`);
+      expect(ids).toContain('playtest_connected_v3:core_start:core_fresh_retry_unassisted');
+      expect(ids).toContain('playtest_connected_v3:feedback:fun:position:core_fresh_retry_assisted');
+      expect(ids).toContain('playtest_connected_v3:feedback:issue:none:core_fresh_retry_assisted');
+      expect(ids).toContain('playtest_connected_v3:retry:core_fresh_retry_assisted');
       expect(provider.sdk.addProgressionEvent.mock.calls).toEqual([
-        [1, 'playtest_open_v2', 'core', 'unassisted', undefined],
-        [terminal === 'complete' ? 2 : 3, 'playtest_open_v2', 'core', 'assisted', 12],
-        [1, 'playtest_open_v2', 'core', 'unassisted', undefined],
-        [terminal === 'complete' ? 2 : 3, 'playtest_open_v2', 'core', 'unassisted', 5],
+        [1, 'playtest_connected_v3', 'core', 'fresh_retry_unassisted', undefined],
+        [terminal === 'complete' ? 2 : 3, 'playtest_connected_v3', 'core', 'fresh_retry_assisted', 12],
+        [1, 'playtest_connected_v3', 'core', 'fresh_retry_unassisted', undefined],
+        [terminal === 'complete' ? 2 : 3, 'playtest_connected_v3', 'core', 'fresh_retry_unassisted', 5],
       ]);
       for (const id of ids) {
         expect(id.split(':').length).toBeLessThanOrEqual(5);
@@ -452,10 +486,10 @@ describe('optional provider lifecycle and safe event mapping', () => {
       telemetry.progression('fail', 'core');
       await flush();
       expect(provider.sdk.addDesignEvent.mock.calls.map(call => call[0])).toEqual([
-        'playtest_open_v2:stage:core_unassisted', `playtest_open_v2:${hint}:core_assisted`,
-        'playtest_open_v2:player_death:core_assisted',
+        'playtest_connected_v3:stage:core_fresh_retry_unassisted', `playtest_connected_v3:${hint}:core_fresh_retry_assisted`,
+        'playtest_connected_v3:player_death:core_fresh_retry_assisted',
       ]);
-      expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(3, 'playtest_open_v2', 'core', 'assisted', undefined);
+      expect(provider.sdk.addProgressionEvent).toHaveBeenCalledWith(3, 'playtest_connected_v3', 'core', 'fresh_retry_assisted', undefined);
       telemetry.dispose();
     },
   );
@@ -485,13 +519,13 @@ describe('optional provider lifecycle and safe event mapping', () => {
     await flush();
     const ids = provider.sdk.addDesignEvent.mock.calls.map((call) => call[0] as string);
     expect(ids).toEqual([
-      'playtest_open_v2:landing', 'playtest_open_v2:start', 'playtest_open_v2:stage:calibration',
-      'playtest_open_v2:first_attack:calibration', 'playtest_open_v2:calibration_complete:calibration',
-      'playtest_open_v2:retry:calibration', 'playtest_open_v2:stage:core_unassisted', 'playtest_open_v2:first_attack:core_unassisted',
-      'playtest_open_v2:core_complete:core_unassisted', 'playtest_open_v2:real_time:core_unassisted', 'playtest_open_v2:damage:core_unassisted',
-      'playtest_open_v2:kills:core_unassisted', 'playtest_open_v2:feedback:fun:position:core_unassisted',
-      'playtest_open_v2:feedback:issue:performance:core_unassisted', 'playtest_open_v2:retry:core_unassisted',
-      'playtest_open_v2:landing', 'playtest_open_v2:pagehide_unknown', 'playtest_open_v2:start',
+      'playtest_connected_v3:landing', 'playtest_connected_v3:start', 'playtest_connected_v3:stage:calibration',
+      'playtest_connected_v3:first_attack:calibration', 'playtest_connected_v3:calibration_complete:calibration',
+      'playtest_connected_v3:retry:calibration', 'playtest_connected_v3:stage:core_fresh_retry_unassisted', 'playtest_connected_v3:first_attack:core_fresh_retry_unassisted',
+      'playtest_connected_v3:core_complete:core_fresh_retry_unassisted', 'playtest_connected_v3:real_time:core_fresh_retry_unassisted', 'playtest_connected_v3:damage:core_fresh_retry_unassisted',
+      'playtest_connected_v3:kills:core_fresh_retry_unassisted', 'playtest_connected_v3:feedback:fun:position:core_fresh_retry_unassisted',
+      'playtest_connected_v3:feedback:issue:performance:core_fresh_retry_unassisted', 'playtest_connected_v3:retry:core_fresh_retry_unassisted',
+      'playtest_connected_v3:landing', 'playtest_connected_v3:pagehide_unknown', 'playtest_connected_v3:start',
     ]);
     for (const id of ids) {
       expect(id.split(':').length).toBeLessThanOrEqual(5);

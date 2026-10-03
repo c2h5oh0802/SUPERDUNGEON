@@ -76,6 +76,37 @@ export interface ClassCue {
 }
 
 export class World {
+  /** Irreversible threshold state, independent of position or the map's tag. */
+  publicPlaytestDoorReady = false;
+  publicPlaytestGateCue = '先擊倒房內的盾衛';
+  publicPlaytestCoreStart: Readonly<{ realTime: number; damage: number; kills: number }> | null = null;
+
+  get publicPlaytestPhase(): LevelData['publicPlaytest'] {
+    return this.publicPlaytestCoreStart ? 'core' : this.level.publicPlaytest;
+  }
+
+  publicPlaytestDoorHint(doorId: number): string | null {
+    return this.level.publicPlaytestConnection?.doorId === doorId
+      && this.publicPlaytestPhase === 'calibration' && !this.publicPlaytestDoorReady
+      ? this.publicPlaytestGateCue : null;
+  }
+
+  isDormantPublicEnemy(enemy: Enemy): boolean {
+    return this.publicPlaytestPhase === 'calibration'
+      && enemy.roomKey === this.level.publicPlaytestConnection?.coreRoomKey;
+  }
+
+  private enterPublicCore(): void {
+    const connection = this.level.publicPlaytestConnection;
+    if (!connection || this.publicPlaytestPhase !== 'calibration' || !this.publicPlaytestDoorReady
+      || this.grid.doors[connection.doorId]!.progress < .999
+      || this.player.z > connection.coreEntryZ) return;
+    this.publicPlaytestCoreStart = Object.freeze({ realTime: this.realTime,
+      damage: Object.values(this.stats.damageTaken).reduce((a, b) => a + b, 0), kills: this.stats.kills });
+    // Tutorial noises/corpses must not pre-alert the untouched encounter.
+    this.alarm = false;
+  }
+
   /** Camera geometry only; not persistent run state. */
   viewFov: number = RENDER.fov;
   viewAspect = 16 / 9;
@@ -326,6 +357,8 @@ export class World {
     p.sneaking = input.sneak && !p.dead;
     const dist = movePlayer(this, input, realDt);
     p.lastMoveDist = dist;
+    // End protection before this frame's projectiles/enemy attacks can resolve.
+    this.enterPublicCore();
     updatePickups(this);
     this.footsteps(dist);
     const worldDt = computeWorldDt({
@@ -443,7 +476,7 @@ export class World {
     // PublicCalibration is a disposable scenario rule, never a player/carry flag.
     // Apply it at the HP/death boundary so every damage source keeps normal hit
     // feedback, including another hit at 1 HP, without entering death first.
-    const publicCalibration = this.level.publicPlaytest === 'calibration';
+    const publicCalibration = this.publicPlaytestPhase === 'calibration';
     const hpFloor = publicCalibration ? 1 : 0;
     const actualAmount = Math.min(attemptedAmount, Math.max(0, p.hp - hpFloor));
     p.hp -= publicCalibration ? actualAmount : attemptedAmount;

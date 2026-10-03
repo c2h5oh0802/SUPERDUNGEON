@@ -21,7 +21,7 @@ export const PLAYTEST_EVENT_NAMES = [
   'blur', 'pagehide_unknown', 'real_time', 'damage', 'kills',
 ] as const;
 /** Separate these factual observations from historical v1 choreography data. */
-export const PLAYTEST_TELEMETRY_NAMESPACE = 'playtest_open_v2' as const;
+export const PLAYTEST_TELEMETRY_NAMESPACE = 'playtest_connected_v3' as const;
 export type PlaytestEventName = typeof PLAYTEST_EVENT_NAMES[number];
 /** Post-validation choices and free play are engagement, not validation outcomes. */
 export const PLAYTEST_ENGAGEMENT_EVENT_NAMES = [
@@ -31,6 +31,7 @@ export const PLAYTEST_ENGAGEMENT_EVENT_NAMES = [
 export const PLAYTEST_ENGAGEMENT_NAMESPACE = 'playtest_engagement_v1' as const;
 export type PlaytestEngagementEventName = typeof PLAYTEST_ENGAGEMENT_EVENT_NAMES[number];
 export type PlaytestStage = 'calibration' | 'core';
+export type PlaytestCoreEntry = 'walk' | 'fresh_retry';
 export type PlaytestSource = 'x' | 'reddit' | 'discord' | 'direct' | 'unknown';
 export type PlaytestDevice = 'desktop' | 'touch';
 export type PlaytestFun = 'slow_time' | 'dodge_counter' | 'position' | 'none';
@@ -94,7 +95,7 @@ export interface PlaytestTelemetry {
   landing(): void;
   start(): void;
   /** Enter a fresh stage/attempt. Every new core attempt starts unassisted. */
-  stage(stage: PlaytestStage): void;
+  stage(stage: PlaytestStage, entry?: PlaytestCoreEntry): void;
   /** Mark a displayed core hint. False cannot undo assistance in this attempt. */
   assistance(assisted: boolean): void;
   progression(status: keyof typeof PROGRESSION, stage: PlaytestStage, score?: number): void;
@@ -111,7 +112,7 @@ export interface PlaytestTelemetry {
 type PendingEvent =
   | { kind: 'design'; id: string; value?: number }
   | { kind: 'progression'; status: 1 | 2 | 3; stage: PlaytestStage;
-      assistance?: 'assisted' | 'unassisted'; score?: number };
+      assistance?: `${PlaytestCoreEntry}_${'assisted' | 'unassisted'}`; score?: number };
 
 async function loadGameAnalytics(): Promise<PlaytestAnalyticsProvider> {
   // Dynamic import is reached only after explicit enablement AND valid keys.
@@ -153,6 +154,7 @@ export function createPlaytestTelemetry(
   const pending: PendingEvent[] = [];
   let currentStage: PlaytestStage | undefined;
   let coreAssisted = false;
+  let coreEntry: PlaytestCoreEntry = 'fresh_retry';
   let lastHidden = false;
   let hiddenPageReported = false;
 
@@ -243,7 +245,7 @@ export function createPlaytestTelemetry(
     // Capture the closed stage now, not when an early-event queue is flushed.
     // Combine core stage and assistance in one closed token: even feedback must
     // fit the SDK's maximum of five colon-separated design-event segments.
-    const context = currentStage === 'core' ? `core_${coreAssisted ? 'assisted' : 'unassisted'}` : currentStage;
+    const context = currentStage === 'core' ? `core_${coreEntry}_${coreAssisted ? 'assisted' : 'unassisted'}` : currentStage;
     return context ? `${id}:${context}` : id;
   }
 
@@ -252,8 +254,9 @@ export function createPlaytestTelemetry(
     get status() { return state; },
     landing: () => event('landing'),
     start: () => event('start'),
-    stage(stage) {
+    stage(stage, entry = 'fresh_retry') {
       if (!validStage(stage)) return;
+      coreEntry = entry === 'walk' ? 'walk' : 'fresh_retry';
       currentStage = stage;
       coreAssisted = false;
       enqueue({ kind: 'design', id: contextualId(`${PLAYTEST_TELEMETRY_NAMESPACE}:stage`) });
@@ -264,7 +267,7 @@ export function createPlaytestTelemetry(
     progression(status, stage, score) {
       if (Object.hasOwn(PROGRESSION, status) && validStage(stage) && validNumber(score)) {
         enqueue({ kind: 'progression', status: PROGRESSION[status], stage,
-          assistance: stage === 'core' ? (coreAssisted ? 'assisted' : 'unassisted') : undefined, score });
+          assistance: stage === 'core' ? `${coreEntry}_${coreAssisted ? 'assisted' : 'unassisted'}` : undefined, score });
       }
     },
     event,
