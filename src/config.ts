@@ -11,6 +11,9 @@ export const TIME = {
   maxSubstep: 1 / 120,
 } as const;
 
+/** Shared by the corpse pose and the public victory presentation delay. */
+export const ENEMY_DEATH_FALL_TIME = 0.6;
+
 /** Food Economy v2 provisional calibration: measured four-floor route/combat costs, not a fun verdict. */
 export const HUNGER = {
   /** Net elapsed world seconds. Thinking at idleRate consumes only that actual world time. */

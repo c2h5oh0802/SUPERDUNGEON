@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ENEMY_DEATH_FALL_TIME } from '../src/config';
+import { damageEnemy } from '../src/sim/enemySys';
 import { angleDiff, yawFromDir } from '../src/core/math';
 import type { InputHandlers, RawFrame } from '../src/input/input';
 import { createPublicPlaytestWorld, type PlaytestStage } from '../src/playtest/scenario';
@@ -566,6 +568,75 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     h.world().realTime = 22.1; h.frame();
     expect(eventCount('hint_inactivity')).toBe(2);
     expect(captured.telemetry.engagement).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('shows the fall plus 1.5 seconds before victory Results, sealing once at the kill (touch=%s)', async touch => {
+    const h = await setup('?playtest=1', touch); await start(h); await completeCalibration(h);
+    const w = h.world();
+    for (const e of w.enemies) if (e.alive) damageEnemy(w, e, 999, { source: 'melee', sneak: false, head: false, x: e.x, y: 1, z: e.z });
+    h.frame();
+    const archer = w.enemies.find(e => e.kind === 'archer')!;
+    const metrics = structuredClone(w.stats), clearTime = w.realTime;
+    expect(w.outcome).toBe('win');
+    expect(eventCount('core_complete')).toBe(1);
+    expect(eventCount('real_time')).toBe(1);
+    expect(captured.telemetry.event).toHaveBeenCalledWith('real_time', clearTime - w.publicPlaytestCoreStart!.realTime);
+    expect(h.shown('screen-results')).toBe(false);
+    // The old 0.8s timer would already have opened Results here.
+    for (let f = 0; f < 60; f++) h.frame();
+    expect(archer.deathT).toBeGreaterThan(ENEMY_DEATH_FALL_TIME);
+    expect(h.shown('screen-results')).toBe(false);
+    const yaw = w.player.yaw;
+    h.frame({ lookDX: 10, fire: true, moveZ: 1 });
+    expect(w.player.yaw).not.toBe(yaw);
+    for (let f = 0; f < 63; f++) h.frame(); // 2.067s after clear, still showing the battlefield.
+    expect(h.shown('screen-results')).toBe(false);
+    for (let f = 0; f < 4; f++) h.frame();
+    expect(h.shown('screen-results')).toBe(true);
+    expect(h.node('res-title').textContent).toBe('遭遇完成');
+    const corpseTime = archer.deathT;
+    for (let f = 0; f < 180; f++) h.frame();
+    expect(archer.deathT).toBe(corpseTime);
+    expect(w.realTime).toBe(clearTime); expect(w.stats).toEqual(metrics);
+    expect(eventCount('core_complete')).toBe(1); expect(eventCount('player_death')).toBe(0);
+    expect(eventCount('real_time')).toBe(1);
+    expect(h.shown('btn-playtest-adventure')).toBe(true);
+    expectNoCampaignStorage(h);
+  });
+
+  it.each(['retry', 'quit'] as const)('cancels an interrupted victory presentation on %s without stale Results or abandonment', async action => {
+    const h = await setup(); await start(h); await completeCalibration(h);
+    for (const e of h.world().enemies) e.alive = false;
+    h.frame();
+    const old = h.world();
+    for (let f = 0; f < 30; f++) h.frame();
+    h.frame({ escape: true });
+    const deathT = old.enemies[0]!.deathT;
+    for (let f = 0; f < 200; f++) h.frame({}, 10);
+    expect(old.enemies[0]!.deathT).toBe(deathT);
+    expect(h.shown('screen-pause')).toBe(true);
+    expect(h.shown('screen-results')).toBe(false);
+    h.node(action === 'retry' ? 'btn-restart' : 'btn-quit').click();
+    if (action === 'quit') h.node('btn-playtest-start').click();
+    await tickLoad();
+    const next = h.world();
+    expect(next).not.toBe(old);
+    for (const e of next.enemies) e.paralyzeT = 999;
+    for (let f = 0; f < 180; f++) h.frame();
+    expect(h.shown('screen-results')).toBe(false);
+    expect(next.outcome).toBe('none');
+    expect(eventCount('core_complete')).toBe(1);
+    expect(eventCount('voluntary_quit')).toBe(0);
+    if (action === 'retry') {
+      for (const e of next.enemies) e.alive = false;
+      h.frame();
+      for (let f = 0; f < 120; f++) h.frame();
+      expect(h.shown('screen-results')).toBe(false);
+      for (let f = 0; f < 10; f++) h.frame();
+      expect(h.shown('screen-results')).toBe(true);
+      expect(eventCount('core_complete')).toBe(2);
+    }
+    expectNoCampaignStorage(h);
   });
 
   it('logs core completion once and does not turn a finished result into abandonment', async () => {

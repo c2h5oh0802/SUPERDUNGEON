@@ -264,6 +264,33 @@ describe('pointer lock across real App restart/resume input events', () => {
     expect(h.world().player.action).toBeNull();
   });
 
+  it('pauses victory fall and Results countdown on real visibility events, retaining pointer lock on resume', async () => {
+    const h = await setup(); await start(h);
+    const w = h.world();
+    // Isolate terminal presentation from the separately tested native doorway route.
+    w.publicPlaytestCoreStart = Object.freeze({ realTime: w.realTime, damage: 0, kills: 0 });
+    for (const e of w.enemies) e.alive = false;
+    h.frame();
+    for (let f = 0; f < 12; f++) h.frame();
+    expectLocked(h);
+    const corpseTime = w.enemies[0]!.deathT;
+    h.doc.visibilityState = 'hidden'; h.doc.dispatchEvent(new Event('visibilitychange'));
+    expect(h.shown('screen-pause')).toBe(true);
+    expect(h.doc.pointerLockElement).toBeNull();
+    for (let f = 0; f < 100; f++) h.frame(30);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(w.enemies[0]!.deathT).toBe(corpseTime);
+    expect(h.shown('screen-results')).toBe(false);
+    h.doc.visibilityState = 'visible'; h.doc.dispatchEvent(new Event('visibilitychange'));
+    h.click('btn-resume'); await load();
+    expectLocked(h);
+    for (let f = 0; f < 90; f++) h.frame();
+    expect(h.shown('screen-results')).toBe(false);
+    for (let f = 0; f < 30; f++) h.frame();
+    expect(h.shown('screen-results')).toBe(true);
+    expect(h.doc.pointerLockElement).toBeNull();
+  });
+
   it('rechecks browser ownership when the cached locked flag is stale at Resume', async () => {
     const h = await setup();
     await start(h);

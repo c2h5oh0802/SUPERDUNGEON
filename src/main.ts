@@ -3,7 +3,7 @@ import { CalibrationObserver, type CalibrationMilestoneType } from './playtest/c
 import { createPublicPlaytestWorld, type PlaytestStage } from './playtest/scenario';
 import { createBrowserPlaytestTelemetry, normalizePlaytestSource, type PlaytestTelemetry, type PlaytestEventName, type PlaytestFun, type PlaytestIssue } from './playtest/telemetry';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
+import { ALL_CLASSES, ENEMY_DEATH_FALL_TIME, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
 import { focusChoice, focusInventory, renderIdentifyChoice, renderInventory } from './ui/inventory';
 import { canPresentChoice, identifyChoiceDescription } from './ui/inventoryPresentation';
@@ -29,6 +29,9 @@ import { FullscreenControls } from './ui/fullscreen';
 import { gameViewport } from './ui/viewport';
 
 type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results';
+
+// Finish the native fall, then leave the fallen battlefield visible for 1.5s.
+const PUBLIC_CORE_VICTORY_DELAY = ENEMY_DEATH_FALL_TIME + 1.5;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -974,8 +977,14 @@ export class App {
         }
         if (canPresentChoice(w)) this.openChoice();
         if (w.outcome !== 'none') {
-          this.outcomeT += realDt;
-          const delay = w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
+          const coreVictory = this.controlledPlaytest && this.playtestStage === 'core' && w.outcome === 'win';
+          if (coreVictory && !this.playtestEnded) {
+            // Seal completion at the killing frame, before any presentation wait.
+            this.sealPlaytestResult(w);
+            this.outcomeT = 0;
+          } else this.outcomeT += realDt;
+          const delay = coreVictory ? PUBLIC_CORE_VICTORY_DELAY
+            : w.outcome === 'win' ? 0.8 : w.outcome === 'descend' ? 0.5 : 1.6;
           if (this.outcomeT >= delay) {
             if (this.practice && !this.bossTestActive && !this.playtestActive && w.outcome === 'dead') this.startRun(this.seed, true, false);
             else if (w.outcome === 'descend' && this.run) this.startFloor(nextFloor(this.run, w), false);
@@ -1017,7 +1026,7 @@ export class App {
   }
 
   private startPlaytest(stage: PlaytestStage, gesture: boolean): void {
-    if (stage === 'calibration') this.coreResult = null;
+    this.coreResult = null;
     this.playtestStage = stage;
     $('playtest-cue').textContent = '';
     for (const id of ['playtest-unknown-note']) $(id).classList.add('hidden');
@@ -1116,8 +1125,7 @@ export class App {
       kills: w.stats.kills - (start?.kills ?? 0) };
   }
 
-  private showPlaytestResults(): void {
-    const w = this.world!;
+  private sealPlaytestResult(w: World): void {
     const metrics = this.playtestMetrics(w);
     if (!this.playtestEnded) {
       this.playtestEnded = true;
@@ -1130,6 +1138,11 @@ export class App {
       this.telemetry?.event('damage', metrics.damage);
       this.telemetry?.event('kills', metrics.kills);
     }
+  }
+
+  private showPlaytestResults(): void {
+    const w = this.world!;
+    this.sealPlaytestResult(w);
     this.releaseForUi();
     this.mode = 'results';
     this.hud.show(false);

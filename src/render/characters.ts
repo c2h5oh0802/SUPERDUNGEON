@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ENEMIES } from '../config';
+import { ENEMIES, ENEMY_DEATH_FALL_TIME } from '../config';
 import { clamp, lerp, smoothstep } from '../core/math';
 import type { Enemy } from '../sim/types';
 import { wardenBraced, wardenCrownClosed, wardenLockBefore, wardenWindup } from '../sim/enemySys';
@@ -660,12 +660,12 @@ export class EnemyVisual {
     }
     if (!e.alive) {
       // 死亡：向後倒下（世界時間）
-      const k = smoothstep(0, 0.6, e.deathT);
+      const k = smoothstep(0, ENEMY_DEATH_FALL_TIME, e.deathT);
       this.body.rotation.x = 1.45 * k;
       this.body.position.y = -0.05 * k;
       this.body.position.z = 0.35 * k;
       this.eyes.visible = false;
-      this.rig.uDim.value = lerp(1, 0.45, smoothstep(0.6, 3, e.deathT));
+      this.rig.uDim.value = lerp(1, 0.45, smoothstep(ENEMY_DEATH_FALL_TIME, 3, e.deathT));
       this.rig.uTintAmt.value = 0;
       u.uGlowAmt!.value = 0;
       this.rig.uFlash.value = Math.max(0, 0.6 - e.deathT * 3);

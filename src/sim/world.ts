@@ -345,6 +345,14 @@ export class World {
     this.lastRealDt = realDt;
     if (this.outcome !== 'none' || this.pendingChoice !== null) {
       this.lastWorldDt = 0;
+      if (this.publicPlaytestPhase === 'core' && this.outcome === 'win') {
+        // Presentation only after the sealed clear: finish the fall at real-time
+        // speed, even when idle. Never tick combat, projectiles or run metrics.
+        for (const enemy of this.enemies) if (!enemy.alive) enemy.deathT += realDt;
+        this.player.yaw = input.yaw;
+        this.player.pitch = input.pitch;
+        this.player.lastMoveDist = 0;
+      }
       return 0;
     }
     this.realTime += realDt;
