@@ -23,6 +23,13 @@ export const PLAYTEST_EVENT_NAMES = [
 /** Separate these factual observations from historical v1 choreography data. */
 export const PLAYTEST_TELEMETRY_NAMESPACE = 'playtest_open_v2' as const;
 export type PlaytestEventName = typeof PLAYTEST_EVENT_NAMES[number];
+/** Post-validation choices and free play are engagement, not validation outcomes. */
+export const PLAYTEST_ENGAGEMENT_EVENT_NAMES = [
+  'retry_core', 'continue_adventure', 'extended_play_start', 'extended_play_exit',
+  'extended_play_real_time', 'extended_play_floor',
+] as const;
+export const PLAYTEST_ENGAGEMENT_NAMESPACE = 'playtest_engagement_v1' as const;
+export type PlaytestEngagementEventName = typeof PLAYTEST_ENGAGEMENT_EVENT_NAMES[number];
 export type PlaytestStage = 'calibration' | 'core';
 export type PlaytestSource = 'x' | 'reddit' | 'discord' | 'direct' | 'unknown';
 export type PlaytestDevice = 'desktop' | 'touch';
@@ -35,6 +42,7 @@ const DEVICES: PlaytestDevice[] = ['desktop', 'touch'];
 const FUN: PlaytestFun[] = ['slow_time', 'dodge_counter', 'position', 'none'];
 const ISSUES: PlaytestIssue[] = ['unclear', 'controls', 'hard', 'easy', 'slow', 'performance', 'none'];
 const EVENT_NAMES = new Set<string>(PLAYTEST_EVENT_NAMES);
+const ENGAGEMENT_EVENT_NAMES = new Set<string>(PLAYTEST_ENGAGEMENT_EVENT_NAMES);
 const COHORT = 'playtest_v1';
 const MAX_PENDING_EVENTS = 100;
 const READY_TIMEOUT_MS = 10_000;
@@ -91,6 +99,8 @@ export interface PlaytestTelemetry {
   assistance(assisted: boolean): void;
   progression(status: keyof typeof PROGRESSION, stage: PlaytestStage, score?: number): void;
   event(name: PlaytestEventName, value?: number): void;
+  /** Separate from validation: never reads or changes stage/assistance context. */
+  engagement(name: PlaytestEngagementEventName, value?: number): void;
   retry(): void;
   feedback(fun?: PlaytestFun, issue?: PlaytestIssue): void;
   visibility(hidden: boolean): void;
@@ -258,6 +268,10 @@ export function createPlaytestTelemetry(
       }
     },
     event,
+    engagement(name, value) {
+      if (!ENGAGEMENT_EVENT_NAMES.has(name) || !validNumber(value)) return;
+      enqueue({ kind: 'design', id: `${PLAYTEST_ENGAGEMENT_NAMESPACE}:${name}`, value });
+    },
     retry: () => event('retry'),
     feedback(fun, issue) {
       if (fun !== undefined && FUN.includes(fun)) enqueue({ kind: 'design', id: contextualId(`${PLAYTEST_TELEMETRY_NAMESPACE}:feedback:fun:${fun}`) });

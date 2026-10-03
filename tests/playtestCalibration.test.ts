@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLASSES, ENEMIES, HEALING_POTION, PLAYER, WEAPONS } from '../src/config';
-import { yawFromDir } from '../src/core/math';
+import { forwardFromYaw, yawFromDir } from '../src/core/math';
 import { CalibrationObserver, type CalibrationMilestone } from '../src/playtest/calibration';
 import { createPublicPlaytestWorld, PUBLIC_BUILD_ID } from '../src/playtest/scenario';
 import { isKnown, queueUse } from '../src/sim/items';
@@ -29,11 +29,26 @@ function killGuard(d: ReturnType<typeof driver>) {
   }
   expect(d.world.enemies[0]!.alive).toBe(false);
 }
+function supplyHealing(d: ReturnType<typeof driver>, yaw = d.world.player.yaw) {
+  for (let f = 0; f < 180 && !d.world.pickups.some(p => p.item === 'potion:healing'); f++) d.frame({ yaw });
+  expect(d.observer.state.phase).toBe('healing');
+  const pickup = d.world.pickups.find(p => p.item === 'potion:healing');
+  expect(pickup).toBeDefined();
+  return pickup!;
+}
+function walkToHealing(d: ReturnType<typeof driver>) {
+  const pickup = d.world.pickups.find(p => p.item === 'potion:healing' && !p.taken)!;
+  for (let f = 0; f < 180 && !pickup.taken; f++) {
+    const p = d.world.player;
+    d.frame({ yaw: yawFromDir(pickup.x - p.x, pickup.z - p.z), moveZ: 1 });
+  }
+  expect(pickup.taken).toBe(true);
+  expect(d.world.player.items).toEqual([{ id: 'potion:healing', count: 1, level: 0 }]);
+}
 function recovery(d: ReturnType<typeof driver>) {
   killGuard(d);
-  for (let f = 0; f < 180 && !d.world.player.items.some(i => i.id === 'potion:healing'); f++) d.frame();
-  expect(d.observer.state.phase).toBe('healing');
-  expect(d.world.player.items).toEqual([{ id: 'potion:healing', count: 1, level: 0 }]);
+  supplyHealing(d);
+  walkToHealing(d);
 }
 function finishDrink(d: ReturnType<typeof driver>) {
   for (let f = 0; f < 180 && !d.observer.state.complete; f++) d.frame();
@@ -69,6 +84,14 @@ describe('open public calibration fixtures', () => {
 });
 
 describe('public core ordinary-input reachability', () => {
+  it('does not clear through stationary spam or a straight held-attack rush from its sheltered start', () => {
+    for (const moveZ of [0, 1]) {
+      const w = createPublicPlaytestWorld('core');
+      for (let f = 0; f < 60 * 20 && !w.player.dead; f++)
+        w.frame(DT, { ...emptyInput(w.player.yaw), moveZ, fire: true, firePressed: f === 0 });
+      expect(w.enemies.some(e => e.alive)).toBe(true);
+    }
+  });
   it('can clear both original shield-crossfire enemies with the native warrior sword', () => {
     // State-informed deterministic bot, not evidence of human usability or fun.
     // The only mutations are World.frame with ordinary movement/look/attack input.
@@ -76,6 +99,7 @@ describe('public core ordinary-input reachability', () => {
     const nav = new Nav(w.grid, PLAYER.radius);
     const hitSources: string[] = [];
     const defeated: string[] = [];
+    const windups: string[] = [];
     for (let f = 0; f < 60 * 60 && !w.player.dead && w.enemies.some(e => e.alive); f++) {
       const p = w.player;
       const target = w.enemies.filter(e => e.alive).sort((a, b) =>
@@ -94,13 +118,14 @@ describe('public core ordinary-input reachability', () => {
       if (!p.action && gap <= 2.3) { input.fire = true; input.firePressed = true; }
       w.frame(DT, input);
       for (const event of w.drainEvents()) {
+        if (event.type === 'enemyWindup') windups.push(event.kind ?? 'unknown');
         if (event.type === 'hitEnemy') hitSources.push(event.source ?? 'unknown');
         if (event.type === 'enemyDeath') defeated.push(event.kind ?? 'unknown');
       }
     }
     const metrics = { realSeconds: Number(w.realTime.toFixed(3)), worldSeconds: Number(w.time.toFixed(3)),
       damage: Object.values(w.stats.damageTaken).reduce((total, amount) => total + amount, 0),
-      hp: w.player.hp, kills: w.stats.kills, defeated, hitSources,
+      hp: w.player.hp, kills: w.stats.kills, defeated, hitSources, windups,
       position: [Number(w.player.x.toFixed(2)), Number(w.player.z.toFixed(2))] };
     console.info('RemoteValidationV1 core state-informed bot:', JSON.stringify(metrics));
     expect(w.player.dead, JSON.stringify(metrics)).toBe(false);
@@ -138,6 +163,52 @@ describe('factual open calibration and formal healing', () => {
     d.observer.observeFrame(d.world, emptyInput(), before, []);
     expect(d.observer.state.slowObserved).toBe(false);
   });
+  it.each([
+    { name: 'center', x: 7, z: 8, gx: 7, gz: 6.5, yaw: 0 },
+    { name: 'north wall facing out', x: 7, z: 1.35, gx: 7, gz: 2.85, yaw: 0 },
+    { name: 'south wall facing out', x: 7, z: 13.65, gx: 7, gz: 12.15, yaw: Math.PI },
+    { name: 'west wall facing out', x: 1.35, z: 7, gx: 2.85, gz: 7, yaw: Math.PI / 2 },
+    { name: 'east wall facing out', x: 12.65, z: 7, gx: 11.15, gz: 7, yaw: -Math.PI / 2 },
+    { name: 'northwest corner facing out', x: 1.35, z: 1.35, gx: 2.45, gz: 2.45, yaw: Math.PI / 4 },
+    { name: 'northeast corner facing out', x: 12.65, z: 1.35, gx: 11.55, gz: 2.45, yaw: -Math.PI / 4 },
+    { name: 'southwest corner facing out', x: 1.35, z: 13.65, gx: 2.45, gz: 12.55, yaw: 3 * Math.PI / 4 },
+    { name: 'southeast corner facing out', x: 12.65, z: 13.65, gx: 11.55, gz: 12.55, yaw: -3 * Math.PI / 4 },
+  ])('requires walking to a visible, reachable healing pickup after a guard kill at $name', position => {
+    const d = driver();
+    // Only fixture placement varies; the guard is defeated with ordinary attack
+    // input, and both waiting and acquisition run the real World.frame pipeline.
+    Object.assign(d.world.player, { x: position.x, z: position.z });
+    Object.assign(d.world.enemies[0]!, { x: position.gx, z: position.gz });
+    killGuard(d);
+    const pickup = supplyHealing(d, position.yaw), p = d.world.player;
+    expect(p.dead).toBe(false);
+    // Native enemy contact may nudge the player slightly during the fight.
+    expect(Math.hypot(p.x - position.x, p.z - position.z)).toBeLessThan(.2);
+    const start = { x: p.x, z: p.z };
+    expect(Math.hypot(pickup.x - p.x, pickup.z - p.z)).toBeCloseTo(PLAYER.pickupRadius + 1.5);
+    expect(d.world.grid.circleBlocked(pickup.x, pickup.z, PLAYER.radius)).toBe(false);
+    expect(d.world.grid.lineOfSight({ x: p.x, y: PLAYER.eyeHeight, z: p.z }, pickup)).toBe(true);
+    for (let step = 0; step <= 30; step++) {
+      const t = step / 30;
+      expect(d.world.grid.circleBlocked(p.x + (pickup.x - p.x) * t, p.z + (pickup.z - p.z) * t, PLAYER.radius)).toBe(false);
+    }
+    for (let f = 0; f < 180; f++) d.frame();
+    expect(d.world.player.items).toEqual([]);
+    expect(pickup.taken).toBe(false);
+    expect(d.world.stats.healingFound).toBe(0);
+    expect(d.world.stats.healingUsed).toBe(0);
+    expect(d.observer.state.complete).toBe(false);
+    expect(d.observer.state.cue).toContain('走過去');
+    expect(d.observer.state.cue).not.toContain('腳邊');
+    walkToHealing(d);
+    expect(Math.hypot(p.x - start.x, p.z - start.z)).toBeGreaterThan(1.4);
+    expect(d.world.stats.healingFound).toBe(1);
+    expect(d.world.stats.healingUsed).toBe(0);
+    expect(d.world.pickups.filter(item => item.item === 'potion:healing')).toHaveLength(1);
+    expect(d.observer.state.complete).toBe(false);
+    d.frame({ potion: true }); finishDrink(d);
+    expect(d.world.stats.healingUsed).toBe(1);
+  });
   it.each(['hotkey', 'inventory'] as const)('credits only completed formal Healing effect via %s', mode => {
     const d = driver(); recovery(d);
     const hp = d.world.player.hp;
@@ -158,6 +229,28 @@ describe('factual open calibration and formal healing', () => {
     expect(d.evidence.filter(e => e.type === 'calibration_complete')).toHaveLength(1);
     expect(d.world.player.items).toEqual([{ id: 'potion:haste', count: 1, level: 0 }]);
     expect(isKnown(d.world, 'potion:haste')).toBe(false);
+  });
+  it('deterministically avoids a blocked approach even when the forward destination has line of sight', () => {
+    const placements: Array<{ x: number; z: number }> = [];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const d = driver(); killGuard(d);
+      const p = d.world.player, direction = forwardFromYaw(p.yaw);
+      const forward = { x: p.x + direction.x * (PLAYER.pickupRadius + 1.5), y: .15,
+        z: p.z + direction.z * (PLAYER.pickupRadius + 1.5) };
+      // A low prop does not obscure the bottle, but a player cannot walk through
+      // it. This fixture isolates approach clearance from endpoint/LOS checks.
+      d.world.grid.addPillar({ x: p.x + direction.x * .9, z: p.z + direction.z * .9,
+        r: .2, h: .1, kind: 'prop' });
+      expect(d.world.grid.circleBlocked(forward.x, forward.z, PLAYER.radius)).toBe(false);
+      expect(d.world.grid.lineOfSight({ x: p.x, y: PLAYER.eyeHeight, z: p.z }, forward)).toBe(true);
+      const pickup = supplyHealing(d);
+      expect(Math.hypot(pickup.x - forward.x, pickup.z - forward.z)).toBeGreaterThan(.5);
+      placements.push({ x: pickup.x, z: pickup.z });
+      walkToHealing(d);
+      expect(d.world.stats.healingFound).toBe(1);
+      expect(d.world.stats.healingUsed).toBe(0);
+    }
+    expect(placements[0]).toEqual(placements[1]);
   });
   it('preserves an intact dropped lesson item for ordinary reacquisition without duplicate supply', () => {
     const d = driver(); recovery(d);

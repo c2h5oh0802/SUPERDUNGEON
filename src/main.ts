@@ -70,6 +70,11 @@ export class App {
   private playtestStage: PlaytestStage = 'calibration';
   private calibration = new CalibrationObserver();
   private playtestEnded = false;
+  /** Route ownership stays public for the entire disposable session. */
+  private extendedPlay = false;
+  private extendedPlayEnded = true;
+  private coreResult: Readonly<{ outcome: 'complete' | 'death'; realTime: number; damage: number; kills: number; assisted: boolean }> | null = null;
+  private get controlledPlaytest(): boolean { return this.playtestActive && !this.extendedPlay; }
   private playtestLastActivity = 0;
   private playtestAttacked = false;
   private playtestHurts = 0;
@@ -161,7 +166,7 @@ export class App {
     if (id !== null) this.clearInput();
     for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
     $('touch-controls').classList.toggle('hidden', id !== null || !this.touchMode || this.rotateBlocked);
-    $('playtest-cue').classList.toggle('hidden', !this.playtestActive || id !== null);
+    $('playtest-cue').classList.toggle('hidden', !this.controlledPlaytest || id !== null);
   }
 
   private clearInput(): void {
@@ -293,10 +298,11 @@ export class App {
       this.startPlaytest('calibration', true);
     });
     for (const id of ['btn-playtest-core', 'btn-playtest-core-pause']) click(id, () => {
-      if (this.playtestActive && this.playtestStage === 'calibration' && this.calibration.state.complete
+      if (this.controlledPlaytest && this.playtestStage === 'calibration' && this.calibration.state.complete
         && (this.mode === 'inventory' || this.mode === 'paused')) this.startPlaytest('core', true);
     });
     click('btn-playtest-feedback', () => this.submitPlaytestFeedback());
+    click('btn-playtest-adventure', () => this.continueAdventure());
     click('btn-start', () => {
       const raw = normalizeSeed(($('seed-input') as HTMLInputElement).value);
       this.startRun(raw || randomSeed(), false);
@@ -483,8 +489,15 @@ export class App {
   }
 
   private retryWorld(): void {
+    if (this.extendedPlay) {
+      if (this.mode !== 'paused' && this.mode !== 'results') return;
+      this.finishExtendedPlay();
+      this.startExtendedPlay(this.seed);
+      return;
+    }
     if (this.playtestActive) {
       if (this.mode !== 'paused' && this.mode !== 'results') return;
+      if (this.playtestStage === 'core' && this.playtestEnded) this.telemetry?.engagement('retry_core');
       this.telemetry?.retry();
       if (!this.playtestEnded && !(this.playtestStage === 'calibration' && this.calibration.state.complete)) this.telemetry?.progression('fail', this.playtestStage);
       this.startPlaytest(this.playtestStage, true);
@@ -520,7 +533,7 @@ export class App {
 
   /** 開始（或繼續）一局的某一層；進入時自動存檔。 */
   private startFloor(run: RunState, fromGesture: boolean): void {
-    if (this.bossTestActive || this.playtestActive) return;
+    if (this.bossTestActive || (this.playtestActive && !this.extendedPlay)) return;
     this.run = run;
     this.cls = run.cls;
     this.saveRun(run);
@@ -544,7 +557,7 @@ export class App {
     const info = classInfo(this.cls);
     const floor = this.run?.floor ?? 1;
     $('loading-seed').textContent = `${info.name} · ${practice ? (trialForSeed(seed)?.name ?? '練習場') : `種子 ${seed} · 第 ${floor} / ${RUN.floors} 層`}`;
-    if (this.playtestActive) $('loading-seed').textContent = this.playtestStage === 'calibration' ? '先熟悉移動與觀察' : '接著，自己決定怎麼通過這場遭遇';
+    if (this.controlledPlaytest) $('loading-seed').textContent = this.playtestStage === 'calibration' ? '先熟悉移動與觀察' : '接著，自己決定怎麼通過這場遭遇';
     this.show('screen-loading');
     window.setTimeout(() => {
       if (transition !== this.worldTransition || this.mode !== 'loading') return;
@@ -553,6 +566,10 @@ export class App {
       const w = make();
       this.world = w;
       const level = w.level;
+      if (this.extendedPlay && this.extendedPlayEnded && level.floor === 1) {
+        this.extendedPlayEnded = false;
+        this.telemetry?.engagement('extended_play_start');
+      }
       this.yaw = level.spawn.yaw;
       this.pitch = 0;
       w.player.yaw = this.yaw;
@@ -570,8 +587,12 @@ export class App {
         this.hud.setLockBanner(!ok && !this.touchMode);
         if (!ok && !this.touchMode) this.flashLockFail();
         this.enterPlaying();
-        if (this.playtestActive) {
+        if (this.controlledPlaytest) {
           this.refreshPlaytestCue();
+          return;
+        }
+        if (this.extendedPlay && floor === 1) {
+          this.hud.hint(`freeplay${this.runCount}`, '本次測試已完成。接下來自由探索；這趟冒險不存檔，原本的冒險存檔不受影響。', 8);
           return;
         }
         if (this.bossTestActive) {
@@ -583,7 +604,7 @@ export class App {
             `floor${this.runCount}`,
             floor === RUN.floors
               ? `第 ${floor} 層（最底層）：先擊倒守心者，才能取走沉眠之心。進入戰鬥後飢餓暫停。`
-              : `第 ${floor} 層：敵人更多、醒著的更多。物資與生命都帶下來了；已自動存檔。`,
+              : `第 ${floor} 層：敵人更多、醒著的更多。物資與生命都帶下來了；${this.extendedPlay ? '自由遊玩不存檔' : '已自動存檔'}。`,
             7,
           );
           return;
@@ -644,10 +665,14 @@ export class App {
     for (const id of ['btn-boss-test-swap', 'btn-boss-test-options', 'boss-test-pause-loadout']) $(id).classList.toggle('hidden', !this.bossTestActive);
     $('btn-boss-test-swap').textContent = `換成${classInfo(this.otherClass()).name}並重打 Boss`;
     $('boss-test-pause-loadout').textContent = `測試起始配裝（每次重打還原）：\n${this.bossTestInitialLoadout}`;
-    if (this.playtestActive) {
+    if (this.controlledPlaytest) {
       $('pause-info').textContent = `${this.playtestStage === 'calibration' ? '操作校準' : '核心遭遇'} ${reason}`;
       $('btn-restart').textContent = '重新試一次';
       $('btn-quit').textContent = '返回試玩入口';
+    }
+    if (this.extendedPlay) {
+      $('pause-info').textContent += ' · 自由遊玩，不存檔';
+      $('btn-quit').textContent = '結束自由遊玩';
     }
     this.show('screen-pause');
     this.sfx.suspend();
@@ -693,6 +718,13 @@ export class App {
   }
 
   private toMenu(): void {
+    if (this.extendedPlay) {
+      this.finishExtendedPlay();
+      this.extendedPlay = false;
+      this.discardWorld();
+      this.openPlaytestLanding();
+      return;
+    }
     if (this.playtestActive) {
       if (this.world && !this.playtestEnded && !(this.playtestStage === 'calibration' && this.calibration.state.complete)) {
         this.telemetry?.event('voluntary_quit');
@@ -830,7 +862,7 @@ export class App {
   }
 
   private showResults(): void {
-    if (this.playtestActive) { this.showPlaytestResults(); return; }
+    if (this.controlledPlaytest) { this.showPlaytestResults(); return; }
     const w = this.world!;
     this.intentionalUnlock = true;
     this.input.exitLock();
@@ -873,6 +905,13 @@ export class App {
     $('btn-new').classList.toggle('hidden', this.bossTestActive);
     $('btn-boss-test-result-options').classList.toggle('hidden', !this.bossTestActive);
     $('btn-swap').textContent = `換成${classInfo(this.otherClass()).name}${this.bossTestActive ? '重打 Boss' : this.practice ? '重置練習' : '（同種子）'}`;
+    if (this.extendedPlay) {
+      this.finishExtendedPlay();
+      $('res-sub').textContent += ' · 自由遊玩結束（不影響已完成的核心測試）';
+      $('btn-retry').textContent = '再冒險一次（同種子）';
+      $('btn-menu').textContent = '結束／返回試玩入口';
+      for (const id of ['btn-new', 'btn-swap', 'btn-boss-test-result-options', 'btn-playtest-adventure', 'playtest-feedback', 'playtest-complete-note']) $(id).classList.add('hidden');
+    }
     this.show('screen-results');
   }
 
@@ -888,7 +927,7 @@ export class App {
     if (w && this.mode === 'playing') {
       if (raw.inventory && !w.pendingChoice) {
         this.openInventory();
-      } else if (raw.map && !this.playtestActive) {
+      } else if (raw.map && !this.controlledPlaytest) {
         // Desktop maps retain their existing pointer lock; touch never owns one.
         this.clearInput();
         this.mode = 'map';
@@ -922,7 +961,7 @@ export class App {
           potion: raw.potion,
           wait: raw.wait,
         };
-        const calibrationBefore = this.playtestActive ? this.calibration.beforeFrame(w) : null;
+        const calibrationBefore = this.controlledPlaytest ? this.calibration.beforeFrame(w) : null;
         w.frame(realDt, fi);
         this.updateTouchHud();
         const events = w.drainEvents();
@@ -931,7 +970,7 @@ export class App {
         this.sfx.onEvents(events);
         this.hud.onEvents(events, w);
         this.devLog(events);
-        if (this.playtestActive) {
+        if (this.controlledPlaytest) {
           const transition = this.worldTransition;
           this.observePlaytest(w, fi, events, calibrationBefore);
           if (transition !== this.worldTransition) return;
@@ -969,6 +1008,9 @@ export class App {
   }
 
   private openPlaytestLanding(): void {
+    document.body.classList.add('public-playtest');
+    document.body.classList.remove('public-free-play');
+    $('playtest-adventure-badge').classList.add('hidden');
     this.playtestEnded = false;
     this.telemetry?.landing();
     $('playtest-privacy').textContent = this.telemetry?.configured
@@ -978,6 +1020,7 @@ export class App {
   }
 
   private startPlaytest(stage: PlaytestStage, gesture: boolean): void {
+    if (stage === 'calibration') this.coreResult = null;
     this.playtestStage = stage;
     $('playtest-cue').textContent = '';
     for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note']) $(id).classList.add('hidden');
@@ -1005,16 +1048,18 @@ export class App {
     const state = this.calibration.state;
     const healing = this.touchMode ? '背包裡的「喝」' : '背包 I 裡的「喝」或 H';
     const wound = `練習以半血開始（${Math.ceil((this.world?.player.maxHp ?? 10) / 2)}/${this.world?.player.maxHp ?? 10}）；這裡受傷最低保留 1 生命。`;
-    $('playtest-cue').textContent = state.phase === 'combat' ? `${wound}\n${state.cue}`
-      : state.phase === 'healing' ? `戰鬥結束，腳邊有一瓶治療藥水。撿起後用${healing}補血。`
+    const cue = state.phase === 'combat' ? `${wound}\n${state.cue}`
+      : state.phase === 'healing' ? `受傷不會自動恢復。走過去撿治療藥水，再用${healing}補回生命。`
       : state.cue;
+    // Keep the one-time safety notice stable, including for aria-live readers.
+    if ($('playtest-cue').textContent !== cue) $('playtest-cue').textContent = cue;
     for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note'])
       $(id).classList.toggle('hidden', !state.complete);
     $('playtest-unknown-note').textContent = `${state.healingSkipped ? '治療藥水已用在別處，仍可繼續。' : '治療已完成。'}未知藥水與卷軸可透過使用或鑑定得知效果；不必試用，可以直接繼續。`;
   }
 
   private observePlaytest(w: World, input: FrameInput, events: ReturnType<World['drainEvents']>, before: ReturnType<CalibrationObserver['beforeFrame']> | null): void {
-    if (this.playtestEnded) return;
+    if (!this.controlledPlaytest || this.playtestEnded) return;
     if (!this.playtestAttacked && events.some(e => e.type === 'swing' || e.type === 'fire')) {
       this.playtestAttacked = true;
       this.telemetry?.event('first_attack');
@@ -1062,6 +1107,11 @@ export class App {
     const w = this.world!;
     if (!this.playtestEnded) {
       this.playtestEnded = true;
+      if (this.playtestStage === 'core') this.coreResult = Object.freeze({
+        outcome: w.outcome === 'win' ? 'complete' : 'death', realTime: w.realTime,
+        damage: Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0),
+        kills: w.stats.kills, assisted: this.playtestHints.size > 0,
+      });
       this.telemetry?.event(w.outcome === 'win' ? 'core_complete' : 'player_death');
       this.telemetry?.progression(w.outcome === 'win' ? 'complete' : 'fail', this.playtestStage, w.realTime);
       this.telemetry?.event('real_time', w.realTime);
@@ -1071,20 +1121,56 @@ export class App {
     this.releaseForUi();
     this.mode = 'results';
     this.hud.show(false);
-    $('res-title').textContent = w.outcome === 'win' ? '遭遇完成' : '你倒下了';
+    const result = this.playtestStage === 'core' ? this.coreResult : null;
+    const won = result ? result.outcome === 'complete' : w.outcome === 'win';
+    $('res-title').textContent = won ? '遭遇完成' : '你倒下了';
     $('res-sub').textContent = this.playtestStage === 'core' ? '這一次，你怎麼決定下一步？' : '再試一次，看看停下腳步後會發生什麼。';
-    const damage = Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0);
-    $('res-stats').innerHTML = [['結果', w.outcome === 'win' ? '完成' : '死亡'], ['遊玩時間', `${w.realTime.toFixed(1)} 秒`], ['受到傷害', String(damage)], ['擊倒敵人', String(w.stats.kills)]]
+    const damage = result?.damage ?? Object.values(w.stats.damageTaken).reduce((a, b) => a + b, 0);
+    $('res-stats').innerHTML = [['結果', won ? '完成' : '死亡'], ['遊玩時間', `${(result?.realTime ?? w.realTime).toFixed(1)} 秒`], ['受到傷害', String(damage)], ['擊倒敵人', String(result?.kills ?? w.stats.kills)]]
       .map(([label, value]) => `<div><span>${label}</span><b>${value}</b></div>`).join('');
-    $('btn-retry').textContent = '再試一次';
+    $('btn-retry').textContent = this.playtestStage === 'core' ? '再挑戰一次核心遭遇' : '再試一次';
     $('btn-menu').textContent = '返回試玩入口';
     for (const id of ['btn-new', 'btn-swap', 'btn-boss-test-result-options']) $(id).classList.add('hidden');
     $('playtest-feedback').classList.remove('hidden');
+    const coreFinished = this.playtestStage === 'core' && this.coreResult !== null;
+    $('btn-playtest-adventure').classList.toggle('hidden', !coreFinished);
+    $('playtest-complete-note').classList.toggle('hidden', !coreFinished);
     this.show('screen-results');
   }
 
+  private continueAdventure(): void {
+    if (!this.controlledPlaytest || this.mode !== 'results' || !this.playtestEnded
+      || this.playtestStage !== 'core' || !this.coreResult) return;
+    this.telemetry?.engagement('continue_adventure');
+    this.extendedPlay = true;
+    document.body.classList.remove('public-playtest');
+    document.body.classList.add('public-free-play');
+    $('playtest-adventure-badge').classList.remove('hidden');
+    for (const id of ['btn-playtest-core', 'btn-playtest-core-pause', 'playtest-unknown-note', 'playtest-cue', 'playtest-feedback', 'btn-playtest-adventure', 'playtest-complete-note']) $(id).classList.add('hidden');
+    this.startExtendedPlay(randomSeed());
+  }
+
+  private startExtendedPlay(seed: string): void {
+    // Count a new extended run only after its World is actually constructed.
+    // Cancelling a pending load must not report the preceding Core's statistics.
+    this.extendedPlayEnded = true;
+    // Reuse formal dungeon generation, progression, inventory and floor carry.
+    // Public route ownership remains true: saveRun/loadRun are still fenced off.
+    this.startFloor(newRun(seed, 'warrior'), true);
+  }
+
+  private finishExtendedPlay(): void {
+    if (!this.extendedPlay || this.extendedPlayEnded) return;
+    this.extendedPlayEnded = true;
+    this.telemetry?.engagement('extended_play_exit');
+    if (this.world) {
+      this.telemetry?.engagement('extended_play_real_time', this.world.stats.realTime);
+      this.telemetry?.engagement('extended_play_floor', this.world.level.floor);
+    }
+  }
+
   private submitPlaytestFeedback(): void {
-    if (!this.playtestActive || this.mode !== 'results' || this.feedbackSent) return;
+    if (!this.controlledPlaytest || this.mode !== 'results' || this.feedbackSent) return;
     const fun = $<HTMLSelectElement>('playtest-fun').value;
     const issue = $<HTMLSelectElement>('playtest-issue').value;
     if (!fun && !issue) return;

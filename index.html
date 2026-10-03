@@ -44,6 +44,7 @@
       <div id="prompt"></div>
       <div id="toasts"></div>
       <div id="hint"></div>
+      <div id="playtest-adventure-badge" class="hidden">自由遊玩 · 不存檔</div>
       <div id="playtest-cue" class="hidden" role="status" aria-live="polite"></div>
       <div class="hud-bottom-left">
         <div id="class-badge"></div>
@@ -340,7 +341,9 @@
           <button id="btn-playtest-feedback">送出選擇（選填）</button>
           <p id="playtest-feedback-status" class="muted small" role="status"></p>
         </div>
+        <p id="playtest-complete-note" class="muted small hidden">本次核心測試已完成。繼續冒險會開啟自由遊玩的地城，不存檔，也不影響原本的冒險存檔。</p>
         <div class="menu-row">
+          <button id="btn-playtest-adventure" class="hidden">繼續冒險</button>
           <button id="btn-retry" class="primary">同種子再試</button>
           <button id="btn-swap">換職業（同種子）</button>
           <button id="btn-new">新種子</button>

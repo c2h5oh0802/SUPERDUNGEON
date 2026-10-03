@@ -1,5 +1,5 @@
-import { TIME } from '../config';
-import { angleDiff } from '../core/math';
+import { PLAYER, TIME } from '../config';
+import { angleDiff, forwardFromYaw, type V2 } from '../core/math';
 import { addItem } from '../sim/items';
 import type { ActionState, FrameInput, GameEvent } from '../sim/types';
 import type { World } from '../sim/world';
@@ -27,6 +27,36 @@ export interface CalibrationState {
 export interface CalibrationUpdate {
   state: Readonly<CalibrationState>;
   milestones: CalibrationMilestone[];
+}
+
+/** Prefer the view direction, then fan out deterministically near walls/corners.
+ * Check the actual player footprint along the whole approach, not only the
+ * destination tile: a visible bottle must also be reachable by ordinary walking. */
+function healingPickupPosition(world: World): V2 | null {
+  const p = world.player;
+  // Leaves 1.5 m of walking outside automatic pickup range, including enough
+  // room for the normal movement deceleration after a moving finishing blow.
+  const distance = PLAYER.pickupRadius + 1.5;
+  const steps = Math.ceil(distance / .08);
+  for (let i = 0; i < 16; i++) {
+    const turn = Math.ceil(i / 2) * (i % 2 ? 1 : -1) * Math.PI / 8;
+    const direction = forwardFromYaw(p.yaw + turn);
+    const target = { x: p.x + direction.x * distance, z: p.z + direction.z * distance };
+    let walkable = true;
+    for (let step = 0; step <= steps; step++) {
+      const t = step / steps;
+      if (world.grid.circleBlocked(p.x + (target.x - p.x) * t, p.z + (target.z - p.z) * t, PLAYER.radius)) {
+        walkable = false;
+        break;
+      }
+    }
+    if (walkable && world.grid.lineOfSight(
+      { x: p.x, y: PLAYER.eyeHeight, z: p.z }, { ...target, y: .15 },
+    )) return target;
+  }
+  // The open calibration arena always has a candidate. If its layout changes,
+  // retry from a later position instead of granting an unreachable/instant item.
+  return null;
 }
 
 /** Factual milestones, never a test of understanding or a prescribed combat sequence.
@@ -89,8 +119,11 @@ export class CalibrationObserver {
       if (!this.healingSupplied) {
         // Exactly one ordinary pickup; it enters the bag through updatePickups.
         // The wound was authored at spawn, never added after the fight.
-        world.addPickup('item', 1, world.player.x, .15, world.player.z, null, 'potion:healing', 0);
-        this.healingSupplied = true;
+        const position = healingPickupPosition(world);
+        if (position) {
+          world.addPickup('item', 1, position.x, .15, position.z, null, 'potion:healing', 0);
+          this.healingSupplied = true;
+        }
       } else if (world.stats.healingUsed > 0) {
         this.value.healingUsed = true;
         emit('healing_used');
@@ -113,7 +146,7 @@ export class CalibrationObserver {
       : this.value.phase === 'slow'
       ? '盾衛已倒下。放開移動與行動，試試停下後時間變慢。'
       : this.value.phase === 'healing'
-      ? '戰鬥結束，腳邊有一瓶治療藥水。撿起後可從背包使用，或用補血快捷鍵。'
+      ? '戰鬥結束，附近地上有一瓶治療藥水。走過去撿起後可從背包使用，或用補血快捷鍵。'
       : '未知藥水與卷軸可透過使用或鑑定得知效果；這次可直接進入核心遭遇。';
     return { state: this.state, milestones };
   }

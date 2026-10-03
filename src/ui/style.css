@@ -1627,3 +1627,7 @@ html:fullscreen { background: var(--bg); }
 
 #btn-relock { pointer-events: auto; margin-left: 6px; padding: 4px 10px; font-size: 13px; }
 #playtest-cue { white-space: pre-line; }
+
+/* Disposable adventure restores the formal HUD without class-switch flow. */
+.public-free-play #btn-pause-class { display: none; }
+#playtest-adventure-badge { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); color: #ffe1a2; background: #171823dc; padding: 4px 10px; border-radius: 5px; pointer-events: none; font-size: 12px; }

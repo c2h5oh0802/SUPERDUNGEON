@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS, ENEMIES, HEALING_POTION, TIME } from '../src/config';
+import { ACTIONS, ENEMIES, HEALING_POTION, PLAYER, TIME } from '../src/config';
+import { yawFromDir } from '../src/core/math';
 import { CalibrationObserver, type CalibrationMilestone } from '../src/playtest/calibration';
 import { createPublicPlaytestWorld } from '../src/playtest/scenario';
 import { emptyInput, type FrameInput, type GameEvent } from '../src/sim/types';
@@ -60,10 +61,18 @@ function finishWithNativeHealing(d: Driver): void {
   expect(d.world.stats.healingUsed).toBe(0);
   expect(d.world.pickups.filter(pickup => pickup.item === 'potion:healing')).toHaveLength(1);
 
-  // The observer only places a pickup. The actual World.frame pickup path must
-  // put it in the bag, then the ordinary action must finish before completion.
-  d.until(() => d.world.player.action === null && d.world.player.items.some(item => item.id === 'potion:healing'),
-    () => ({ wait: true }), 3);
+  // Waiting through recovery and remaining still cannot collect the supply.
+  // Walk using ordinary input before the native pickup/action can complete it.
+  const pickup = d.world.pickups.find(pickup => pickup.item === 'potion:healing')!;
+  d.until(() => d.world.player.action === null, () => ({ wait: true }), 3);
+  for (let f = 0; f < d.fps; f++) d.frame();
+  expect(pickup.taken).toBe(false);
+  expect(d.world.player.items).toEqual([]);
+  expect(d.world.stats.healingFound).toBe(0);
+  expect(Math.hypot(pickup.x - d.world.player.x, pickup.z - d.world.player.z)).toBeGreaterThan(PLAYER.pickupRadius);
+  d.until(() => d.world.player.items.some(item => item.id === 'potion:healing'), () => ({
+    yaw: yawFromDir(pickup.x - d.world.player.x, pickup.z - d.world.player.z), moveZ: 1,
+  }), 3);
   expect(d.events.some(event => event.type === 'pickup')).toBe(true);
   expect(d.world.stats.healingFound).toBe(1);
   expect(d.world.pickups.find(pickup => pickup.item === 'potion:healing')?.taken).toBe(true);

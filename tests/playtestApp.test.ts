@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { angleDiff, yawFromDir } from '../src/core/math';
 import type { InputHandlers, RawFrame } from '../src/input/input';
 import { createPublicPlaytestWorld, type PlaytestStage } from '../src/playtest/scenario';
-import type { PlaytestEventName, PlaytestFun, PlaytestIssue } from '../src/playtest/telemetry';
+import type { PlaytestEngagementEventName, PlaytestEventName, PlaytestFun, PlaytestIssue } from '../src/playtest/telemetry';
 import { isKnown } from '../src/sim/items';
 import type { PendingUse } from '../src/sim/types';
 import { newRun, serializeRun } from '../src/sim/run';
@@ -24,6 +24,7 @@ const captured = vi.hoisted(() => ({
   factory: vi.fn(),
   inventoryUse: null as null | ((index: number, mode: PendingUse['mode']) => void),
   telemetry: {
+    engagement: vi.fn<(name: PlaytestEngagementEventName, value?: number) => void>(),
     assistance: vi.fn<(assisted: boolean) => void>(),
     landing: vi.fn(), start: vi.fn(), stage: vi.fn<(stage: PlaytestStage) => void>(),
     progression: vi.fn<(status: 'start' | 'complete' | 'fail', stage: PlaytestStage, score?: number) => void>(),
@@ -186,7 +187,20 @@ function playCalibration(h: Harness) {
       moveZ: Math.hypot(enemy.x - p.x, enemy.z - p.z) > 1.7 ? 1 : 0, fire: true, firePressed: f === 0 });
   }
   expect(calibrationWorld.enemies[0]!.alive).toBe(false);
-  for (let f = 0; f < 180 && !calibrationWorld.player.items.some(i => i.id === 'potion:healing'); f++) h.frame();
+  for (let f = 0; f < 180 && !calibrationWorld.pickups.some(i => i.item === 'potion:healing'); f++) h.frame();
+  const bottle = calibrationWorld.pickups.find(i => i.item === 'potion:healing')!;
+  expect(bottle).toBeDefined();
+  const start = { x: calibrationWorld.player.x, z: calibrationWorld.player.z };
+  for (let f = 0; f < 60; f++) h.frame();
+  expect(bottle.taken).toBe(false);
+  expect(calibrationWorld.player.items.some(i => i.id === 'potion:healing')).toBe(false);
+  for (let f = 0; f < 300 && !bottle.taken; f++) {
+    const p = calibrationWorld.player;
+    const yaw = yawFromDir(bottle.x - p.x, bottle.z - p.z);
+    h.frame({ lookDX: -angleDiff(yaw, p.yaw) / .0022, moveZ: 1 });
+  }
+  expect(Math.hypot(calibrationWorld.player.x - start.x, calibrationWorld.player.z - start.z)).toBeGreaterThan(1);
+  expect(bottle.taken).toBe(true);
   expect(calibrationWorld.player.items.some(i => i.id === 'potion:healing')).toBe(true);
   return { calibrationWorld };
 }
@@ -362,6 +376,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(h.node('btn-playtest-feedback').disabled).toBe(false);
     expect(captured.telemetry.retry).toHaveBeenCalledTimes(1);
     expect(captured.setWorld).toHaveBeenCalledTimes(3);
+    expect(captured.telemetry.engagement.mock.calls).toEqual([['retry_core']]);
     expectNoCampaignStorage(h);
     if (touch) expect(captured.requestLock).not.toHaveBeenCalled();
   });
@@ -439,6 +454,7 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     for (const e of h.world().enemies) e.paralyzeT = 999;
     h.world().realTime = 22.1; h.frame();
     expect(eventCount('hint_inactivity')).toBe(2);
+    expect(captured.telemetry.engagement).not.toHaveBeenCalled();
   });
 
   it('logs core completion once and does not turn a finished result into abandonment', async () => {
@@ -461,6 +477,97 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     expect(captured.telemetry.pagehide).toHaveBeenCalledTimes(1);
     expect(eventCount('voluntary_quit')).toBe(0);
     expectNoCampaignStorage(h);
+  });
+
+  it.each(['dead', 'win'] as const)('continues after Core %s into a disposable formal adventure without rewriting validation', async outcome => {
+    const h = await setup(); await start(h); await completeCalibration(h);
+    if (outcome === 'dead') {
+      h.world().damagePlayer(999, 'guard', h.world().player.x + 1, h.world().player.z);
+      expect(h.world().player.dead).toBe(true);
+    }
+    finish(h, outcome);
+    expect(h.shown('btn-playtest-adventure')).toBe(true);
+    expect(h.shown('playtest-complete-note')).toBe(true);
+    const validationEvents = captured.telemetry.event.mock.calls.slice();
+    const validationProgress = captured.telemetry.progression.mock.calls.slice();
+    const resultHtml = h.node('res-stats').innerHTML;
+    const old = h.world();
+    h.node('btn-playtest-adventure').click(); h.node('btn-playtest-adventure').click(); await tickLoad();
+    const adventure = h.world();
+    expect(adventure).not.toBe(old);
+    expect(adventure.level.publicPlaytest).toBeUndefined();
+    expect(adventure.level.practice).toBe(false);
+    expect(adventure.level.floor).toBe(1);
+    expect(adventure.player.cls).toBe('warrior');
+    expect(adventure.player.hp).toBe(adventure.player.maxHp);
+    expect(adventure.level.stairs).not.toBeNull();
+    expect(adventure.enemies.length).toBeGreaterThan(2);
+    expect(h.shown('playtest-adventure-badge')).toBe(true);
+    expect(h.doc.body.classes.has('public-playtest')).toBe(false);
+    expect(h.node('res-stats').innerHTML).toBe(resultHtml);
+    expect(h.shown('playtest-cue')).toBe(false);
+    expect(captured.telemetry.engagement.mock.calls).toEqual([['continue_adventure'], ['extended_play_start']]);
+    // The ordinary worlds expose their real hunger, loot and progression systems.
+    const hungerBefore = adventure.player.hunger;
+    h.frame({ moveZ: 1 });
+    expect(adventure.player.hunger).toBeGreaterThan(hungerBefore);
+    // An existing floor transition carries native inventory/stats in memory.
+    adventure.player.items.push({ id: 'scroll:identify', count: 1, level: 0 });
+    adventure.outcome = 'descend';
+    for (let f = 0; f < 40; f++) h.frame({}, .02);
+    await tickLoad();
+    expect(h.world()).not.toBe(adventure);
+    expect(h.world().level.floor).toBe(2);
+    expect(h.world().player.items.some(i => i.id === 'scroll:identify')).toBe(true);
+    expect(captured.hint.mock.calls.some(([, copy]) => String(copy).includes('自由遊玩不存檔'))).toBe(true);
+    expectNoCampaignStorage(h);
+    h.world().damagePlayer(999, 'guard', 1, 1);
+    expect(h.world().player.dead).toBe(true);
+    finish(h);
+    expect(h.shown('btn-playtest-adventure')).toBe(false);
+    expect(h.shown('playtest-feedback')).toBe(false);
+    h.node('btn-playtest-feedback').click();
+    expect(captured.telemetry.feedback).not.toHaveBeenCalled();
+    expect(captured.telemetry.event.mock.calls).toEqual(validationEvents);
+    expect(captured.telemetry.progression.mock.calls).toEqual(validationProgress);
+    expect(captured.telemetry.engagement).toHaveBeenCalledWith('extended_play_exit');
+    expect(captured.telemetry.engagement).toHaveBeenCalledWith('extended_play_floor', 2);
+    expect(captured.telemetry.engagement).toHaveBeenCalledWith('extended_play_real_time', h.world().stats.realTime);
+    h.node('btn-menu').click();
+    expect(h.shown('screen-playtest')).toBe(true);
+    expect(h.doc.body.classes.has('public-playtest')).toBe(true);
+    expect(h.shown('playtest-adventure-badge')).toBe(false);
+    expect(captured.telemetry.engagement.mock.calls.filter(([name]) => name === 'extended_play_exit')).toHaveLength(1);
+    expectNoCampaignStorage(h);
+  });
+
+  it('ignores early Continue Adventure and safely handles repeated free-play retry, pause/quit, and loading cancellation', async () => {
+    const h = await setup('?playtest=1', true);
+    h.node('btn-playtest-adventure').click(); expect(captured.world).toBeNull();
+    await start(h);
+    h.node('btn-playtest-adventure').click(); expect(h.world().level.publicPlaytest).toBe('calibration');
+    await completeCalibration(h);
+    h.node('btn-playtest-adventure').click(); expect(h.world().level.publicPlaytest).toBe('core');
+    finish(h, 'win');
+    h.node('btn-playtest-adventure').click(); await tickLoad();
+    const first = h.world();
+    h.frame({ escape: true });
+    expect(h.node('pause-info').textContent).toContain('不存檔');
+    h.node('btn-restart').click(); h.node('btn-restart').click(); await tickLoad();
+    expect(h.world()).not.toBe(first);
+    expect(h.world().level.publicPlaytest).toBeUndefined();
+    expect(h.world().level.seed).toBe(first.level.seed);
+    expect(captured.telemetry.engagement.mock.calls.filter(([name]) => name === 'extended_play_start')).toHaveLength(2);
+    expect(captured.telemetry.stage.mock.calls).toEqual([['calibration'], ['core']]);
+    expect(captured.requestLock).not.toHaveBeenCalled();
+    h.frame({ escape: true }); h.node('btn-restart').click(); h.node('btn-quit').click(); await tickLoad();
+    expect(captured.world).toBeNull();
+    expect(h.shown('screen-playtest')).toBe(true);
+    expect(captured.telemetry.engagement.mock.calls.filter(([name]) => name === 'extended_play_start')).toHaveLength(2);
+    expect(captured.telemetry.engagement.mock.calls.filter(([name]) => name === 'extended_play_exit')).toHaveLength(2);
+    expectNoCampaignStorage(h);
+    await start(h); expect(h.world().level.publicPlaytest).toBe('calibration');
+    expect(h.shown('playtest-adventure-badge')).toBe(false);
   });
 
   it('forwards focus, visibility and pagehide as uncertainty signals without treating them as voluntary quit', async () => {

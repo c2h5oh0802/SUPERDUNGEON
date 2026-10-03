@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createBrowserPlaytestTelemetry, createPlaytestTelemetry, normalizePlaytestSource,
+  PLAYTEST_ENGAGEMENT_EVENT_NAMES, PLAYTEST_ENGAGEMENT_NAMESPACE,
   PLAYTEST_EVENT_NAMES, PLAYTEST_TELEMETRY_NAMESPACE,
-  type PlaytestAnalyticsProvider, type PlaytestEventName, type PlaytestFun,
+  type PlaytestAnalyticsProvider, type PlaytestEngagementEventName, type PlaytestEventName, type PlaytestFun,
   type PlaytestIssue, type PlaytestStage, type PlaytestTelemetryConfig,
 } from '../src/playtest/telemetry';
 
@@ -83,6 +84,7 @@ describe('public playtest telemetry configuration', () => {
     telemetry.event('hint_no_attack');
     telemetry.event('core_complete');
     telemetry.progression('complete', 'core', 1);
+    for (const name of PLAYTEST_ENGAGEMENT_EVENT_NAMES) telemetry.engagement(name, 1);
     await flush();
     expect(telemetry.configured).toBe(false);
     expect(telemetry.status).toBe('disabled');
@@ -106,6 +108,7 @@ describe('public playtest telemetry configuration', () => {
     vi.stubEnv('VITE_GAMEANALYTICS_SECRET_KEY', CONFIG.secretKey);
     const telemetry = createBrowserPlaytestTelemetry({ device: 'desktop', source: 'x' });
     telemetry.landing();
+    telemetry.engagement('continue_adventure');
     await flush();
     expect(telemetry.configured).toBe(false);
     expect(sdkImport).not.toHaveBeenCalled();
@@ -118,6 +121,7 @@ describe('public playtest telemetry configuration', () => {
     vi.stubEnv('VITE_GAMEANALYTICS_SECRET_KEY', CONFIG.secretKey);
     const telemetry = createBrowserPlaytestTelemetry({ device: 'desktop' });
     telemetry.landing();
+    telemetry.engagement('extended_play_start');
     await flush();
     expect(telemetry.configured).toBe(false);
     expect(sdkImport).not.toHaveBeenCalled();
@@ -130,6 +134,97 @@ describe('public playtest telemetry configuration', () => {
     ['https://private.example/path', 'unknown'],
   ])('normalizes source %s to %s without forwarding arbitrary data', (raw, expected) => {
     expect(normalizePlaytestSource(raw)).toBe(expected);
+  });
+});
+
+describe('post-validation engagement telemetry', () => {
+  it('keeps the closed engagement vocabulary separate from factual validation events', () => {
+    expect(PLAYTEST_ENGAGEMENT_NAMESPACE).toBe('playtest_engagement_v1');
+    expect(PLAYTEST_TELEMETRY_NAMESPACE).toBe('playtest_open_v2');
+    expect(PLAYTEST_ENGAGEMENT_EVENT_NAMES).toEqual([
+      'retry_core', 'continue_adventure', 'extended_play_start', 'extended_play_exit',
+      'extended_play_real_time', 'extended_play_floor',
+    ]);
+    for (const name of PLAYTEST_ENGAGEMENT_EVENT_NAMES) expect(PLAYTEST_EVENT_NAMES).not.toContain(name);
+    expect(PLAYTEST_EVENT_NAMES).toContain('core_complete');
+    expect(PLAYTEST_EVENT_NAMES).toContain('player_death');
+    expect(PLAYTEST_EVENT_NAMES).not.toContain('core_loop_learned');
+  });
+
+  it.each([
+    ['calibration', false, 'calibration', undefined],
+    ['core', false, 'core_unassisted', 'unassisted'],
+    ['core', true, 'core_assisted', 'assisted'],
+  ] as const)('queues context-free engagement without changing %s assistance=%s', async (stage, assisted, context, assistance) => {
+    const provider = mockProvider();
+    const telemetry = createPlaytestTelemetry(CONFIG, async () => provider.sdk);
+    telemetry.stage(stage);
+    telemetry.assistance(assisted);
+    for (const name of PLAYTEST_ENGAGEMENT_EVENT_NAMES) telemetry.engagement(name, 2);
+    telemetry.event('real_time', 12.5);
+    telemetry.progression('complete', stage, 3);
+    telemetry.feedback('position', 'none');
+    // Queued engagement must not inherit context even when a new attempt begins.
+    telemetry.stage(stage === 'core' ? 'calibration' : 'core');
+    await flush();
+    expect(provider.sdk.addDesignEvent).not.toHaveBeenCalled();
+    provider.ready();
+    await flush();
+    expect(provider.sdk.addDesignEvent.mock.calls.slice(1, 7)).toEqual(
+      PLAYTEST_ENGAGEMENT_EVENT_NAMES.map(name => [`playtest_engagement_v1:${name}`, 2]),
+    );
+    expect(provider.sdk.addDesignEvent.mock.calls.slice(7, 10)).toEqual([
+      [`playtest_open_v2:real_time:${context}`, 12.5],
+      [`playtest_open_v2:feedback:fun:position:${context}`, undefined],
+      [`playtest_open_v2:feedback:issue:none:${context}`, undefined],
+    ]);
+    expect(provider.sdk.addProgressionEvent.mock.calls).toEqual([
+      [2, 'playtest_open_v2', stage, assistance, 3],
+    ]);
+    telemetry.dispose();
+  });
+
+  it('rejects other vocabularies and invalid values before loading the provider', async () => {
+    const provider = mockProvider();
+    const loader = vi.fn(async () => provider.sdk);
+    const telemetry = createPlaytestTelemetry(CONFIG, loader);
+    for (const name of [...PLAYTEST_EVENT_NAMES, 'core_loop_learned', 'private input', '']) {
+      telemetry.engagement(name as PlaytestEngagementEventName);
+    }
+    for (const name of PLAYTEST_ENGAGEMENT_EVENT_NAMES) telemetry.event(name as PlaytestEventName);
+    for (const value of [NaN, Infinity, -Infinity, -1, 1_000_000_001, 'private input', null]) {
+      telemetry.engagement('extended_play_real_time', value as number);
+    }
+    await flush();
+    expect(loader).not.toHaveBeenCalled();
+    expect(provider.sdk.addDesignEvent).not.toHaveBeenCalled();
+    expect(provider.sdk.addProgressionEvent).not.toHaveBeenCalled();
+    telemetry.dispose();
+  });
+
+  it('starts loading only for valid engagement and accepts bounded finite numeric observations', async () => {
+    const provider = mockProvider();
+    const loader = vi.fn(async () => provider.sdk);
+    const telemetry = createPlaytestTelemetry(CONFIG, loader);
+    telemetry.engagement('continue_adventure');
+    telemetry.engagement('extended_play_floor', 0);
+    await flush();
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(provider.sdk.addDesignEvent).not.toHaveBeenCalled();
+    provider.ready();
+    await flush();
+    telemetry.engagement('extended_play_real_time', 12.5);
+    telemetry.engagement('extended_play_real_time', 1_000_000_000);
+    expect(provider.sdk.addDesignEvent.mock.calls).toEqual([
+      ['playtest_engagement_v1:continue_adventure', undefined],
+      ['playtest_engagement_v1:extended_play_floor', 0],
+      ['playtest_engagement_v1:extended_play_real_time', 12.5],
+      ['playtest_engagement_v1:extended_play_real_time', 1_000_000_000],
+    ]);
+    expect(provider.sdk.addProgressionEvent).not.toHaveBeenCalled();
+    telemetry.dispose();
+    telemetry.engagement('extended_play_exit');
+    expect(provider.sdk.addDesignEvent).toHaveBeenCalledTimes(4);
   });
 });
 
