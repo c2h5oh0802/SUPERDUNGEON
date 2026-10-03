@@ -1,13 +1,19 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="沉眠之心：第一人稱慢動作地城潛入原型" />
-    <title>沉眠之心</title>
+    <meta name="description" content="The Slumbering Heart: a first-person slow-motion dungeon adventure" />
+    <title>The Slumbering Heart · SUPERDUNGEON</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23141226'/%3E%3Cpath d='M16 5l7 11-7 11-7-11z' fill='%238ccaff'/%3E%3C/svg%3E" />
   </head>
-  <body>
+  <body class="booting">
+    <div id="boot-status" role="status" style="position:fixed;inset:0;z-index:100;background:#141226;color:#eee;padding:12vh 8vw;font:18px/1.6 system-ui">
+      Loading game… / 遊戲載入中…<br />
+      If this stays here, <a href="" style="color:#8ccaff">reload / 重新載入</a>. Check your connection and WebGL 2 support.<br />
+      若持續停在此畫面，請重新載入，並確認網路與 WebGL 2 支援。
+      <noscript>JavaScript is required to play. / 遊戲需要 JavaScript。</noscript>
+    </div>
     <canvas id="game" tabindex="0" aria-label="遊戲畫面"></canvas>
 
     <div id="hud" class="hidden" aria-hidden="true">
@@ -93,17 +99,29 @@
 
     <section id="screen-playtest" class="screen hidden" aria-labelledby="playtest-title">
       <div class="menu-card playtest-landing">
+        <label class="language-picker" data-no-localize>Language / 語言 <select data-language aria-label="Language / 語言"><option value="en">English</option><option value="zh-Hant">繁體中文</option></select></label>
         <p class="sub">沉眠之心 · 短篇試玩</p>
         <h1 id="playtest-title">停下腳步<br />時間就會慢下來</h1>
         <p class="pitch">停下觀察，行動讓時間前進。<br />用自己的方式擊倒盾衛，再試一場短遭遇</p>
+        <p class="playtest-controls keyboard-instructions">WASD 移動 · 滑鼠瞄準 · 左鍵攻擊 · Esc 暫停，按「繼續」返回</p>
+        <p class="playtest-controls touch-instructions">橫向遊玩 · 左側搖桿移動 · 右側滑動瞄準 · 攻擊鍵可按住並拖曳</p>
         <button id="btn-playtest-start" class="primary">開始試玩</button>
         <p class="muted small">開放練習以半血開始，受傷最低保留 1 生命；戰後撿藥補血，再開門走向下一間。進門後恢復正常死亡。手機建議橫放。</p>
         <p id="playtest-privacy" class="muted small"></p>
+        <details id="playtest-privacy-details" class="privacy-details">
+          <summary>資料收集與隱私說明</summary>
+          <p>用途與接收者：GameAnalytics 會接收本試玩的遊玩事件、時間、結果、選填選項回饋，以及繼續冒險的參與統計，用來改善遊戲；在試玩入口開啟時開始，不是按下開始後才收集。</p>
+          <p>SDK 資料：SDK 使用會保留於瀏覽器本機儲存的隨機識別碼來連結工作階段，並傳送瀏覽器、作業系統、版本、工作階段及網路類型等技術資訊，也可能傳送技術錯誤診斷。本機儲存也可能包含排隊中的事件。這些資料不應視為完全匿名。</p>
+          <p>網路資訊：GameAnalytics 處理一般連線中繼資料，例如 IP 位址，並可據此推估國家；本遊戲不要求 GPS 定位。遊玩事件不包含你輸入的姓名、聊天、錄影或冒險存檔。</p>
+          <p>選項回饋可略過。分析未設定、離線或被瀏覽器封鎖時仍可遊玩；不用關閉瀏覽器防護。畫面顯示已嘗試傳送，不代表服務已收到。</p>
+          <p><a href="https://www.gameanalytics.com/trust/privacy-notice" target="_blank" rel="noopener noreferrer">GameAnalytics 隱私政策</a></p>
+        </details>
       </div>
     </section>
 
     <section id="screen-menu" class="screen hidden">
       <div class="menu-card">
+        <label class="language-picker" data-no-localize>Language / 語言 <select data-language aria-label="Language / 語言"><option value="en">English</option><option value="zh-Hant">繁體中文</option></select></label>
         <div class="fullscreen-actions touch-instructions">
           <button data-fullscreen type="button" aria-pressed="false" aria-describedby="menu-fullscreen-note">全螢幕</button>
           <p id="menu-fullscreen-note" data-fullscreen-note role="status"></p>
@@ -249,6 +267,7 @@
     <section id="screen-settings" class="screen hidden">
       <div class="panel">
         <h2>設定</h2>
+        <label class="language-picker" data-no-localize>Language / 語言 <select data-language aria-label="Language / 語言"><option value="en">English</option><option value="zh-Hant">繁體中文</option></select></label>
         <label class="field">視角靈敏度 <input type="range" id="set-sens" min="0.2" max="3" step="0.05" /><output id="out-sens"></output></label>
         <label class="field">視野角度 FOV <input type="range" id="set-fov" min="60" max="100" step="1" /><output id="out-fov"></output></label>
         <label class="field">主音量 <input type="range" id="set-master" min="0" max="1" step="0.05" /><output id="out-master"></output></label>
@@ -358,6 +377,7 @@
 
     <section id="screen-mobile" class="screen hidden">
       <div class="panel touch-intro-panel">
+        <label class="language-picker" data-no-localize>Language / 語言 <select data-language aria-label="Language / 語言"><option value="en">English</option><option value="zh-Hant">繁體中文</option></select></label>
         <p class="touch-eyebrow">沉眠之心 · 觸控冒險</p>
         <h2>橫放手機，進入地城</h2>
         <p class="muted">停下腳步，時間就會慢下來。用雙手拇指移動、瞄準與出手。</p>
@@ -382,7 +402,14 @@
       </div>
     </section>
 
+    <section id="screen-error" class="screen hidden" role="alert" aria-labelledby="error-title">
+      <div class="panel">
+        <label class="language-picker" data-no-localize>Language / 語言 <select data-language aria-label="Language / 語言"><option value="en">English</option><option value="zh-Hant">繁體中文</option></select></label>
+        <h2 id="error-title">遊戲未能啟動</h2><p id="error-detail"></p>
+        <a id="error-reload" class="reload-link" href="">重新載入</a>
+      </div>
+    </section>
     <div id="lock-fail" class="toast-panel hidden"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/boot.ts"></script>
   </body>
 </html>

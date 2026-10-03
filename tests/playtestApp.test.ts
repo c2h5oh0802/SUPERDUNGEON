@@ -19,6 +19,7 @@ const captured = vi.hoisted(() => ({
   installDevApi: vi.fn(),
   setWorld: vi.fn<(w: World) => void>(),
   clearWorld: vi.fn(),
+  stopLoop: vi.fn(),
   requestLock: vi.fn<() => Promise<boolean>>(),
   exitLock: vi.fn(),
   hint: vi.fn(),
@@ -63,7 +64,7 @@ vi.mock('../src/audio/sfx', () => ({ Sfx: class {
 } }));
 vi.mock('../src/core/loop', () => ({ Loop: class {
   start(cb: (dt: number) => void) { captured.frames.push(cb); }
-  resetClock = vi.fn();
+  resetClock = vi.fn(); stop = captured.stopLoop;
 } }));
 vi.mock('../src/input/input', () => ({ Input: class {
   constructor(_canvas: unknown, handlers: InputHandlers) { captured.handlers = handlers; }
@@ -101,6 +102,8 @@ class ElementStub extends EventTarget {
     remove: (name: string) => { this.classes.delete(name); },
   };
   style = { setProperty: vi.fn(), removeProperty: vi.fn(), opacity: '' };
+  dataset: Record<string, string> = {};
+  remove = vi.fn();
   value = ''; textContent = ''; innerHTML = ''; className = ''; disabled = false; checked = false;
   focus = vi.fn();
   querySelector = () => new ElementStub();
@@ -824,5 +827,81 @@ describe('public playtest App flow (real App, World, calibration; CPU presentati
     hud.reset(); hud.resetHints();
     hud.onEvents([{ type: 'enemyWindup', kind: 'guard' }], ordinary);
     expect(h.node('hint').textContent).toContain('盾衛舉劍');
+  });
+});
+
+
+describe('public playtest interruption and owned-error recovery', () => {
+  it.each(['blur', 'unlock', 'escape'] as const)('stays paused when %s interrupts a pending load', async interruption => {
+    const h = await setup();
+    h.node('btn-playtest-start').click();
+    if (interruption === 'blur') captured.handlers!.onFocusLost();
+    else if (interruption === 'unlock') captured.handlers!.onLockChange(false);
+    else h.win.dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape' }));
+    await tickLoad();
+    expect(h.shown('screen-pause')).toBe(true);
+    expect(captured.handlers!.playing!()).toBe(false);
+    const time = h.world().time;
+    h.frame({ fire: true, moveZ: 1 });
+    expect(h.world().time).toBe(time);
+    h.node('btn-resume').click();
+    await Promise.resolve();
+    expect(captured.handlers!.playing!()).toBe(true);
+    expectNoCampaignStorage(h);
+  });
+  it('turns a world creation/render setup exception into a loading failure, not a death', async () => {
+    const h = await setup();
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    captured.setWorld.mockImplementationOnce(() => { throw new Error('synthetic world setup failure'); });
+    h.node('btn-playtest-start').click();
+    await tickLoad();
+    expect(h.node('screen-error').dataset.failureStage).toBe('loading');
+    expect(captured.stopLoop).toHaveBeenCalledOnce();
+    expect(eventCount('player_death')).toBe(0);
+    expectNoCampaignStorage(h);
+    log.mockRestore();
+  });
+  it('stops a failed running frame and distinguishes it from normal defeat', async () => {
+    const h = await setup();
+    await start(h);
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(h.world(), 'frame').mockImplementation(() => { throw new Error('synthetic simulation failure'); });
+    h.frame();
+    expect(h.node('screen-error').dataset.failureStage).toBe('runtime');
+    expect(captured.stopLoop).toHaveBeenCalledOnce();
+    expect(captured.handlers!.playing!()).toBe(false);
+    expect(eventCount('player_death')).toBe(0);
+    expectNoCampaignStorage(h);
+    log.mockRestore();
+  });
+  it('does not let an unrelated optional service error stop play', async () => {
+    const h = await setup();
+    await start(h);
+    h.win.dispatchEvent(new Event('error'));
+    const before = h.world().time;
+    h.frame();
+    expect(h.world().time).toBeGreaterThan(before);
+    expect(captured.stopLoop).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('late pointer lock after a game failure', () => {
+  it('releases a late acquisition instead of trapping the recovery screen', async () => {
+    const h = await setup();
+    let resolve!: (ok: boolean) => void;
+    captured.requestLock.mockReturnValueOnce(new Promise<boolean>(done => { resolve = done; }));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    captured.setWorld.mockImplementationOnce(() => { throw new Error('synthetic load failure'); });
+    h.node('btn-playtest-start').click();
+    await tickLoad();
+    const exitsBefore = captured.exitLock.mock.calls.length;
+    captured.handlers!.onLockChange(true);
+    resolve(true);
+    await Promise.resolve();
+    expect(captured.exitLock.mock.calls.length).toBe(exitsBefore + 1);
+    expect(h.node('screen-error').dataset.failureStage).toBe('loading');
+    expect(captured.handlers!.playing!()).toBe(false);
+    log.mockRestore();
   });
 });

@@ -1,3 +1,4 @@
+import { localize } from './i18n';
 import { T } from '../sim/grid';
 import type { World } from '../sim/world';
 
@@ -111,7 +112,7 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
   for (const r of w.level.rooms) {
     const cx = Math.floor(r.x0 + r.w / 2);
     const cz = Math.floor(r.z0 + r.h / 2);
-    if (w.isExplored(cx, cz)) ctx.fillText(r.name, ox + (r.x0 + r.w / 2) * s, oz + (r.z0 + 1.6) * s);
+    if (w.isExplored(cx, cz)) ctx.fillText(localize(r.name), ox + (r.x0 + r.w / 2) * s, oz + (r.z0 + 1.6) * s);
   }
   // 玩家
   const p = w.player;

@@ -1,3 +1,9 @@
+# Bilingual public playtest · 2026-10-03
+
+Open `?playtest=1` for the short public playtest. New visitors start in English; use **Language / 語言** on the entry screen or in Settings to choose English / 繁體中文. The choice is saved with control settings, separately from campaign saves. Blocked storage keeps the choice for the current visit only.
+
+The release adds readable collection details, brief first-time controls, and separate startup / dungeon-loading / runtime recovery. See the [same-build playtest checklist and verification limits](docs/public-playtest-readiness.md). Browser analytics blocking never requires changing browser protections. Real-player comprehension and actual-phone performance remain separate checks.
+
 # Chapter 1 資源版本提醒
 
 2026-10-01：最新規格為 4 探索層＋1 首領層、乾糧 1/1/2/2/0、職業鑑定知識、Sleep 取代時停、移除誘敵卷軸、兩種可選消耗品房。強化仍為前四層各一張。以下舊版開發紀錄的四層或入口乾糧描述僅代表當時版本；現況見 [資源 v1 報告](docs/chapter1-resources-v1.md)。

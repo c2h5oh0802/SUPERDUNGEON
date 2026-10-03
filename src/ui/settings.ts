@@ -1,7 +1,9 @@
 // 設定：優先存在 localStorage；被封鎖或不可用時退回本次工作階段（不會崩潰）。
+import { validLanguage, type Language } from './i18n';
 import { ALL_CLASSES, type PlayerClass } from '../config';
 
 export interface Settings {
+  language: Language;
   sensitivity: number;
   invertY: boolean;
   fov: number;
@@ -17,6 +19,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  language: 'en',
   sensitivity: 1,
   invertY: false,
   fov: 75,
@@ -71,6 +74,7 @@ function num(v: unknown, lo: number, hi: number, d: number): number {
 
 function sanitize(s: Settings): Settings {
   return {
+    language: validLanguage(s.language),
     sensitivity: num(s.sensitivity, 0.2, 3, 1),
     invertY: !!s.invertY,
     fov: num(s.fov, 60, 100, 75),

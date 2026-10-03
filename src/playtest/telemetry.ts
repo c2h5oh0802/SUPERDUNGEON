@@ -133,8 +133,9 @@ function validStage(stage: PlaytestStage): boolean {
 
 /**
  * Uses only closed event IDs, finite numbers, and three low-cardinality dimensions.
- * No URL/referrer, typed feedback, player name, save data, or custom user ID is sent.
- * The SDK manages its own anonymous install identifier and automatic sessions.
+ * App-authored fields exclude raw URLs, typed feedback, names and campaign saves.
+ * The SDK adds a persistent random identifier, sessions and technical metadata;
+ * network metadata and SDK diagnostics are separate. See the public privacy details.
  */
 export function createPlaytestTelemetry(
   config: PlaytestTelemetryConfig,

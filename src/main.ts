@@ -1,4 +1,6 @@
-import './ui/style.css';
+import { localize } from './ui/i18n';
+import { initializeLanguageUi } from './ui/languageUi';
+import { showGameFailure, type FailureStage } from './ui/failure';
 import { CalibrationObserver, type CalibrationMilestoneType } from './playtest/calibration';
 import { createPublicPlaytestWorld, type PlaytestStage } from './playtest/scenario';
 import { createBrowserPlaytestTelemetry, normalizePlaytestSource, type PlaytestTelemetry, type PlaytestEventName, type PlaytestFun, type PlaytestIssue } from './playtest/telemetry';
@@ -28,7 +30,7 @@ import { SettingsStore } from './ui/settings';
 import { FullscreenControls } from './ui/fullscreen';
 import { gameViewport } from './ui/viewport';
 
-type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results';
+type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results' | 'error';
 
 // Finish the native fall, then leave the fallen battlefield visible for 1.5s.
 const PUBLIC_CORE_VICTORY_DELAY = ENEMY_DEATH_FALL_TIME + 1.5;
@@ -90,6 +92,7 @@ export class App {
 
   constructor() {
     this.settings.load();
+    initializeLanguageUi(this.settings);
     this.touchMode = this.settings.value.touchControls ?? !!window.matchMedia?.('(pointer: coarse)').matches;
     document.body.classList.toggle('touch-mode', this.touchMode);
     this.hud.setTouchMode(this.touchMode);
@@ -160,7 +163,18 @@ export class App {
     }
     else if (this.bossTestActive) this.openBossTest();
     else this.show(this.touchMode ? 'screen-mobile' : 'screen-menu');
-    this.loop.start((dt) => this.frame(dt));
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && this.mode === 'loading') this.pauseAfterLoading = true;
+    });
+    this.canvas.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+      this.failGame('runtime');
+    });
+    this.loop.start((dt) => {
+      if (this.mode === 'error') return;
+      try { this.frame(dt); }
+      catch (error) { console.error('Game runtime failed', error); this.failGame('runtime'); }
+    });
   }
 
   // ---------- 介面 ----------
@@ -560,6 +574,7 @@ export class App {
     this.show('screen-loading');
     window.setTimeout(() => {
       if (transition !== this.worldTransition || this.mode !== 'loading') return;
+      try {
       this.renderer.clearWorld();
       this.world = null;
       const w = make();
@@ -622,7 +637,8 @@ export class App {
         this.hud.hint(`start${this.runCount}`, hint, 6);
         // 職業提示排在後面，一次只顯示一則
         this.hud.hint(`cls${this.runCount}`, clsHint, 9);
-      });
+      }).catch(error => { if (transition === this.worldTransition) { console.error('Game entry failed', error); this.failGame('loading'); } });
+      } catch (error) { console.error('Dungeon loading failed', error); this.failGame('loading'); }
     }, 30);
   }
 
@@ -645,8 +661,19 @@ export class App {
     this.checkOrientation();
     if (this.pauseAfterLoading) {
       this.pauseAfterLoading = false;
-      this.pause('（已退出全螢幕）');
+      this.pause('（載入期間已中斷，請按繼續）');
     }
+  }
+
+  private failGame(stage: FailureStage): void {
+    ++this.worldTransition;
+    this.mode = 'error';
+    this.clearInput();
+    this.intentionalUnlock = true;
+    this.input.exitLock();
+    this.sfx.suspend();
+    this.loop.stop();
+    showGameFailure(stage);
   }
 
   pause(reason: string): void {
@@ -750,7 +777,7 @@ export class App {
       this.hud.setLockBanner(false);
       $('lock-fail').classList.add('hidden');
       // A cancelled asynchronous start must not capture the menu/picker later.
-      if (this.mode === 'menu' || this.mode === 'results') {
+      if (this.mode === 'menu' || this.mode === 'results' || this.mode === 'error') {
         this.intentionalUnlock = true;
         this.input.exitLock();
       }
@@ -760,11 +787,13 @@ export class App {
       this.intentionalUnlock = false;
       return;
     }
+    if (this.mode === 'loading') this.pauseAfterLoading = true;
     if (!this.touchMode && (this.mode === 'playing' || this.mode === 'map')) this.pause('（滑鼠鎖定已解除）');
   }
 
   private onFocusLost(): void {
     this.clearInput();
+    if (this.mode === 'loading') this.pauseAfterLoading = true;
     if (this.mode === 'playing' || this.mode === 'map') this.pause('（視窗失去焦點）');
   }
 
@@ -1020,8 +1049,9 @@ export class App {
     this.playtestEnded = false;
     this.telemetry?.landing();
     $('playtest-privacy').textContent = this.telemetry?.configured
-      ? '本試玩使用 GameAnalytics 收集不具名操作、結果與裝置統計（使用隨機識別碼），幫助改善遊戲；不收集姓名、聊天或錄影。'
+      ? '本試玩會把遊玩事件與選填回饋傳送至 GameAnalytics，用於改善遊戲。本頁開啟時就會開始收集；詳情如下。'
       : '這次試玩不傳送分析資料。';
+    $('playtest-privacy-details').classList.toggle('hidden', !this.telemetry?.configured);
     this.show('screen-playtest');
   }
 
@@ -1060,7 +1090,7 @@ export class App {
       : state.phase === 'healing' ? `受傷不會自動恢復。走過去撿治療藥水，再用${healing}補回生命。`
       : state.cue;
     // Keep the one-time safety notice stable, including for aria-live readers.
-    if ($('playtest-cue').textContent !== cue) $('playtest-cue').textContent = cue;
+    if ($('playtest-cue').textContent !== localize(cue)) $('playtest-cue').textContent = cue;
     $('playtest-unknown-note').classList.toggle('hidden', !state.complete);
     $('playtest-unknown-note').textContent = `${state.healingSkipped ? '治療藥水已用在別處，仍可繼續。' : '治療已完成。'}未知藥水與卷軸可透過使用或鑑定得知效果；不必試用，關閉背包後到前方開門即可繼續。`;
   }

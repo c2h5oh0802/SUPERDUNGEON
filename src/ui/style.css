@@ -1631,3 +1631,20 @@ html:fullscreen { background: var(--bg); }
 /* Disposable adventure restores the formal HUD without class-switch flow. */
 .public-free-play #btn-pause-class { display: none; }
 #playtest-adventure-badge { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); color: #ffe1a2; background: #171823dc; padding: 4px 10px; border-radius: 5px; pointer-events: none; font-size: 12px; }
+
+/* Native, keyboard-accessible language controls; choices persist with settings only. */
+body.booting > .screen { visibility: hidden; }
+.language-picker { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; font-size: 13px; }
+.language-picker select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid #7778; border-radius: 6px; padding: 7px 10px; min-height: 40px; }
+.playtest-controls { font-size: 13px; line-height: 1.7; color: var(--teal); }
+.privacy-details { text-align: left; font-size: 12px; line-height: 1.7; margin-top: 12px; }
+.privacy-details summary { cursor: pointer; padding: 8px 0; color: var(--teal); }
+.privacy-details a, .reload-link { color: var(--teal); }
+.reload-link { display: inline-block; padding: 12px; border: 1px solid currentColor; border-radius: 6px; }
+html[lang='en'] .touch-label { font-size: 10px; }
+html[lang='en'] #playtest-cue { font-size: 13px; }
+html[lang='en'] .touch-toolbar button { min-width: 54px; }
+html[lang='en'] .cls-name { letter-spacing: 0; }
+@media (max-height: 500px) { html[lang='en'] #playtest-cue { font-size: 11px; line-height: 1.4; } }
+
+html[lang='en'] #stealth.alarm::after { content: ' · Alert'; }
