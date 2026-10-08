@@ -1,6 +1,6 @@
 {
-  "totalBytes": 583792,
-  "count": 26,
+  "totalBytes": 647670,
+  "count": 29,
   "files": [
     {
       "file": "weapon-longsword.webp",
@@ -312,6 +312,42 @@
         45,
         421,
         467
+      ]
+    },
+    {
+      "file": "potion-look-ink.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 21706,
+      "alphaBounds": [
+        132,
+        58,
+        379,
+        436
+      ]
+    },
+    {
+      "file": "scroll-look-rust.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 21328,
+      "alphaBounds": [
+        92,
+        45,
+        420,
+        466
+      ]
+    },
+    {
+      "file": "scroll-look-frost.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 20844,
+      "alphaBounds": [
+        92,
+        45,
+        420,
+        466
       ]
     }
   ]

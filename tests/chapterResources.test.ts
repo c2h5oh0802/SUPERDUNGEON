@@ -127,7 +127,9 @@ describe('knowledge, appearances and conservative v2 migration', () => {
       const looks = looksFor(seed, 1);
       ALL_POTIONS.filter((id) => id !== 'healing').forEach((id, index) => expect(looks.potion[id]).toBe(pi[index]));
       expect(looks.potion.healing).toBe(5);
-      expect(looks.scroll).toEqual({ teleport: si[0], mapping: si[1], sleep: si[2], identify: si[3] });
+      expect(looks.scroll).toEqual({ teleport: si[0], mapping: si[1], sleep: si[2], identify: si[3], terror: 4, removecurse: 5 });
+      // 生成版本 2 新增的藥水排在原本六種之後，不改變舊外觀
+      expect(looks.potion.mindvision).toBe(6);
     }
     expect(ALL_SCROLLS).toEqual(['teleport', 'mapping', 'sleep', 'identify']);
     const rng = new Rng('POOLS');

@@ -1,9 +1,13 @@
 import {
   ALL_ARMORS,
   ALL_CLASSES,
-  ALL_POTIONS,
-  ALL_SCROLLS,
   ALL_WEAPONS,
+  ARMOR_CURSES,
+  ARMOR_GLYPHS,
+  POTIONS_V2,
+  SCROLLS_V2,
+  WEAPON_CURSES,
+  WEAPON_ENCHANTS,
   ITEM_FX,
   HUNGER,
   PLAYER,
@@ -19,7 +23,7 @@ import {
   type WeaponId,
 } from '../config';
 import { generateLevel } from '../gen/validate';
-import type { RunStats } from './types';
+import type { GearProps, RunStats } from './types';
 import { World, type PlayerCarry } from './world';
 import { landFromFall } from './dungeon';
 
@@ -30,7 +34,7 @@ export interface RunState {
   seed: string;
   cls: PlayerClass;
   /** 舊局保留五種藥水的既有外觀；新局使用六種藥水的完整排列。 */
-  potionLooksVersion?: 1 | 2;
+  potionLooksVersion?: 1 | 2 | 3;
   /** 生成版本：2＝程序化樓層；缺少＝舊存檔的兩種模板（照舊繼續）。 */
   gen?: 1 | 2;
   /** 怎麼抵達這一層：走樓梯，或從上一層的深坑掉下來（落點隨機、受傷）。 */
@@ -44,7 +48,7 @@ export interface RunState {
 }
 
 export function newRun(seed: string, cls: PlayerClass): RunState {
-  return { seed, cls, potionLooksVersion: 2, gen: 2, floor: 1, carry: null, stats: null };
+  return { seed, cls, potionLooksVersion: 3, gen: 2, floor: 1, carry: null, stats: null };
 }
 
 /** 生成這一層並建立世界。 */
@@ -76,8 +80,8 @@ const LEGACY_MAX_POTIONS = 3;
 
 const ITEM_IDS = new Set<string>([
   'food:ration',
-  ...ALL_POTIONS.map((k) => `potion:${k}`),
-  ...ALL_SCROLLS.map((k) => `scroll:${k}`),
+  ...POTIONS_V2.map((k) => `potion:${k}`),
+  ...SCROLLS_V2.map((k) => `scroll:${k}`),
   'scroll:upgrade',
   // Accepted only as migration input; neither remains in the active pool.
   'scroll:timeStop', 'scroll:lure',
@@ -108,7 +112,7 @@ export function parseRun(text: string | null): RunState | null {
   if (!o || o.v !== SAVE_VERSION || (o.chapter !== undefined && o.chapter !== 2)) return null;
   if (o.inventoryVersion !== undefined && o.inventoryVersion !== INVENTORY_VERSION) return null;
   if (o.identifyKnowledgeVersion !== undefined && o.identifyKnowledgeVersion !== IDENTIFY_KNOWLEDGE_VERSION) return null;
-  if (o.potionLooksVersion !== undefined && o.potionLooksVersion !== 1 && o.potionLooksVersion !== 2) return null;
+  if (o.potionLooksVersion !== undefined && o.potionLooksVersion !== 1 && o.potionLooksVersion !== 2 && o.potionLooksVersion !== 3) return null;
   const potionLooksVersion = o.potionLooksVersion === undefined ? 1 : o.potionLooksVersion;
   if (o.gen !== undefined && o.gen !== 1 && o.gen !== 2) return null;
   if (o.arrival !== undefined && o.arrival !== 'stairs' && o.arrival !== 'fall') return null;
@@ -138,8 +142,8 @@ export function parseRun(text: string | null): RunState | null {
       return null;
     const wp = (c.weapon ?? {}) as Record<string, unknown>;
     const ar = (c.armor ?? {}) as Record<string, unknown>;
-    if (!ALL_WEAPONS.includes(wp.id as WeaponId) || !isInt(wp.level, 0, UPGRADE.maxLevel)) return null;
-    if (!ALL_ARMORS.includes(ar.id as ArmorId) || !isInt(ar.level, 0, UPGRADE.maxLevel)) return null;
+    if (!ALL_WEAPONS.includes(wp.id as WeaponId) || !isInt(wp.level, -1, UPGRADE.maxLevel) || !validGear('weapon', wp, false)) return null;
+    if (!ALL_ARMORS.includes(ar.id as ArmorId) || !isInt(ar.level, -1, UPGRADE.maxLevel) || !validGear('armor', ar, false)) return null;
     if (!isInt(c.bowLevel, 0, UPGRADE.maxLevel) || !isInt(c.shieldLevel, 0, UPGRADE.maxLevel)) return null;
     const legacyPotions = c.potions === undefined ? 0 : c.potions;
     if (!isInt(legacyPotions, 0, LEGACY_MAX_POTIONS)) return null;
@@ -148,7 +152,12 @@ export function parseRun(text: string | null): RunState | null {
       c.items.length === ITEM_FX.slots + 1 && c.items.some((it) => it?.id === 'potion:healing');
     if (c.items.length > ITEM_FX.slots && !hasHealingOverflow) return null;
     for (const it of c.items as Array<Record<string, unknown>>) {
-      if (!it || !ITEM_IDS.has(it.id as string) || !isInt(it.count, 1, 99) || !isInt(it.level, 0, UPGRADE.maxLevel)) return null;
+      if (!it || !ITEM_IDS.has(it.id as string) || !isInt(it.count, 1, 99)) return null;
+      const cat = (it.id as string).split(':')[0];
+      // 只有裝備可能是 −1 級（未知裝備）
+      if (!isInt(it.level, cat === 'weapon' || cat === 'armor' ? -1 : 0, UPGRADE.maxLevel)) return null;
+      if (cat === 'weapon' || cat === 'armor' ? !validGear(cat, it, true) || it.count !== 1
+        : it.ench !== undefined || it.curse !== undefined || it.unknown !== undefined) return null;
     }
     if (!Array.isArray(c.known) || !c.known.every((k) => ITEM_IDS.has(k as string))) return null;
     if (!isInt(c.xp, 0, 100000) || !isInt(c.level, 1, XP.levels.length)) return null;
@@ -176,11 +185,11 @@ export function parseRun(text: string | null): RunState | null {
       tipped: { paralysis: t.paralysis as number, chill: t.chill as number },
       tipKind: c.tipKind,
       bottles: c.bottles as number,
-      weapon: { id: wp.id as WeaponId, level: wp.level as number },
-      armor: { id: ar.id as ArmorId, level: ar.level as number },
+      weapon: { id: wp.id as WeaponId, level: wp.level as number, ...gearFields(wp, false) },
+      armor: { id: ar.id as ArmorId, level: ar.level as number, ...gearFields(ar, false) },
       bowLevel: c.bowLevel as number,
       shieldLevel: c.shieldLevel as number,
-      items: migrateItems(c.items as Array<{ id: string; count: number; level: number }>, legacyPotions),
+      items: migrateItems(c.items as Array<{ id: string; count: number; level: number } & Record<string, unknown>>, legacyPotions),
       known: [...new Set([...(c.known as string[]).filter((id) => id !== 'scroll:lure').map((id) => id === 'scroll:timeStop' ? 'scroll:sleep' : id),
         ...(legacyPotions > 0 ? ['potion:healing'] : []),
         ...(o.identifyKnowledgeVersion === undefined && (c.items as Array<{ id: string }>).some(it => it.id === 'scroll:identify') ? ['scroll:identify'] : [])])] as ItemId[],
@@ -227,11 +236,29 @@ export function parseRun(text: string | null): RunState | null {
   return { seed: o.seed, cls: o.cls as PlayerClass, potionLooksVersion, gen, ...(arrival ? { arrival } : {}), floor: o.floor, carry, stats };
 }
 
+/** 裝備的附魔、詛咒、未知（生成版本 2 的加法欄位）；身上的裝備不會是未知。 */
+function validGear(cat: 'weapon' | 'armor', g: Record<string, unknown>, bag: boolean): boolean {
+  const enchants: readonly string[] = cat === 'weapon' ? WEAPON_ENCHANTS : ARMOR_GLYPHS;
+  const curses: readonly string[] = cat === 'weapon' ? WEAPON_CURSES : ARMOR_CURSES;
+  if (g.ench !== undefined && !enchants.includes(g.ench as string)) return false;
+  if (g.curse !== undefined && !curses.includes(g.curse as string)) return false;
+  if (g.unknown !== undefined && (!bag || g.unknown !== true)) return false;
+  return true;
+}
+
+function gearFields(g: Record<string, unknown>, bag: boolean): GearProps {
+  const out: GearProps = {};
+  if (g.ench !== undefined) out.ench = g.ench as GearProps['ench'];
+  if (g.curse !== undefined) out.curse = g.curse as GearProps['curse'];
+  if (bag && g.unknown === true) out.unknown = true;
+  return out;
+}
+
 /** Retired lure is discarded, not compensated with a stronger resource. Sleep aliases
  * merge without losing quantities, preserving >99 as a second valid legacy stack.
  * Numeric healing stock is moved into the bag after normal item migration. A full
  * old bag may retain one extra healing stack until enough items have been used. */
-function migrateItems(items: Array<{ id: string; count: number; level: number }>, legacyPotions: number): PlayerCarry['items'] {
+function migrateItems(items: Array<{ id: string; count: number; level: number } & Record<string, unknown>>, legacyPotions: number): PlayerCarry['items'] {
   const out: PlayerCarry['items'] = [];
   for (const it of items) {
     if (it.id === 'scroll:lure') continue;
@@ -241,7 +268,7 @@ function migrateItems(items: Array<{ id: string; count: number; level: number }>
       const stack = out.find((s) => s.id === id && s.count < 99);
       if (stack) { const added = Math.min(count, 99 - stack.count); stack.count += added; count -= added; }
     }
-    if (count) out.push({ id, count, level: it.level });
+    if (count) out.push({ id, count, level: it.level, ...gearFields(it, true) });
   }
   let healingLeft = legacyPotions;
   for (const stack of out) {

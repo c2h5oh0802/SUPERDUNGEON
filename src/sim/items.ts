@@ -4,6 +4,12 @@ import {
   ALL_POTIONS,
   ALL_SCROLLS,
   ARMORS,
+  CURSE_NAMES,
+  CURSE_TEXT,
+  ENCHANT_NAMES,
+  ENCHANT_TEXT,
+  POTIONS_V2,
+  SCROLLS_V2,
   ITEM_FX,
   HUNGER,
   HEALING_POTION,
@@ -21,13 +27,13 @@ import {
   type ScrollId,
   type TipKind,
 } from '../config';
-import { lullEnemy } from './enemySys';
+import { lullEnemy, terrifyEnemy } from './enemySys';
 import { Rng } from '../core/rng';
 import { rollConsumable, rollItem } from '../gen/loot';
 import { Nav } from './nav';
 import { TER } from './grid';
 import { hasTalent, maxTipped, queueChoice } from './progress';
-import type { Area, Enemy, InvItem, PendingChoice, PendingUse, UpgradeTarget } from './types';
+import type { Area, Enemy, GearProps, InvItem, PendingChoice, PendingUse, UpgradeTarget } from './types';
 import type { World } from './world';
 
 // 物品：未鑑定的藥水與卷軸（每一局外觀不同）、背包、喝／讀／丟／裝備，以及效果。
@@ -45,22 +51,30 @@ interface Looks {
 }
 
 const looksCache = new Map<string, Looks>();
+const EXTRA_LOOKS = (from: number, to: number): number[] => Array.from({ length: to - from }, (_, k) => from + k);
 
-/** 這一局（種子）的外觀對應：同一個種子永遠一樣，所以跨層、續玩都一致。 */
-export function looksFor(seed: string, version: 1 | 2 = 2): Looks {
+/** 這一局（種子）的外觀對應：同一個種子永遠一樣，所以跨層、續玩都一致。
+ * 版本 1、2（舊存檔）保留原本六種藥水、四種卷軸的外觀，新的消耗品排在後面；
+ * 版本 3（新局）七種藥水、六種卷軸一起洗牌，新的消耗品不會固定在同一個外觀。 */
+export function looksFor(seed: string, version: 1 | 2 | 3 = 2): Looks {
   const cacheKey = `${seed}#${version}`;
   let l = looksCache.get(cacheKey);
   if (l) return l;
   const rng = new Rng(`${seed}#looks`);
   // Preserve old scroll glyph RNG independently of the added sixth potion.
   const legacy = rng.shuffle([0, 1, 2, 3, 4]);
-  const pi = version === 1 ? [...legacy, 5] : new Rng(`${seed}#potion-looks-v2`).shuffle(ALL_POTIONS.map((_, k) => k));
+  const extraPotions = EXTRA_LOOKS(ALL_POTIONS.length, POTIONS_V2.length);
+  const pi = version === 1 ? [...legacy, 5, ...extraPotions]
+    : version === 2 ? [...new Rng(`${seed}#potion-looks-v2`).shuffle(ALL_POTIONS.map((_, k) => k)), ...extraPotions]
+      : new Rng(`${seed}#potion-looks-v3`).shuffle(POTIONS_V2.map((_, k) => k));
   // Preserve all prior glyph assignments: Sleep keeps timeStop slot 2, and Identify
   // fills the unused fourth slot. No additional RNG draw or appearance version.
-  const si = rng.shuffle([0, 1, 2, 3]);
+  const si4 = rng.shuffle([0, 1, 2, 3]);
+  const si = version === 3 ? new Rng(`${seed}#scroll-looks-v3`).shuffle(SCROLLS_V2.map((_, k) => k))
+    : [...si4, ...EXTRA_LOOKS(ALL_SCROLLS.length, SCROLLS_V2.length)];
   l = {
-    potion: Object.fromEntries(ALL_POTIONS.map((id, k) => [id, pi[k]!])) as Record<PotionId, number>,
-    scroll: Object.fromEntries(ALL_SCROLLS.map((id, k) => [id, si[k]!])) as Record<ScrollId, number>,
+    potion: Object.fromEntries(POTIONS_V2.map((id, k) => [id, pi[k]!])) as Record<PotionId, number>,
+    scroll: Object.fromEntries(SCROLLS_V2.map((id, k) => [id, si[k]!])) as Record<ScrollId, number>,
   };
   looksCache.set(cacheKey, l);
   return l;
@@ -84,39 +98,58 @@ export function identify(w: World, id: ItemId): void {
   w.emit({ type: 'identify', kind: id, text: `${lookName(w, id)}原來是「${itemName(w, id)}」` });
 }
 
-export function itemName(w: World, id: ItemId, level = 0): string {
+/** 強化等級的顯示：+1、−1；0 不顯示。 */
+export const levelText = (level: number): string => (level > 0 ? ` +${level}` : level < 0 ? ` −${-level}` : '');
+
+/** 裝備的名稱：未知的只顯示種類；已知的加上等級、附魔與詛咒。 */
+export function gearName(id: ItemId, level = 0, gear?: GearProps): string {
+  const base = categoryOf(id) === 'weapon' ? WEAPONS[keyOf(id) as keyof typeof WEAPONS].name : ARMORS[keyOf(id) as keyof typeof ARMORS].name;
+  if (gear?.unknown) return `未知的${base}`;
+  const tags = [gear?.ench ? ENCHANT_NAMES[gear.ench] : '', gear?.curse ? `${CURSE_NAMES[gear.curse]}的詛咒` : ''].filter(Boolean);
+  return `${base}${levelText(level)}${tags.length ? `〔${tags.join('・')}〕` : ''}`;
+}
+
+export function itemName(w: World, id: ItemId, level = 0, gear?: GearProps): string {
   const c = categoryOf(id);
-  const lv = level ? ` +${level}` : '';
   if (c === 'food') return '乾糧';
-  if (c === 'weapon') return `${WEAPONS[keyOf(id) as keyof typeof WEAPONS].name}${lv}`;
-  if (c === 'armor') return `${ARMORS[keyOf(id) as keyof typeof ARMORS].name}${lv}`;
+  if (c === 'weapon' || c === 'armor') return gearName(id, level, gear);
   if (!isKnown(w, id)) return lookName(w, id);
   if (c === 'potion') return POTIONS[keyOf(id) as PotionId].name;
   return SCROLLS[keyOf(id) as ScrollId | 'upgrade'].name;
 }
 
 /** 不管這一局認不認得，物品的真實名稱（寶庫台座標明種類）。 */
-export function trueItemName(id: ItemId, level = 0): string {
+export function trueItemName(id: ItemId, level = 0, gear?: GearProps): string {
   const c = categoryOf(id);
-  const lv = level ? ` +${level}` : '';
   if (c === 'food') return '乾糧';
-  if (c === 'weapon') return `${WEAPONS[keyOf(id) as keyof typeof WEAPONS].name}${lv}`;
-  if (c === 'armor') return `${ARMORS[keyOf(id) as keyof typeof ARMORS].name}${lv}`;
+  if (c === 'weapon' || c === 'armor') return gearName(id, level, gear ? { ...gear, unknown: false } : undefined);
   if (c === 'potion') return POTIONS[keyOf(id) as PotionId].name;
   return SCROLLS[keyOf(id) as ScrollId | 'upgrade'].name;
 }
 
-export function itemDesc(w: World, id: ItemId, level = 0): string {
+/** 已知裝備的附魔與詛咒說明。 */
+function gearTraits(gear?: GearProps): string {
+  const out: string[] = [];
+  if (gear?.ench) out.push(`${ENCHANT_NAMES[gear.ench]}：${ENCHANT_TEXT[gear.ench]}`);
+  if (gear?.curse) out.push(`${CURSE_NAMES[gear.curse]}的詛咒：${CURSE_TEXT[gear.curse]}；裝備後卸不下來，用強化卷軸或除咒卷軸解除`);
+  return out.length ? ` · ${out.join(' · ')}` : '';
+}
+
+export function itemDesc(w: World, id: ItemId, level = 0, gear?: GearProps): string {
   const c = categoryOf(id);
   const k = keyOf(id);
   if (c === 'food') return `吃下：減少 ${HUNGER.foodRestore} 世界秒的飢餓。吃完才生效；正常行動要花時間，已飽食時保留。`;
+  if ((c === 'weapon' || c === 'armor') && gear?.unknown) {
+    const base = itemDesc(w, id, 0);
+    return `未知的裝備：裝備上去或鑑定才知道強化等級（−1 到 +2），以及有沒有附魔或詛咒；被詛咒的裝備卸不下來。+0 時：${base}`;
+  }
   if (c === 'weapon') {
     const s = WEAPONS[k as keyof typeof WEAPONS];
-    return `${weaponDamage(k as keyof typeof WEAPONS, level)} 基礎傷害（每級 +${s.perLevel}）、${Math.round((s.windup + s.active + s.recovery) * 100) / 100} 秒、範圍 ${s.reach} m、背刺 ×${s.sneakMultiplier}；${s.note}`;
+    return `${weaponDamage(k as keyof typeof WEAPONS, level)} 基礎傷害（每級 +${s.perLevel}）、${Math.round((s.windup + s.active + s.recovery) * 100) / 100} 秒、範圍 ${s.reach} m、背刺 ×${s.sneakMultiplier}；${s.note}${gearTraits(gear)}`;
   }
   if (c === 'armor') {
     const id = k as keyof typeof ARMORS;
-    return `每次減傷 ${armorReduction(id, level)}（至少受 1；減傷上限 ${UPGRADE.armorMaxReduce}）；${ARMORS[id].stepMul > 1 ? '腳步聲較大、潛行步較慢' : '不增加腳步聲、不降低潛行步速'}`;
+    return `每次減傷 ${armorReduction(id, level)}（至少受 1；減傷上限 ${UPGRADE.armorMaxReduce}）；${ARMORS[id].stepMul > 1 ? '腳步聲較大、潛行步較慢' : '不增加腳步聲、不降低潛行步速'}${gearTraits(gear)}`;
   }
   if (!isKnown(w, id)) return c === 'potion' ? '未知的藥水：可先辨識，或喝下試出效果；投擲只有親眼看到明顯效果才會辨識，單純碎瓶不會。' : '未知的卷軸：可先辨識，或讀了才知道效果。';
   if (c === 'potion') {
@@ -127,7 +160,7 @@ export function itemDesc(w: World, id: ItemId, level = 0): string {
 }
 
 /** 物品在畫面上的顏色（藥水依這一局的外觀）。 */
-export function itemColor(seed: string, id: ItemId, version: 1 | 2 = 2): number {
+export function itemColor(seed: string, id: ItemId, version: 1 | 2 | 3 = 2): number {
   const c = categoryOf(id);
   if (c === 'potion') return POTION_LOOKS[looksFor(seed, version).potion[keyOf(id) as PotionId]]!.color;
   if (c === 'scroll') return id === 'scroll:upgrade' ? 0xf2c14e : 0xe8dcc0;
@@ -138,8 +171,8 @@ export function itemColor(seed: string, id: ItemId, version: 1 | 2 = 2): number 
 
 // ---------- 背包 ----------
 
-/** 放進背包；滿了回傳 false。 */
-export function addItem(w: World, id: ItemId, level = 0): boolean {
+/** 放進背包；滿了回傳 false。裝備各佔一格並保留附魔、詛咒與未知。 */
+export function addItem(w: World, id: ItemId, level = 0, gear?: GearProps): boolean {
   const items = w.player.items;
   const c = categoryOf(id);
   if (c === 'food' || c === 'potion' || c === 'scroll') {
@@ -151,9 +184,21 @@ export function addItem(w: World, id: ItemId, level = 0): boolean {
     if (c === 'food' && items.some((it) => it.id === id)) return false;
   }
   if (items.length >= ITEM_FX.slots) return false;
-  items.push({ id, count: 1, level });
+  items.push({ id, count: 1, level, ...cleanGear(gear) });
   return true;
 }
+
+/** 只保留有值的裝備屬性（存檔與比較都穩定）。 */
+export function cleanGear(gear?: GearProps): GearProps {
+  const out: GearProps = {};
+  if (gear?.ench) out.ench = gear.ench;
+  if (gear?.curse) out.curse = gear.curse;
+  if (gear?.unknown) out.unknown = true;
+  return out;
+}
+
+/** 一格背包的裝備屬性。 */
+export const gearOf = (it: GearProps): GearProps => cleanGear(it);
 
 function takeOne(w: World, index: number): InvItem | null {
   const it = w.player.items[index];
@@ -175,6 +220,11 @@ export function queueUse(w: World, index: number, mode: PendingUse['mode']): voi
       return;
     }
   }
+  const blocked = mode === 'use' ? equipBlockedReason(w, it.id) : null;
+  if (blocked) {
+    w.emit({ type: 'fullInventory', text: blocked });
+    return;
+  }
   w.player.pendingUse = { index, mode, stack: it };
 }
 
@@ -184,13 +234,13 @@ export function dropFromBag(w: World, index: number, all: boolean): boolean {
   const it = w.player.items[index];
   if (!it || w.player.dead) return false;
   const count = all ? it.count : 1;
-  const pickup = w.addPickup('item', count, w.player.x, 0.15, w.player.z, null, it.id, it.level);
+  const pickup = w.addPickup('item', count, w.player.x, 0.15, w.player.z, null, it.id, it.level, gearOf(it));
   pickup.pickupBlockedUntilExit = true;
   pickup.playerDropped = true;
   it.count -= count;
   if (it.count === 0) w.player.items.splice(index, 1);
   w.emit({ type: 'dropItem', kind: it.id, amount: count,
-    text: `放下 ${itemName(w, it.id, it.level)}${count > 1 ? ` ×${count}` : ''}；走開再靠近可撿回` });
+    text: `放下 ${itemName(w, it.id, it.level, it)}${count > 1 ? ` ×${count}` : ''}；走開再靠近可撿回` });
   return true;
 }
 
@@ -221,6 +271,11 @@ export function takeForAction(w: World, index: number, mode: PendingUse['mode'] 
   }
   if (w.player.items[index]?.id === 'scroll:upgrade' && upgradeTargets(w).length === 0) {
     w.emit({ type: 'fullInventory', text: '目前沒有可強化的裝備，卷軸已保留' });
+    return null;
+  }
+  const gearBlocked = w.player.items[index] ? equipBlockedReason(w, w.player.items[index]!.id) : null;
+  if (mode === 'use' && gearBlocked) {
+    w.emit({ type: 'fullInventory', text: gearBlocked });
     return null;
   }
   if (w.player.items[index]?.id === 'scroll:identify' && isKnown(w, 'scroll:identify') && identifyTargets(w).length === 0) {
@@ -285,6 +340,10 @@ export function drinkPotion(w: World, id: PotionId): void {
       p.hasteT = ITEM_FX.haste.duration;
       w.emit({ type: 'buff', kind: 'haste', text: `迅捷 ${ITEM_FX.haste.duration} 秒` });
       return;
+    case 'mindvision':
+      p.mindT = ITEM_FX.mindvision.duration;
+      w.emit({ type: 'buff', kind: 'mindvision', text: `心眼 ${ITEM_FX.mindvision.duration} 秒：隔著牆也看得到敵人` });
+      return;
     default:
       // 有害的藥水喝下去：在自己腳下碎開
       spawnArea(w, id, p.x, p.z);
@@ -294,7 +353,7 @@ export function drinkPotion(w: World, id: PotionId): void {
 /** 丟出的藥水碎開（落地、撞到東西，或在空中被射爆）。 */
 export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: number): void {
   const observed = observesPoint(w, { x, y, z });
-  const harmless = id === 'invisibility' || id === 'haste' || id === 'healing';
+  const harmless = id === 'invisibility' || id === 'haste' || id === 'healing' || id === 'mindvision';
   // Generic glass has no subtype cue. Known bottles keep their inventory names.
   w.emit({ type: 'shatter', x, y, z, text: observed && harmless ? '藥水碎了，沒有明顯效果' : undefined });
   w.emitNoise(x, y, z, 6, 'bottle');
@@ -304,8 +363,8 @@ export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: n
   spawnArea(w, id, x, z);
 }
 
-export function spawnArea(w: World, kind: Area['kind'], x: number, z: number): void {
-  const spec = ITEM_FX.area[kind];
+export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, size?: { radius: number; life: number }): void {
+  const spec = size ?? ITEM_FX.area[kind];
   // 火落在水上只冒出蒸氣
   if (kind === 'fire' && w.grid.terrainAt(Math.floor(x), Math.floor(z)) === TER.Water) {
     w.emit({ type: 'steam', x, y: 0.2, z, radius: spec.radius });
@@ -337,7 +396,8 @@ export function updateAreas(w: World, dt: number, damageEnemy: (e: Enemy, dmg: n
       if (a.tickT >= ITEM_FX.area.fire.tick) {
         a.tickT -= ITEM_FX.area.fire.tick;
         for (const e of w.enemies) if (e.alive && !e.perched && inside(e.x, e.z, e.radius)) damageEnemy(e, ITEM_FX.area.fire.damage, 'fire');
-        if (!p.dead && inside(p.x, p.z, PLAYER.radius)) w.damagePlayer(ITEM_FX.area.fire.damage, '火焰', a.x, a.z);
+        // 防火刻紋：不受火焰傷害
+        if (!p.dead && p.armor.ench !== 'fireproof' && inside(p.x, p.z, PLAYER.radius)) w.damagePlayer(ITEM_FX.area.fire.damage, '火焰', a.x, a.z);
       }
     } else if (a.kind === 'frost') {
       for (const e of w.enemies) if (e.alive && inside(e.x, e.z, e.radius)) e.slowT = Math.max(e.slowT, ITEM_FX.area.frost.slow);
@@ -413,20 +473,51 @@ export function readScroll(w: World, id: ScrollId | 'upgrade', reservedScroll = 
     case 'sleep':
       for (const e of w.enemies) if (Math.hypot(e.x - w.player.x, e.z - w.player.z) <= ITEM_FX.sleepRadius) lullEnemy(e);
       return;
+    case 'terror': {
+      let n = 0;
+      for (const e of w.enemies) if (Math.hypot(e.x - w.player.x, e.z - w.player.z) <= ITEM_FX.terror.radius && terrifyEnemy(e)) n++;
+      w.emit({ type: 'buff', kind: 'terror', text: n ? `${n} 名敵人轉身逃跑` : '附近沒有敵人' });
+      return;
+    }
+    case 'removecurse': {
+      const n = removeCurses(w);
+      w.emit({ type: 'buff', kind: 'removecurse', text: n ? `解除了 ${n} 件裝備的詛咒` : '身上與背包裡沒有被詛咒的裝備' });
+      return;
+    }
   }
 }
 
-/** One explicit bag stack is selected. Knowledge is per kind, never per copy. */
+/** 解除身上與背包裡所有裝備的詛咒；回傳解除了幾件。 */
+export function removeCurses(w: World): number {
+  const p = w.player;
+  let n = 0;
+  if (p.weapon.curse) { delete p.weapon.curse; n++; }
+  if (p.armor.curse) { delete p.armor.curse; n++; }
+  for (const it of p.items) if (it.curse) { delete it.curse; n++; }
+  return n;
+}
+
+/** One explicit bag stack is selected. Knowledge is per kind, never per copy;
+ * unknown gear is identified per item. */
 export function identifyTargets(w: World): InvItem[] {
   return w.player.items.filter(it => it.count > 0 && it.id !== 'scroll:identify' &&
-    (categoryOf(it.id) === 'potion' || categoryOf(it.id) === 'scroll') && !isKnown(w, it.id));
+    (((categoryOf(it.id) === 'potion' || categoryOf(it.id) === 'scroll') && !isKnown(w, it.id)) || !!it.unknown));
 }
 
 /** Reference identity rejects replacement stacks even if an inventory index was reused. */
 export function applyIdentification(w: World, target: InvItem): boolean {
   if (!identifyTargets(w).includes(target)) return false;
-  identify(w, target.id);
+  if (target.unknown) revealGear(w, target);
+  else identify(w, target.id);
   return true;
+}
+
+/** 揭曉一件未知裝備的等級、附魔與詛咒。 */
+export function revealGear(w: World, it: InvItem | (GearProps & { id: ItemId; level: number })): void {
+  if (!it.unknown) return;
+  const before = gearName(it.id, it.level, it);
+  delete it.unknown;
+  w.emit({ type: 'identify', kind: it.id, text: `${before}原來是「${gearName(it.id, it.level, it)}」` });
 }
 
 function returnIdentifyScroll(w: World): void {
@@ -488,34 +579,55 @@ export function teleport(w: World): void {
 /** Return outgoing gear to the bag, or leave a recoverable physical item.
  * A migrated over-cap healing stack (or a pickup during equip windup) can occupy
  * the slot reserved by taking the incoming gear. Never silently erase old gear. */
-function returnEquipment(w: World, id: ItemId, level: number): void {
-  if (addItem(w, id, level)) return;
-  w.addPickup('item', 1, w.player.x, 0.15, w.player.z, null, id, level);
+function returnEquipment(w: World, id: ItemId, level: number, gear?: GearProps): void {
+  if (addItem(w, id, level, gear)) return;
+  w.addPickup('item', 1, w.player.x, 0.15, w.player.z, null, id, level, gear);
   w.emit({ type: 'fullInventory', text: '背包滿了，換下的裝備留在腳邊' });
 }
 
-/** 換上背包裡的裝備；換下來的回背包或安全留在腳邊。 */
-export function equipFromBag(w: World, id: ItemId, level: number): void {
+/** 身上這一格的裝備被詛咒時，換不下來（回傳原因）。 */
+export function equipBlockedReason(w: World, id: ItemId): string | null {
+  const c = categoryOf(id);
+  const cur = c === 'weapon' ? w.player.weapon : c === 'armor' ? w.player.armor : null;
+  if (!cur?.curse) return null;
+  const name = c === 'weapon' ? gearName(`weapon:${w.player.weapon.id}`, cur.level, cur) : gearName(`armor:${w.player.armor.id}`, cur.level, cur);
+  return `${name}被詛咒了，卸不下來：用強化卷軸或除咒卷軸解除`;
+}
+
+/** 換上背包裡的裝備；換下來的回背包或安全留在腳邊。未知的裝備穿上就揭曉。 */
+export function equipFromBag(w: World, id: ItemId, level: number, gear?: GearProps): void {
   const p = w.player;
   const c = categoryOf(id);
+  const blocked = equipBlockedReason(w, id);
+  if (blocked) {
+    // 排隊期間背包或詛咒狀態改變：裝備留在背包
+    returnEquipment(w, id, level, gear);
+    w.emit({ type: 'fullInventory', text: blocked });
+    return;
+  }
+  const inst = { id, level, ...cleanGear(gear) };
+  if (inst.unknown) revealGear(w, inst);
+  const traits = { ...(inst.ench ? { ench: inst.ench } : {}), ...(inst.curse ? { curse: inst.curse } : {}) };
   if (c === 'weapon') {
     const old = p.weapon;
-    p.weapon = { id: keyOf(id) as typeof p.weapon.id, level };
-    returnEquipment(w, `weapon:${old.id}`, old.level);
+    p.weapon = { id: keyOf(id) as typeof p.weapon.id, level, ...traits };
+    returnEquipment(w, `weapon:${old.id}`, old.level, old);
   } else if (c === 'armor') {
     const old = p.armor;
-    p.armor = { id: keyOf(id) as typeof p.armor.id, level };
-    if (old.id !== 'cloth') returnEquipment(w, `armor:${old.id}`, old.level);
+    p.armor = { id: keyOf(id) as typeof p.armor.id, level, ...traits };
+    if (old.id !== 'cloth') returnEquipment(w, `armor:${old.id}`, old.level, old);
   }
-  w.emit({ type: 'equip', kind: id, text: `裝備：${itemName(w, id, level)}` });
+  w.emit({ type: 'equip', kind: id, text: `裝備：${itemName(w, id, level, traits)}` });
+  if (inst.curse) w.emit({ type: 'curse', kind: inst.curse, text: `被詛咒了！${CURSE_TEXT[inst.curse]}；卸不下來` });
 }
 
 /** Only a real positive benefit below the global level cap can be purchased. */
 export function upgradeTargets(w: World): UpgradeTarget[] {
   const p = w.player;
   const out: UpgradeTarget[] = [];
-  if (p.weapon.level < UPGRADE.maxLevel && weaponDamage(p.weapon.id, p.weapon.level + 1) > weaponDamage(p.weapon.id, p.weapon.level)) out.push('weapon');
-  if (p.armor.level < UPGRADE.maxLevel && armorReduction(p.armor.id, p.armor.level + 1) > armorReduction(p.armor.id, p.armor.level)) out.push('armor');
+  // 被詛咒的裝備一定能投入強化卷軸（解除詛咒）
+  if (p.weapon.curse || (p.weapon.level < UPGRADE.maxLevel && weaponDamage(p.weapon.id, p.weapon.level + 1) > weaponDamage(p.weapon.id, p.weapon.level))) out.push('weapon');
+  if (p.armor.curse || (p.armor.level < UPGRADE.maxLevel && armorReduction(p.armor.id, p.armor.level + 1) > armorReduction(p.armor.id, p.armor.level))) out.push('armor');
   if (p.cls === 'huntress' && p.bowLevel < UPGRADE.maxLevel && (bowDamage(p.bowLevel + 1, false) > bowDamage(p.bowLevel, false) || bowDamage(p.bowLevel + 1, true) > bowDamage(p.bowLevel, true))) out.push('bow');
   // Historical shieldLevel remains in saves, but shield upgrades are no longer offered.
   return out;
@@ -524,20 +636,23 @@ export function upgradeTargets(w: World): UpgradeTarget[] {
 export function upgradeLabel(w: World, t: UpgradeTarget): { name: string; text: string } {
   const p = w.player;
   const allowed = upgradeTargets(w).includes(t);
-  const name = (title: string, level: number) => `${title} +${level}${allowed ? ` → +${level + 1}` : '（無可用強化）'}`;
+  const lv = (level: number) => levelText(level) || ' +0';
+  const name = (title: string, level: number) => `${title}${lv(level)}${allowed ? ` →${lv(Math.min(UPGRADE.maxLevel, level + 1))}` : '（無可用強化）'}`;
   const cap = `上限 +${UPGRADE.maxLevel}`;
   switch (t) {
     case 'weapon': {
       const s = WEAPONS[p.weapon.id];
-      const before = weaponDamage(p.weapon.id, p.weapon.level), after = weaponDamage(p.weapon.id, p.weapon.level + 1);
+      const before = weaponDamage(p.weapon.id, p.weapon.level), after = weaponDamage(p.weapon.id, Math.min(UPGRADE.maxLevel, p.weapon.level + 1));
       let text = allowed ? `基礎傷害 ${before} → ${after}` : `基礎傷害 ${before}；已達強化上限`;
+      if (p.weapon.curse) text += `；解除${CURSE_NAMES[p.weapon.curse]}的詛咒`;
       if (allowed && s.sneakMultiplier > 1) text += `；奇襲 ${before * s.sneakMultiplier} → ${after * s.sneakMultiplier}`;
       if (allowed && s.maxTargets > 1) text += `；次敵 ${before * s.secondaryDamage} → ${after * s.secondaryDamage}`;
       return { name: name(s.name, p.weapon.level), text: `${text}。${cap}；射程、出手時間與移速承諾不變。` };
     }
     case 'armor': {
       const a = p.armor, before = armorReduction(a.id, a.level), after = armorReduction(a.id, a.level + 1);
-      const text = allowed ? `每次減傷 ${before} → ${after}` : `每次減傷 ${before}；${a.id === 'cloth' ? '布衣不能強化' : '減傷已封頂'}`;
+      let text = allowed ? `每次減傷 ${before} → ${after}` : `每次減傷 ${before}；${a.id === 'cloth' ? '布衣不能強化' : '減傷已封頂'}`;
+      if (a.curse) text += `；解除${CURSE_NAMES[a.curse]}的詛咒`;
       return { name: name(ARMORS[a.id].name, a.level), text: `${text}（至少受 1）。減傷上限 ${UPGRADE.armorMaxReduce}${a.id === 'cloth' ? '' : `，本件 +${armorUpgradeLimit(a.id)} 封頂`}；腳步聲與潛行速度不變。` };
     }
     case 'bow': {
@@ -555,10 +670,13 @@ export function applyUpgrade(w: World, t: UpgradeTarget): boolean {
   if (!upgradeTargets(w).includes(t)) return false;
   const p = w.player;
   const label = upgradeLabel(w, t).name;
-  if (t === 'weapon') p.weapon.level++;
-  else if (t === 'armor') p.armor.level++;
+  const gear = t === 'weapon' ? p.weapon : t === 'armor' ? p.armor : null;
+  const cursed = !!gear?.curse;
+  if (gear?.curse) delete gear.curse;
+  if (t === 'weapon' && p.weapon.level < UPGRADE.maxLevel) p.weapon.level++;
+  else if (t === 'armor' && p.armor.level < UPGRADE.maxLevel && p.armor.id !== 'cloth') p.armor.level++;
   else if (t === 'bow') p.bowLevel++;
-  w.emit({ type: 'equip', kind: t, text: `強化：${label}` });
+  w.emit({ type: 'equip', kind: t, text: `強化：${label}${cursed ? '；詛咒解除了' : ''}` });
   return true;
 }
 
@@ -588,8 +706,9 @@ export function refreshUpgradeChoice(w: World, choice: Extract<PendingChoice, { 
 export function dropLoot(w: World, e: Enemy): void {
   if (w.level.encounter) return;
   if (!e.veteran && !w.rng.chance(ITEM_FX.dropChance)) return;
-  const roll = e.veteran ? rollItem(w.rng, w.level.floor, 'enemy') : rollConsumable(w.rng, 'enemy');
-  w.addPickup('item', 1, e.x + 0.3, 0.15, e.z + 0.3, null, roll.id, roll.level);
+  const pool = w.level.gen === 2 ? 2 : 1;
+  const roll = e.veteran ? rollItem(w.rng, w.level.floor, 'enemy', pool) : rollConsumable(w.rng, 'enemy', pool);
+  w.addPickup('item', 1, e.x + 0.3, 0.15, e.z + 0.3, null, roll.id, roll.level, roll);
 }
 
 /** 隱形、迅捷、連擊的倒數（世界時間）。 */
@@ -597,6 +716,7 @@ export function updateBuffs(w: World, dt: number): void {
   const p = w.player;
   p.invisT = Math.max(0, p.invisT - dt);
   p.hasteT = Math.max(0, p.hasteT - dt);
+  if (p.mindT) p.mindT = Math.max(0, p.mindT - dt);
   p.comboT = Math.max(0, p.comboT - dt);
 }
 

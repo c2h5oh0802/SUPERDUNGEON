@@ -52,3 +52,13 @@ Created specifically for SUPERDUNGEON by procedural mesh/material construction. 
 ## Identify rule correction (2026-10-02)
 
 Identify is now an ordinary unknown scroll and always uses its seeded rune appearance, including after discovery. The earlier silver-eye asset remains as editable historical artwork; it is not selected for a live inventory item. No existing asset bytes changed in this correction.
+
+## Recolored looks for new consumables (2026-10-08)
+
+Dungeon v2 adds a seventh potion (Mind Vision) and two scrolls (Terror, Remove Curse), so the seeded appearances need one more bottle and two more scroll looks. Blender was not available, so these three runtime assets are **recolors of existing renders**, produced deterministically by `scripts/art/recolor-inventory.mjs` (Chromium canvas, no external imagery):
+
+- `potion-look-ink.webp`: from `potion-look-violet.webp`, changing only the liquid's hue range (225–330°) to the ink palette `#50506a`; bottle, cork and cord pixels are untouched.
+- `scroll-look-rust.webp`: the whole `scroll-look-star.webp` scroll tinted rust red.
+- `scroll-look-frost.webp`: the whole `scroll-look-tide.webp` scroll tinted frost white-blue.
+
+The rust and frost scrolls share their ornament shapes with star and tide; the paper color is the distinguishing cue. Re-rendering them in Blender with their own ornaments is a possible later improvement. `asset-manifest.json` now lists 29 files. The contact sheets were not regenerated.

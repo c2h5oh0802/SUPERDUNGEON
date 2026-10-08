@@ -714,14 +714,20 @@ export const RENDER = {
 
 // ---------- 物品：未鑑定的藥水與卷軸、裝備 ----------
 
-/** 六種藥水共用隨種子外觀；職業僅決定初始知識。 */
-export type PotionId = 'healing' | 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste';
-/** 四種未知卷軸共用種子外觀；只有強化卷軸固定已知。 */
-export type ScrollId = 'teleport' | 'mapping' | 'sleep' | 'identify';
+/** 藥水共用隨種子外觀；職業僅決定初始知識。 */
+export type PotionId = 'healing' | 'fire' | 'frost' | 'gas' | 'invisibility' | 'haste' | 'mindvision';
+/** 未知卷軸共用種子外觀；只有強化卷軸固定已知。 */
+export type ScrollId = 'teleport' | 'mapping' | 'sleep' | 'identify' | 'terror' | 'removecurse';
 export type ItemId = 'food:ration' | `potion:${PotionId}` | 'scroll:upgrade' | `scroll:${ScrollId}` | `weapon:${WeaponId}` | `armor:${ArmorId}`;
 
+/** 舊版（生成版本 1）與舊存檔的六種藥水、四種卷軸；順序固定，外觀與掉落亂數依賴它。 */
 export const ALL_POTIONS: PotionId[] = ['fire', 'frost', 'gas', 'invisibility', 'haste', 'healing'];
 export const ALL_SCROLLS: ScrollId[] = ['teleport', 'mapping', 'sleep', 'identify'];
+/** 生成版本 2 加入的消耗品（M-C）。 */
+export const EXTRA_POTIONS: PotionId[] = ['mindvision'];
+export const EXTRA_SCROLLS: ScrollId[] = ['terror', 'removecurse'];
+export const POTIONS_V2: PotionId[] = [...ALL_POTIONS, ...EXTRA_POTIONS];
+export const SCROLLS_V2: ScrollId[] = [...ALL_SCROLLS, ...EXTRA_SCROLLS];
 
 /** 每一局隨機對應的外觀（第一次使用才知道是什麼）。 */
 export const POTION_LOOKS = [
@@ -731,8 +737,9 @@ export const POTION_LOOKS = [
   { name: '紫羅蘭', color: 0xa060e0 },
   { name: '琥珀', color: 0xe0a040 },
   { name: '銀白', color: 0xd8e2e8 },
+  { name: '墨黑', color: 0x50506a },
 ] as const;
-export const SCROLL_LOOKS = ['灰燼', '潮汐', '荊棘', '星辰'] as const;
+export const SCROLL_LOOKS = ['灰燼', '潮汐', '荊棘', '星辰', '鏽蝕', '霜白'] as const;
 
 export const HEALING_POTION = { fraction: 0.5, practiceCount: 3 } as const;
 
@@ -743,6 +750,7 @@ export const POTIONS: Record<PotionId, { name: string; drink: string; thrown: st
   gas: { name: '麻痺氣體', drink: '在腳下冒出氣體（你會被麻痺）', thrown: '碎開處冒出氣體，裡面的敵人時間軸暫停' },
   invisibility: { name: '隱形藥水', drink: '8 秒內敵人看不到你（攻擊會現形）', thrown: '碎了，沒有效果' },
   haste: { name: '迅捷藥水', drink: '8 秒內你的行動只花一半世界時間', thrown: '碎了，沒有效果' },
+  mindvision: { name: '心眼藥水', drink: '20 秒內隔著牆也看得到附近的敵人，以及它正在準備的攻擊', thrown: '碎了，沒有效果' },
 };
 
 export const IDENTIFY = { guaranteedPerFloor: [1, 0, 0, 0, 0], practiceCount: 0 } as const;
@@ -753,6 +761,8 @@ export const SCROLLS: Record<ScrollId | 'upgrade', { name: string; text: string 
   teleport: { name: '傳送卷軸', text: '傳送到這一層遠離敵人的地方' },
   mapping: { name: '地圖卷軸', text: '顯示整層地圖與往下的路' },
   sleep: { name: '沉睡卷軸', text: '令附近 6 公尺內的普通敵人入睡；已鎖定的攻擊先完成，首領免疫；聲音、靠近與受擊仍會喚醒' },
+  terror: { name: '恐懼卷軸', text: '附近 8 公尺內的敵人轉身逃跑 5 秒；已鎖定的攻擊先完成，首領與石像免疫' },
+  removecurse: { name: '除咒卷軸', text: '解除身上與背包裡所有裝備的詛咒' },
 };
 
 export const ITEM_FX = {
@@ -763,6 +773,10 @@ export const ITEM_FX = {
   },
   invisibility: 8,
   haste: { duration: 8, timeMul: 0.5 },
+  /** 心眼：持續世界秒與看得到的距離。 */
+  mindvision: { duration: 20, range: 30 },
+  /** 恐懼：範圍與逃跑的世界秒。 */
+  terror: { radius: 8, duration: 5 },
   sleepRadius: 6,
   teleportMinDist: 12,
   /** 背包格數（同種藥水、卷軸疊在一格）。 */
@@ -770,6 +784,61 @@ export const ITEM_FX = {
   /** 敵人倒下時掉東西的機率（老兵一定掉）。 */
   dropChance: 0.2,
 } as const;
+
+// ---------- 附魔、刻紋、詛咒與未知裝備（生成版本 2） ----------
+
+export type WeaponEnchant = 'chill' | 'impact' | 'flame';
+export type ArmorGlyph = 'silent' | 'thorns' | 'fireproof';
+export type GearEnchant = WeaponEnchant | ArmorGlyph;
+/** 詛咒都作用在時間規則上：武器「沉重」；護甲「喧鬧」或「脆弱」。 */
+export type GearCurse = 'heavy' | 'noisy' | 'fragile';
+export const WEAPON_ENCHANTS: WeaponEnchant[] = ['chill', 'impact', 'flame'];
+export const ARMOR_GLYPHS: ArmorGlyph[] = ['silent', 'thorns', 'fireproof'];
+export const WEAPON_CURSES: GearCurse[] = ['heavy'];
+export const ARMOR_CURSES: GearCurse[] = ['noisy', 'fragile'];
+
+export const GEAR = {
+  /** 地上、寶箱、敵人掉的裝備帶附魔／刻紋的機率（第 1–4 層）。 */
+  enchantChance: [0, 0.25, 0.25, 0.3],
+  /** 未知裝備帶詛咒的機率；詛咒裝備等級為 −1 或 0，不會同時有附魔。 */
+  curseChance: 0.25,
+  /** 未知裝備的等級分布（−1、0、+1、+2 的權重），第 1–2 層與第 3–4 層。 */
+  levelWeights: [[0.25, 0.5, 0.25, 0], [0.2, 0.35, 0.3, 0.15]],
+  /** 冰寒：命中讓敵人的時間軸變慢（世界秒）；倍率沿用冰寒箭。 */
+  chillDuration: 1.5,
+  /** 衝擊：命中把敵人推開（公尺）；撞牆照推擊的規則失衡。 */
+  impactDist: 1,
+  /** 烈焰：命中點起一小片火。 */
+  flame: { radius: 1.0, life: 2 },
+  /** 寂靜：腳步聲半徑倍率。 */
+  silentMul: 0.5,
+  /** 荊棘：近身打中你的敵人踉蹌（世界秒）。 */
+  thornsStagger: 0.3,
+  /** 沉重：近戰出手準備倍率。 */
+  heavyWindupMul: 1.4,
+  /** 喧鬧：腳步聲半徑倍率；潛行步也照一般腳步出聲。 */
+  noisyMul: 2,
+  /** 脆弱：每次受傷多 1。 */
+  fragileExtra: 1,
+} as const;
+
+export const ENCHANT_NAMES: Record<GearEnchant, string> = {
+  chill: '冰寒', impact: '衝擊', flame: '烈焰', silent: '寂靜', thorns: '荊棘', fireproof: '防火',
+};
+export const ENCHANT_TEXT: Record<GearEnchant, string> = {
+  chill: `命中讓敵人的時間軸變成 ${TIPS.chill.timeScale} 倍速 ${GEAR.chillDuration} 秒`,
+  impact: `命中把敵人推開 ${GEAR.impactDist} m，撞牆會失衡`,
+  flame: '命中點起一小片火，會點燃長草',
+  silent: `腳步聲半徑 ×${GEAR.silentMul}`,
+  thorns: `近身打中你的敵人踉蹌 ${GEAR.thornsStagger} 秒`,
+  fireproof: '不受火焰傷害',
+};
+export const CURSE_NAMES: Record<GearCurse, string> = { heavy: '沉重', noisy: '喧鬧', fragile: '脆弱' };
+export const CURSE_TEXT: Record<GearCurse, string> = {
+  heavy: `近戰出手準備 ×${GEAR.heavyWindupMul}`,
+  noisy: `腳步聲半徑 ×${GEAR.noisyMul}，潛行步也會出聲`,
+  fragile: `每次受傷多 ${GEAR.fragileExtra}`,
+};
 
 // ---------- 經驗、等級、天賦 ----------
 

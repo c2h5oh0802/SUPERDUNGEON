@@ -1,5 +1,5 @@
 import { combatRoomCells } from './combatSound';
-import { ENCOUNTERS, ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { ENCOUNTERS, ENEMIES, GEAR, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
@@ -257,7 +257,7 @@ function dropCarried(w: World, e: Enemy): void {
     e.loot = undefined;
     if (c.ammo) w.addPickup('ammo', c.ammo, e.x + 0.4, 0.15, e.z, null);
     if (c.bottles) w.addPickup('bottle', c.bottles, e.x - 0.4, 0.15, e.z, null);
-    c.items.forEach((it, k) => w.addPickup('item', 1, e.x + Math.cos(k * 2.1) * 0.6, 0.15, e.z + Math.sin(k * 2.1) * 0.6, null, it.id, it.level));
+    c.items.forEach((it, k) => w.addPickup('item', 1, e.x + Math.cos(k * 2.1) * 0.6, 0.15, e.z + Math.sin(k * 2.1) * 0.6, null, it.id, it.level, it));
   }
 }
 
@@ -706,7 +706,10 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
             if (shieldBlocks(w, e.x, e.z)) {
               w.stats.blocks++;
               w.emit({ type: 'block', id: e.id, kind: 'guard', x: (e.x + p.x) / 2, y: 1.2, z: (e.z + p.z) / 2 });
-            } else w.damagePlayer(s.damage, MELEE_SOURCE[e.kind] ?? '盾衛的劍', e.x, e.z);
+            } else {
+              w.damagePlayer(s.damage, MELEE_SOURCE[e.kind] ?? '盾衛的劍', e.x, e.z);
+              thorns(w, e);
+            }
           }
         }
       }
@@ -1210,7 +1213,10 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
             w.stats.blocks++;
             w.emit({ type: 'block', id: e.id, kind: 'charger', x: (e.x + p.x) / 2, y: 1.1, z: (e.z + p.z) / 2 });
             recoilPlayer(w, f.x, f.z, SHIELD.chargeRecoil);
-          } else w.damagePlayer(s.damage, '突進者的衝撞', e.x, e.z);
+          } else {
+            w.damagePlayer(s.damage, '突進者的衝撞', e.x, e.z);
+            thorns(w, e);
+          }
         }
         e.phase = 'recovery';
         e.phaseT = 0;
@@ -1475,6 +1481,44 @@ function enterSleep(e: Enemy): void {
   // Physical displacement is independent of AI sleep, just like paralysis.
 }
 
+/** 荊棘刻紋：近身打中你的敵人踉蹌。 */
+function thorns(w: World, e: Enemy): void {
+  if (w.player.armor.ench !== 'thorns' || !e.alive || e.boss) return;
+  staggerEnemy(e, GEAR.thornsStagger);
+  w.emit({ type: 'buff', kind: 'thorns', x: e.x, y: 1.2, z: e.z, text: '荊棘：敵人踉蹌' });
+}
+
+/** 恐懼卷軸：醒來並轉身逃跑一段時間；已鎖定的攻擊先完成。首領、石像與偽裝中的寶箱怪不受影響。 */
+export function terrifyEnemy(e: Enemy): boolean {
+  if (!e.alive || e.boss || e.kind === 'statue' || e.disguised || e.dormant) return false;
+  e.fearT = ITEM_FX.terror.duration;
+  e.pendingSleep = false;
+  if (e.state !== 'alert') {
+    e.state = 'alert';
+    e.awareness = 1;
+    e.loseT = 0;
+  }
+  return true;
+}
+
+/** 逃跑中：遠離玩家；高台上的弩手只能站著不動。 */
+function flee(w: World, e: Enemy, dt: number): void {
+  const p = w.player;
+  if (e.phase !== 'none' && e.phase !== 'stun') {
+    interruptEnemy(e);
+    e.phase = 'none';
+  }
+  if (e.perched) {
+    e.moving = false;
+    return;
+  }
+  const d = Math.hypot(p.x - e.x, p.z - e.z);
+  const away = { x: e.x + ((e.x - p.x) / Math.max(d, 0.1)) * 4, z: e.z + ((e.z - p.z) / Math.max(d, 0.1)) * 4 };
+  const c = w.enav.nearestPassable(away.x, away.z, 4);
+  if (c >= 0) moveTo(w, e, w.enav.center(c), Math.min(ENEMIES[e.kind].speed, ENEMIES.searchSpeed + 1), dt, 0.3);
+  else e.moving = false;
+}
+
 export function lullEnemy(e: Enemy): void {
   if (!e.alive || e.boss || e.kind === 'statue' || e.disguised) return;
   if (sleepCommitted(e)) e.pendingSleep = true;
@@ -1524,6 +1568,14 @@ export function updateEnemies(w: World, dt: number): void {
         e.phaseT = 0;
       }
       continue;
+    }
+    // 恐懼：先完成已鎖定的攻擊，之後轉身逃跑
+    if ((e.fearT ?? 0) > 0) {
+      e.fearT = Math.max(0, e.fearT! - dt);
+      if (!sleepCommitted(e)) {
+        flee(w, e, edt);
+        continue;
+      }
     }
     if (e.state === 'alert') {
       const attacking = e.phase !== 'none' && e.phase !== 'reload';

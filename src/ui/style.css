@@ -1655,3 +1655,50 @@ html[lang='en'] .cls-name { letter-spacing: 0; }
 @media (max-height: 500px) { html[lang='en'] #playtest-cue { font-size: 11px; line-height: 1.4; } }
 
 html[lang='en'] #stealth.alarm::after { content: ' · Alert'; }
+
+/* 心眼：隔牆感覺到的敵人（半透明，不和看得見的敵人混淆）；⚔ 正在準備攻擊 */
+.eicon.mind {
+  color: #c9b8ff;
+  font-size: 13px;
+  opacity: 0.75;
+  background: rgba(140, 110, 255, 0.16);
+  outline: 1px dashed rgba(190, 170, 255, 0.55);
+}
+
+.eicon.mind.attack {
+  color: #ffd0c0;
+  opacity: 0.95;
+  background: rgba(255, 90, 60, 0.35);
+}
+
+/* 恐懼：逃跑中 */
+.eicon.fear {
+  color: #d9f0ff;
+  background: rgba(120, 170, 220, 0.3);
+}
+
+/* 附魔與詛咒 */
+.gear-ench, .gear-curse {
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 6px 0;
+}
+
+.gear-ench { color: #9fd8ff; }
+.gear-curse { color: #ff9a86; }
+
+.inv-cursed {
+  position: absolute;
+  top: 5px;
+  left: 26px;
+  color: #ff8a70;
+  font-size: 12px;
+  z-index: 1;
+}
+
+#buffs span.curse {
+  background: rgba(255, 90, 60, 0.2);
+  color: #ff9a86;
+}
+
+#tools .cursed span, #armor.cursed { color: #ff9a86; }

@@ -1,9 +1,9 @@
 import { recordSensesEvent, expireSenses, type SoundCue } from './senses';
-import { CLASSES, CLASS_KNOWLEDGE, ENCOUNTERS, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TERRAIN, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
+import { CLASSES, CLASS_KNOWLEDGE, ENCOUNTERS, GEAR, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TERRAIN, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { armorFootstepRadius, armorReduction, armorSneakSpeedMul } from './equipment';
-import { applyIdentification, cancelIdentification, refreshIdentifyChoice, applyUpgrade, refreshUpgradeChoice, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
+import { applyIdentification, cancelIdentification, cleanGear, refreshIdentifyChoice, applyUpgrade, refreshUpgradeChoice, dropLoot, lightstep, updateAreas, updateBuffs } from './items';
 import { applyTalent, gainXp, killXp, talentOptions } from './progress';
 import { segSphere, type V2, type V3 } from '../core/math';
 import { clampRealDt, computeWorldDt, substeps } from '../core/time';
@@ -23,7 +23,9 @@ import type {
   Enemy,
   InvItem,
   PendingChoice,
+  Equipped,
   FrameInput,
+  GearProps,
   GameEvent,
   Interactable,
   InteractTarget,
@@ -57,8 +59,8 @@ export interface PlayerCarry {
   tipped: { paralysis: number; chill: number };
   tipKind: 'paralysis' | 'chill';
   bottles: number;
-  weapon: { id: WeaponId; level: number };
-  armor: { id: ArmorId; level: number };
+  weapon: Equipped<WeaponId>;
+  armor: Equipped<ArmorId>;
   bowLevel: number;
   shieldLevel: number;
   items: InvItem[];
@@ -290,7 +292,7 @@ export class World {
     // 寶箱怪看起來就是一個寶箱（可以「打開」）
     for (const e of this.enemies) if (e.kind === 'mimic' && e.disguised)
       this.interactables.push({ id: this.nextId++, kind: 'mimic', x: e.x, z: e.z, yaw: e.yaw, used: false, ref: e.id, roomKey: e.roomKey });
-    for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level);
+    for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level, p.gear);
     level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set(),
       kind: t.kind ?? 'spikes', hidden: !!t.hidden, spent: false, noticeT: 0 }));
     for (const d of this.grid.doors) {
@@ -355,8 +357,9 @@ export class World {
     return ev;
   }
 
-  addPickup(kind: Pickup['kind'], amount: number, x: number, y: number, z: number, stuckDir: V3 | null, item?: ItemId, level?: number): Pickup {
+  addPickup(kind: Pickup['kind'], amount: number, x: number, y: number, z: number, stuckDir: V3 | null, item?: ItemId, level?: number, gear?: GearProps): Pickup {
     const p: Pickup = { id: this.nextId++, kind, amount, x, y, z, stuckDir, taken: false, item, level };
+    if (gear && (gear.ench || gear.curse || gear.unknown)) p.gear = cleanGear(gear);
     this.pickups.push(p);
     return p;
   }
@@ -474,7 +477,9 @@ export class World {
   /** 正常走動：每走一段距離發出腳步聲；潛行步不出聲。 */
   private footsteps(dist: number): void {
     const p = this.player;
-    if (p.sneaking || dist <= 0 || p.dead) {
+    // 喧鬧的詛咒：潛行步也照一般腳步出聲
+    const noisy = p.armor.curse === 'noisy';
+    if ((p.sneaking && !noisy) || dist <= 0 || p.dead) {
       this.stepAcc = p.sneaking ? 0 : this.stepAcc;
       return;
     }
@@ -482,7 +487,16 @@ export class World {
     if (this.stepAcc < STEALTH.footstepEvery) return;
     this.stepAcc -= STEALTH.footstepEvery;
     const water = this.grid.terrainAt(Math.floor(p.x), Math.floor(p.z)) === TER.Water;
-    this.emitNoise(p.x, 0.1, p.z, armorFootstepRadius(p.armor.id) * (water ? TERRAIN.waterStepMul : 1), water ? 'splash' : 'step');
+    this.emitNoise(p.x, 0.1, p.z, this.footstepRadius(water), water ? 'splash' : 'step');
+  }
+
+  /** 腳步聲半徑：護甲、水、刻紋與詛咒。潛行步（喧鬧的詛咒）照一般腳步算，不再加倍。 */
+  footstepRadius(water = false): number {
+    const p = this.player;
+    let r = armorFootstepRadius(p.armor.id) * (water && !p.sneaking ? TERRAIN.waterStepMul : 1);
+    if (p.armor.ench === 'silent') r *= GEAR.silentMul;
+    if (p.armor.curse === 'noisy' && !p.sneaking) r *= GEAR.noisyMul;
+    return r;
   }
 
   /** 護甲減傷（至少受 1）。 */
@@ -557,7 +571,9 @@ export class World {
   damagePlayer(amount: number, source: string, fromX: number, fromZ: number): void {
     const p = this.player;
     if (p.dead || this.outcome !== 'none') return;
-    const attemptedAmount = Math.max(1, amount - this.armorReduce());
+    // 脆弱的詛咒：每次受傷多 1（飢餓不算受擊）
+    const fragile = p.armor.curse === 'fragile' && source !== '飢餓' ? GEAR.fragileExtra : 0;
+    const attemptedAmount = Math.max(1, amount - this.armorReduce()) + fragile;
     // PublicCalibration is a disposable scenario rule, never a player/carry flag.
     // Apply it at the HP/death boundary so every damage source keeps normal hit
     // feedback, including another hit at 1 HP, without entering death first.

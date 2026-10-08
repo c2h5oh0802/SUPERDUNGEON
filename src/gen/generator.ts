@@ -2,11 +2,12 @@ import type { PracticeTrialId } from './practiceTrials';
 import { buildLevelV2 } from './generatorV2';
 import type { SpecialKind } from './topology';
 import { ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type EliteTrait, type ItemId } from '../config';
-import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
+import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll, type LootPool, type LootRoll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Nav } from '../sim/nav';
 import { Grid, T, TER, type DoorState, type TileId } from '../sim/grid';
+import type { GearProps } from '../sim/types';
 import { layoutById, layoutsByRole, type EnemyKind, type Face, type RoomLayout } from './rooms';
 import { RUN_TEMPLATES, TEMPLATE_ARENA, TEMPLATE_PRACTICE, type Template, type TemplateRoom } from './templates';
 
@@ -45,6 +46,7 @@ export interface PickupSpawn {
   amount: number;
   item?: ItemId;
   level?: number;
+  gear?: GearProps;
   x: number;
   z: number;
 }
@@ -57,7 +59,7 @@ export interface PropSpawn {
 }
 
 export interface ChestSpawn extends PropSpawn {
-  contents: { ammo: number; bottles: number; items: Array<{ id: ItemId; level: number }> };
+  contents: { ammo: number; bottles: number; items: Array<{ id: ItemId; level: number } & GearProps> };
 }
 
 export interface TorchSpawn {
@@ -121,6 +123,8 @@ export interface PedestalSpawn {
   roomKey: string;
   item: ItemId;
   level: number;
+  /** 已知的附魔（石像大廳的武器一定有）。 */
+  ench?: GearProps['ench'];
 }
 
 /** 樓層變化：同一套規則，每層打起來不一樣。 */
@@ -129,7 +133,7 @@ export type FloorFeeling = 'dark' | 'flooded' | 'overgrown' | 'traps' | 'secrets
 export interface LevelData {
   seed: string;
   /** Missing means current six-potion looks; 1 preserves legacy continuing runs. */
-  potionLooksVersion?: 1 | 2;
+  potionLooksVersion?: 1 | 2 | 3;
   /** 第幾層（1 起算）。 */
   floor: number;
   /** 這一層的目標：往下的階梯，或最底層的沉眠之心（位置都在 heart）。 */
@@ -588,22 +592,25 @@ export function addPatrols(d: Draft, rng: Rng, chance: number): void {
   }
 }
 
-export function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
+export function placePickups(d: Draft, rng: Rng, floor: number, pool: LootPool = 1): PickupSpawn[] {
   const spots = rng.shuffle(d.pickupSpots.slice());
-  const item = (r: { id: ItemId; level: number }) => ({ kind: 'item' as const, amount: 1, item: r.id, level: r.level });
+  const item = (r: LootRoll) => {
+    const { id, level, ...gear } = r;
+    return { kind: 'item' as const, amount: 1, item: id, level, ...(Object.keys(gear).length ? { gear } : {}) };
+  };
   // 依重要程度排序（地上的位置不夠時，後面的先省略）：每層一張強化卷軸、未知的藥水與卷軸、一件裝備
-  const plan: Array<{ kind: PickupKind; amount: number; item?: ItemId; level?: number }> = [
+  const plan: Array<Omit<PickupSpawn, 'x' | 'z'>> = [
     item({ id: 'scroll:upgrade', level: 0 }),
     { kind: 'ammo', amount: 3 },
-    item(rollPotion(rng)),
+    item(rollPotion(rng, 'floor', pool)),
     item({ id: 'potion:healing', level: 0 }),
-    item(rollScroll(rng)),
+    item(rollScroll(rng, pool)),
     { kind: 'ammo', amount: 3 },
-    item(rollEquipment(rng, floor)),
+    item(rollEquipment(rng, floor, pool)),
     { kind: 'bottle', amount: 1 },
-    item(rollConsumable(rng)),
+    item(rollConsumable(rng, 'floor', pool)),
     { kind: 'ammo', amount: 2 },
-    item(rollPotion(rng)),
+    item(rollPotion(rng, 'floor', pool)),
     { kind: 'ammo', amount: 2 },
   ];
   const out: PickupSpawn[] = [];

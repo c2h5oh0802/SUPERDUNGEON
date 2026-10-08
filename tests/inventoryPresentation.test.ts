@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  ALL_ARMORS, ALL_POTIONS, ALL_SCROLLS, ALL_WEAPONS, ITEM_FX, POTIONS, POTION_LOOKS, SCROLLS, SCROLL_LOOKS,
+  ALL_ARMORS, ALL_POTIONS, ALL_SCROLLS, ALL_WEAPONS, ITEM_FX, POTIONS, POTIONS_V2, POTION_LOOKS, SCROLLS, SCROLLS_V2, SCROLL_LOOKS,
   type ItemId,
 } from '../src/config';
 import { identify, itemColor, itemName, looksFor } from '../src/sim/items';
@@ -17,20 +17,21 @@ const EXPECTED_ART = [
   'potion-look-red', 'potion-look-blue', 'potion-look-green', 'potion-look-violet', 'potion-look-amber', 'potion-look-silver',
   'scroll-look-ash', 'scroll-look-tide', 'scroll-look-thorn', 'scroll-look-star', 'scroll-upgrade', 'scroll-identify',
   'stock-smoke', 'stock-stone', 'stock-arrow', 'stock-arrow-chill', 'stock-arrow-paralysis',
+  'potion-look-ink', 'scroll-look-rust', 'scroll-look-frost',
 ] as const;
-const POTION_ART = EXPECTED_ART.slice(9, 15);
-const SCROLL_ART = EXPECTED_ART.slice(15, 19);
+const POTION_ART = [...EXPECTED_ART.slice(9, 15), 'potion-look-ink'];
+const SCROLL_ART = [...EXPECTED_ART.slice(15, 19), 'scroll-look-rust', 'scroll-look-frost'];
 const ALL_ITEMS: ItemId[] = [
   ...ALL_WEAPONS.map((id): ItemId => `weapon:${id}`),
   ...ALL_ARMORS.map((id): ItemId => `armor:${id}`),
-  'food:ration', ...ALL_POTIONS.map((id): ItemId => `potion:${id}`),
-  ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`), 'scroll:upgrade',
+  'food:ration', ...POTIONS_V2.map((id): ItemId => `potion:${id}`),
+  ...SCROLLS_V2.map((id): ItemId => `scroll:${id}`), 'scroll:upgrade',
 ];
 const UNKNOWN_ITEMS: ItemId[] = [
   ...ALL_POTIONS.map((id): ItemId => `potion:${id}`), ...ALL_SCROLLS.map((id): ItemId => `scroll:${id}`),
 ];
-const EFFECT_NAMES = [...ALL_POTIONS.map(id => POTIONS[id].name), ...ALL_SCROLLS.map(id => SCROLLS[id].name)];
-const EFFECT_KEYS = [...ALL_POTIONS, ...ALL_SCROLLS];
+const EFFECT_NAMES = [...POTIONS_V2.map(id => POTIONS[id].name), ...SCROLLS_V2.map(id => SCROLLS[id].name)];
+const EFFECT_KEYS = [...POTIONS_V2, ...SCROLLS_V2];
 const matchCount = (html: string, pattern: RegExp) => [...html.matchAll(pattern)].length;
 const artSources = (html: string) => [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)].map(m => m[1]);
 const item = (id: ItemId, count = 1, level = 0): InvItem => ({ id, count, level });
@@ -104,10 +105,10 @@ function inventoryDom(w: World, onAction = vi.fn<(index: number, mode: PendingUs
 afterEach(() => vi.unstubAllGlobals());
 
 describe('inventory art catalog and every supported item', () => {
-  it('has the explicit 26 unique WebP assets and 19 supported item identities', () => {
-    expect(ALL_ITEMS).toHaveLength(19);
+  it('has the explicit 29 unique WebP assets and 22 supported item identities', () => {
+    expect(ALL_ITEMS).toHaveLength(22);
     expect(INVENTORY_ART).toEqual(EXPECTED_ART);
-    expect(new Set(INVENTORY_ART).size).toBe(26);
+    expect(new Set(INVENTORY_ART).size).toBe(29);
     for (const art of INVENTORY_ART) {
       const url = inventoryArtUrl(art);
       expect(url).toMatch(new RegExp(`/assets/inventory/${art}\\.webp$`));
@@ -115,7 +116,7 @@ describe('inventory art catalog and every supported item', () => {
     }
   });
 
-  it('ships exactly the 26 catalog WebP assets in the Vite asset graph', () => {
+  it('ships exactly the 29 catalog WebP assets in the Vite asset graph', () => {
     const assets = import.meta.glob<string>('../src/assets/inventory/*.webp', { eager: true, query: '?url', import: 'default' });
     expect(Object.keys(assets).sort()).toEqual(EXPECTED_ART.map(name => `../src/assets/inventory/${name}.webp`).sort());
     for (const art of INVENTORY_ART) expect(assets[`../src/assets/inventory/${art}.webp`]).toMatch(new RegExp(`${art}\\.webp$`));
@@ -178,7 +179,8 @@ describe('inventory art catalog and every supported item', () => {
       }
       if (version === 1) expect(itemArt(w, 'potion:healing')).toBe('potion-look-silver');
     }
-    expect([...seen].sort()).toEqual([...POTION_ART, ...SCROLL_ART].sort());
+    // 舊版外觀（1、2）只會用到原本六種瓶身與四種符文；新的外觀留給生成版本 2 的新物品
+    expect([...seen].sort()).toEqual([...POTION_ART.slice(0, 6), ...SCROLL_ART.slice(0, 4)].sort());
   });
 });
 

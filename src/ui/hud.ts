@@ -1,7 +1,7 @@
 import { trialInfo } from '../gen/practiceTrials';
-import { ARMORS, HUNGER, PLAYER, RUN, SEARCH, TALENT_FX, TRAP_NAMES, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type TipKind, type Tool } from '../config';
+import { CURSE_NAMES, HUNGER, ITEM_FX, PLAYER, RUN, SEARCH, TALENT_FX, TRAP_NAMES, XP, TIP_NAMES, TOOL_NAMES, classInfo, type TipKind, type Tool } from '../config';
 import { T, TER } from '../sim/grid';
-import { knownHealingCount } from '../sim/items';
+import { gearName, knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
 import { wardenBraced, wardenCrownClosed } from '../sim/enemySys';
@@ -66,6 +66,8 @@ export class Hud {
   private bottles = $('bottles');
   private potions = $('potions');
   private icons = $('icons');
+  /** 心眼藥水感覺到的敵人（隔牆）。 */
+  private sensed = new Set<number>();
   private targets = $('targets');
   private cueEl = $('cue');
   private crosshair = $('crosshair');
@@ -175,6 +177,12 @@ export class Hud {
         case 'equip':
         case 'buff':
           if (e.text) this.toast(e.text, 'good', 2.2);
+          if (e.kind === 'mindvision') this.hint('mindvision', '心眼：隔著牆也看得到附近的敵人；⚔ 表示它正在準備攻擊。', 8);
+          if (e.kind === 'terror') this.hint('terror', '恐懼：附近的敵人轉身逃跑幾秒；已鎖定的攻擊仍會完成。', 8);
+          break;
+        case 'curse':
+          if (e.text) this.toast(e.text, 'bad', 3);
+          this.hint('curse', '被詛咒的裝備卸不下來：讀強化卷軸（解除並 +1）或除咒卷軸。', 9);
           break;
         case 'levelUp':
           this.toast(`升到第 ${e.amount} 級！最大生命 +${XP.hpPerLevel}`, 'big', 2.5);
@@ -419,13 +427,15 @@ export class Hud {
         el.classList.toggle('pending', t === p.desiredTool && t !== p.tool);
       }
     });
-    this.set('gear', `${p.weapon.id}${p.weapon.level}|${p.armor.id}${p.armor.level}|${p.shieldLevel}`, () => {
+    this.set('gear', `${p.weapon.id}${p.weapon.level}${p.weapon.ench}${p.weapon.curse}|${p.armor.id}${p.armor.level}${p.armor.ench}${p.armor.curse}|${p.shieldLevel}`, () => {
       for (const el of this.toolEls) {
         const span = el.querySelector('span')!;
-        if (el.dataset.tool === 'melee') span.textContent = `${WEAPONS[p.weapon.id].name}${p.weapon.level ? ` +${p.weapon.level}` : ''}`;
+        if (el.dataset.tool === 'melee') span.textContent = gearName(`weapon:${p.weapon.id}`, p.weapon.level, p.weapon);
         if (el.dataset.tool === 'shield') span.textContent = '推擊';
+        if (el.dataset.tool === 'melee') el.classList.toggle('cursed', !!p.weapon.curse);
       }
-      this.armorEl.textContent = p.armor.id === 'cloth' ? '' : `${ARMORS[p.armor.id].name}${p.armor.level ? ` +${p.armor.level}` : ''}`;
+      this.armorEl.textContent = p.armor.id === 'cloth' ? '' : gearName(`armor:${p.armor.id}`, p.armor.level, p.armor);
+      this.armorEl.classList.toggle('cursed', !!p.armor.curse);
     });
     this.set('ammo', `${p.arrows}|${p.stones}|${p.tipped.paralysis}|${p.tipped.chill}|${p.tipKind}`, () => {
       for (const el of this.toolEls) {
@@ -458,17 +468,19 @@ export class Hud {
       this.xpFill.style.width = next === null ? '100%' : `${Math.round(((p.xp - cur) / (next - cur)) * 100)}%`;
     });
     // 增益
-    const buffs = [p.invisT > 0 ? `隱形 ${p.invisT.toFixed(1)}` : '', p.hasteT > 0 ? `迅捷 ${p.hasteT.toFixed(1)}` : '', p.comboT > 0 ? '連擊' : '']
+    const curses = [p.weapon.curse, p.armor.curse].filter(Boolean).map((c) => `<span class="curse">${CURSE_NAMES[c!]}的詛咒</span>`).join('');
+    const buffs = [p.invisT > 0 ? `隱形 ${p.invisT.toFixed(1)}` : '', p.hasteT > 0 ? `迅捷 ${p.hasteT.toFixed(1)}` : '', (p.mindT ?? 0) > 0 ? `心眼 ${p.mindT!.toFixed(1)}` : '', p.comboT > 0 ? '連擊' : '']
       .filter(Boolean)
       .map((b) => `<span>${b}</span>`)
-      .join('');
+      .join('') + curses;
     this.set('buffs', buffs, () => (this.buffsEl.innerHTML = buffs));
     // 腳步聲：潛行／正常（會被聽到）；戒備中
     const moving = p.lastMoveDist > 0;
-    const st = p.sneaking ? 'sneak' : moving ? 'loud' : '';
-    this.set('stealth', `${st}|${w.alarm}`, () => {
+    const noisy = p.armor.curse === 'noisy';
+    const st = p.sneaking && !noisy ? 'sneak' : moving ? 'loud' : p.sneaking ? 'sneak' : '';
+    this.set('stealth', `${st}|${w.alarm}|${noisy}|${p.sneaking}`, () => {
       this.stealthEl.className = `${st}${w.alarm ? ' alarm' : ''}`;
-      this.stealthEl.textContent = controlText(p.sneaking ? '潛行步：安靜' : moving ? '腳步聲（Shift 安靜慢走）' : '靜止', this.touch);
+      this.stealthEl.textContent = controlText(p.sneaking ? (noisy ? '潛行步：喧鬧的詛咒仍有腳步聲' : '潛行步：安靜') : moving ? '腳步聲（Shift 安靜慢走）' : '靜止', this.touch);
     });
     // 時間流速
     const rate = w.lastRealDt > 0 ? w.lastWorldDt / w.lastRealDt : 0;
@@ -647,10 +659,14 @@ export class Hud {
     if (this.visT <= 0) {
       this.visT = 0.1;
       this.visible.clear();
+      this.sensed.clear();
       const eye = { x: p.x, y: PLAYER.eyeHeight, z: p.z };
+      const mind = (p.mindT ?? 0) > 0;
       for (const e of w.enemies) {
         if (!e.alive) continue;
         const d = Math.hypot(e.x - p.x, e.z - p.z);
+        // 心眼藥水：隔著牆也感覺得到附近的敵人
+        if (mind && d <= ITEM_FX.mindvision.range) this.sensed.add(e.id);
         if (d > 26) continue;
         const head = { x: e.x, y: e.y + e.height - 0.2, z: e.z };
         if (w.canSee(eye, head)) this.visible.add(e.id);
@@ -679,6 +695,11 @@ export class Hud {
           text = '?';
           this.hint('aware', '敵人頭上的圈填滿就會發現你：退出牠的視線，或用煙霧遮住。');
         }
+        // 恐懼卷軸：逃跑中
+        if ((e.fearT ?? 0) > 0) {
+          cls = 'fear';
+          text = '»';
+        }
         // 精英持鑰者：金色的★
         if (e.carriesKey) {
           cls = `${cls || 'carrier'} keyed`.trim();
@@ -690,6 +711,12 @@ export class Hud {
           cls = `${cls} marked`.trim();
           text += '◇';
         }
+      }
+      // 心眼：看不到的（包括偽裝的寶箱怪、沒醒的石像）也顯示，並標出正在準備的攻擊
+      if (!cls && e.alive && this.sensed.has(e.id)) {
+        const attacking = e.phase === 'windup' || e.phase === 'aim' || e.phase === 'charge' || e.phase === 'active';
+        cls = attacking ? 'mind attack' : 'mind';
+        text = attacking ? '⚔' : e.disguised || e.dormant ? '◆' : e.state === 'sleep' ? 'Zz' : e.state === 'alert' ? '!' : '◉';
       }
       if (!cls) {
         if (el) el.style.display = 'none';

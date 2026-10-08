@@ -1,4 +1,4 @@
-import { DUNGEON, ENCOUNTERS, ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
+import { DUNGEON, ENCOUNTERS, ENEMIES, GEAR, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Nav } from '../sim/nav';
@@ -22,7 +22,7 @@ import {
   type SpecialRoom,
   type TrapKind,
 } from './generator';
-import { rollEquipment, rollItem } from './loot';
+import { rollEnchant, rollEquipment, rollItem } from './loot';
 import { layoutById, layoutsByRoleV2, type RoomLayout } from './rooms';
 import { buildTopology, type GenTemplate, type SpecialKind } from './topology';
 
@@ -311,10 +311,10 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
       const k = d.pillars.findIndex((p) => p.kind === 'prop' && p.x === c.x && p.z === c.z);
       if (k >= 0) d.pillars.splice(k, 1);
       d.enemies.push({ kind: 'mimic', x: c.x, z: c.z, y: 0, yaw: c.yaw, state: 'sleep', patrol: [], perched: false, roomKey: c.roomKey,
-        loot: { ammo: 2, bottles: 0, items: [rollItem(rng, floor), rollItem(rng, floor)] } });
+        loot: { ammo: 2, bottles: 0, items: [rollItem(rng, floor, 'floor', 2), rollItem(rng, floor, 'floor', 2)] } });
     }
   }
-  const pickups: PickupSpawn[] = placePickups(d, rng, floor);
+  const pickups: PickupSpawn[] = placePickups(d, rng, floor, 2);
   // 固定的治療藥水放在不必找秘密門就拿得到的寶箱（秘密藏室排最後）。
   const fixedHealing = FIXED_CHEST_HEALING_PER_FLOOR[fi] ?? 0;
   const stashKeys = new Set(d.rooms.filter((r) => t.specials.get(r.key) === 'stash').map((r) => r.key));
@@ -322,26 +322,30 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
   for (const c of d.chests) if (!accessible.slice(0, fixedHealing).includes(c)) c.contents.items.shift();
   // 寶箱不夠時，剩下的固定治療藥水改放在主線房間的地上（總數與舊版相同）
   const looseHealing = Math.max(0, fixedHealing - accessible.length);
-  for (const c of d.chests) c.contents.items.push(rollItem(rng, floor));
+  for (const c of d.chests) c.contents.items.push(rollItem(rng, floor, 'floor', 2));
 
   // 寶庫三選一：一件已強化的裝備、一張強化卷軸、一瓶治療藥水（位置順序隨機）。
   const pedestals: PedestalSpawn[] = [];
   for (const room of d.rooms.filter((r) => t.specials.get(r.key) === 'vault')) {
     const spots = d.pedestalSpots.filter((p) => p.roomKey === room.key);
+    // 寶庫的裝備是已知的（台座標明等級與附魔）
     const equip = rollEquipment(rng, floor);
-    const offers: Array<{ item: ItemId; level: number }> = rng.shuffle([
-      { item: equip.id, level: Math.max(1, equip.level) + (floor >= 4 ? 1 : 0) },
+    const ench = rng.chance(GEAR.enchantChance[fi] ?? 0) ? rollEnchant(rng, equip.id) : undefined;
+    const offers: Array<{ item: ItemId; level: number; ench?: PedestalSpawn['ench'] }> = rng.shuffle([
+      { item: equip.id, level: Math.max(1, equip.level) + (floor >= 4 ? 1 : 0), ...(ench ? { ench } : {}) },
       { item: 'scroll:upgrade', level: 0 },
       { item: 'potion:healing', level: 0 },
     ]);
-    spots.forEach((p, k) => pedestals.push({ ...p, item: offers[k]!.item, level: offers[k]!.level }));
+    spots.forEach((p, k) => pedestals.push({ ...p, ...offers[k]! }));
   }
   // 石像大廳：台座上只有一件已強化的武器，拿走就會喚醒石像
   for (const room of d.rooms.filter((r) => t.specials.get(r.key) === 'statue')) {
     const spot = d.pedestalSpots.find((p) => p.roomKey === room.key);
     if (!spot) continue;
     const weapons = ['weapon:longsword', 'weapon:knife', 'weapon:axe', 'weapon:spear'] as const;
-    pedestals.push({ ...spot, item: rng.pick(weapons), level: floor >= 4 ? 2 : 1 });
+    // 一定是附魔武器
+    const item = rng.pick(weapons);
+    pedestals.push({ ...spot, item, level: floor >= 4 ? 2 : 1, ench: rollEnchant(rng, item) });
   }
 
   const grid = new Grid(w, h);

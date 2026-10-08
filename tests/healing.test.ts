@@ -21,12 +21,13 @@ describe('one seeded Potion identity system', () => {
     expect(ALL_POTIONS).toHaveLength(6); expect(ALL_POTIONS).toContain('healing');
     const colors = new Set<number>();
     for (let k = 0; k < 60; k++) {
-      const seed = `HEAL${k}`, looks = looksFor(seed);
-      expect(new Set(Object.values(looks.potion)).size).toBe(6);
+      // 新局（外觀版本 3）：七種藥水一起洗牌
+      const seed = `HEAL${k}`, looks = looksFor(seed, 3);
+      expect(new Set(Object.values(looks.potion)).size).toBe(7);
       for (const i of Object.values(looks.potion)) expect(POTION_LOOKS[i]).toBeDefined();
       colors.add(looks.potion.healing);
     }
-    expect(colors.size).toBe(6);
+    expect(colors.size).toBe(7);
   });
   it('class knowledge differs without changing same-seed geometry, loot or looks', () => {
     const a = createFloorWorld(newRun('HEALCLASS', 'warrior'));

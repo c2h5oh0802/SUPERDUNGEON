@@ -10,6 +10,7 @@ import { levelSignature } from '../gen/generator';
 import { geometryCacheSize } from '../render/characters';
 import { Nav } from '../sim/nav';
 import type { World } from '../sim/world';
+import type { GearProps } from '../sim/types';
 import type { App } from '../main';
 
 // 開發模式（網址加 ?dev=1）：讀取時間、玩家、敵人、種子與關鍵事件，供自動化測試使用。
@@ -86,6 +87,7 @@ export function installDevApi(app: App): void {
           invisT: p.invisT,
           pendingUse: p.pendingUse ? { ...p.pendingUse } : null,
           hasteT: p.hasteT,
+          mindT: p.mindT ?? 0,
           bottles: p.bottles,
           tool: p.tool,
           desiredTool: p.desiredTool,
@@ -311,9 +313,9 @@ export function installDevApi(app: App): void {
         if (w) w.player.hp = hp;
       },
       /** 狀態注入：放一件物品進背包。 */
-      giveItem(id: ItemId, level = 0) {
+      giveItem(id: ItemId, level = 0, gear?: GearProps) {
         const w = app.world;
-        return w ? addItem(w, id, level) : false;
+        return w ? addItem(w, id, level, gear) : false;
       },
       /** Focused talent fixtures only, not natural progression evidence. */
       giveTalent(t: TalentId) {

@@ -442,6 +442,18 @@ export class Sfx {
           this.tone('sine', 80, 40, 0.4, 0.5);
           this.noise(0.25, 0.5, 'lowpass', 600, 150, 1);
           break;
+        case 'curse':
+          // 詛咒：低沉的不和諧音
+          this.tone('sawtooth', 110, 104, 0.9, 0.12);
+          this.tone('sawtooth', 117, 98, 0.9, 0.1);
+          break;
+        case 'buff':
+          if (e.kind === 'mindvision') this.tone('sine', 440, 880, 0.6, 0.1);
+          else if (e.kind === 'terror') {
+            this.noise(0.6, 0.25, 'bandpass', 300, 1200, 2);
+            this.tone('square', 220, 160, 0.5, 0.08);
+          } else if (e.kind === 'removecurse') this.tone('triangle', 660, 990, 0.5, 0.12);
+          break;
         case 'horn':
           // 號角：兩聲長鳴
           for (let k = 0; k < 2; k++) {

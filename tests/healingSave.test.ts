@@ -203,10 +203,11 @@ describe('Healing save validation and appearance compatibility', () => {
   });
 
   it('new saves have no numeric stock, and old cosmetics stay on version 1 across floors', () => {
+    // 新局用外觀版本 3（七種藥水、六種卷軸一起洗牌）
     const fresh = newRun('NEW-HEALING', 'huntress');
-    expect(fresh.potionLooksVersion).toBe(2);
+    expect(fresh.potionLooksVersion).toBe(3);
     expect(parseRun(serializeRun(fresh))).toEqual(fresh);
-    expect(createFloorWorld(fresh).level.potionLooksVersion).toBe(2);
+    expect(createFloorWorld(fresh).level.potionLooksVersion).toBe(3);
     const parsed = parseRun(JSON.stringify(legacySave()))!;
     expect(parsed.potionLooksVersion).toBe(1);
     const w = createFloorWorld(parsed);
@@ -217,7 +218,7 @@ describe('Healing save validation and appearance compatibility', () => {
     expect(JSON.parse(serializeRun(next)).carry).not.toHaveProperty('potions');
   });
 
-  it.each([0, 3, null, '1', true])('rejects malformed appearance version %j', (version) => {
+  it.each([0, 4, null, '1', true])('rejects malformed appearance version %j', (version) => {
     const old = legacySave();
     old.potionLooksVersion = version;
     expect(parseRun(JSON.stringify(old))).toBeNull();

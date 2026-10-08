@@ -1,4 +1,5 @@
 import { ACTIONS, ARMORS, UPGRADE, WEAPONS, weaponTotal, type ArmorId, type WeaponId } from '../config';
+import { levelText } from '../sim/items';
 import { armorFootstepRadius, armorReduction, armorSneakSpeedMul, armorUpgradeLimit, bowDamage, weaponDamage } from '../sim/equipment';
 
 /** Plain text keeps inventory labels testable without a DOM or duplicate combat maths. */
@@ -11,7 +12,7 @@ const fmt = (n: number): string => String(Math.round(n * 100) / 100);
 const pct = (n: number): string => `${fmt(n * 100)}%`;
 const signed = (n: number): string => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmt(Math.abs(n))}`;
 const delta = (n: number, unit = ''): string => Math.abs(n) < 1e-9 ? '相同' : `${signed(n)}${unit}`;
-const nameAt = (name: string, level: number): string => `${name} +${level}`;
+const nameAt = (name: string, level: number): string => `${name}${levelText(level) || ' +0'}`;
 const phases = (id: WeaponId): string => {
   const s = WEAPONS[id];
   return `${pct(s.move.windup)}／${pct(s.move.active)}／${pct(s.move.recovery)}`;

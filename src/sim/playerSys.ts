@@ -1,10 +1,10 @@
-import { ACTIONS, ALL_TIPS, CLASSES, HUNGER, HEALING_POTION, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId } from '../config';
+import { ACTIONS, ALL_TIPS, CLASSES, GEAR, HUNGER, HEALING_POTION, ITEM_FX, NOISE, PLAYER, PROJECTILES, RUN, SHOVE, STEALTH, TALENT_FX, TIP_NAMES, WEAPONS, type PotionId, type ScrollId } from '../config';
 import { weaponDamage } from './equipment';
 export { weaponDamage } from './equipment';
 import { eatRation } from './hunger';
 import { consumeHuntingMark } from './huntingMark';
 import { meleeCandidates } from './meleeTargets';
-import { addItem, categoryOf, drinkPotion, completeConversion, dropFromBag, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction, trueItemName } from './items';
+import { addItem, categoryOf, drinkPotion, completeConversion, dropFromBag, equipFromBag, gearOf, identify, isKnown, queueUse, readScroll, spawnArea, takeForAction, trueItemName } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
@@ -13,14 +13,20 @@ import { damageEnemy, staggerEnemy, wakeHidden } from './enemySys';
 import { STOCK_NAMES, stockFor } from './inventory';
 import { setDoor } from './propSys';
 import type { World } from './world';
-import type { ActionKind, FrameInput, InteractTarget, Interactable, Projectile } from './types';
+import type { ActionKind, Enemy, FrameInput, InteractTarget, Interactable, Projectile } from './types';
 import type { PickupKind } from '../gen/generator';
 
 type Timing = { windup: number; active: number; recovery: number };
 
 /** 行動的時間：近戰依目前的武器，其他依 ACTIONS。 */
 function timingOf(w: World, kind: ActionKind): Timing {
-  return kind === 'melee' ? WEAPONS[w.player.weapon.id] : ACTIONS[kind];
+  if (kind !== 'melee') return ACTIONS[kind];
+  return heavyTiming(w, WEAPONS[w.player.weapon.id]);
+}
+
+/** 沉重的詛咒：近戰出手準備變長（反擊斬也一樣）。 */
+function heavyTiming(w: World, t: Timing): Timing {
+  return w.player.weapon.curse === 'heavy' ? { windup: t.windup * GEAR.heavyWindupMul, active: t.active, recovery: t.recovery } : t;
 }
 
 export function actionTotal(w: World, kind: ActionKind): number {
@@ -69,6 +75,7 @@ function startPendingUse(w: World): void {
   }
   const c = categoryOf(it.id);
   const level = it.level;
+  const gear = gearOf(it);
   const id = takeForAction(w, index, u.mode);
   if (!id) return;
   if (u.mode === 'convert') {
@@ -95,6 +102,7 @@ function startPendingUse(w: World): void {
     startAction(w, 'equip');
     p.action!.item = id;
     p.action!.targetId = level;
+    p.action!.gear = gear;
   }
 }
 
@@ -158,7 +166,7 @@ export function startActions(w: World, input: FrameInput): void {
       const threat = counterThreat(w);
       if (threat && (threat.kind !== 'warden' || input.firePressed)) {
         const wp = WEAPONS[p.weapon.id];
-        startAction(w, 'melee', -1, { windup: CLASSES.warrior.counterSwing.windup, active: wp.active, recovery: wp.recovery * 0.7 });
+        startAction(w, 'melee', -1, heavyTiming(w, { windup: CLASSES.warrior.counterSwing.windup, active: wp.active, recovery: wp.recovery * 0.7 }));
         p.action!.counter = true;
         p.action!.wardenCounter = threat.kind === 'warden' && input.firePressed;
       } else startAction(w, 'melee');
@@ -333,7 +341,7 @@ export function updatePlayerAction(w: World, dt: number): void {
     case 'equip':
       if (!a.fired && done && a.item) {
         a.fired = true;
-        equipFromBag(w, a.item, a.targetId);
+        equipFromBag(w, a.item, a.targetId, a.gear);
       }
       break;
     case 'drop': // The intact item was already placed when this committed action began.
@@ -402,10 +410,33 @@ function meleeHits(w: World): void {
     // 戰士：命中鎖定中的攻擊＝反擊（改變敵人狀態，不額外加傷害）
     if (applyCounter(w, e)) a.countered = true;
     damageEnemy(w, e, dmg, { source: 'melee', sneak, head: false, x: e.x, y: e.y + 1.1, z: e.z });
+    weaponEnchant(w, e);
     if (sneak && e.alive) staggerEnemy(e, Math.max(STEALTH.surpriseStagger, spec.stagger) * hitMul);
     // 重武器：命中沒倒下的敵人會失衡（打斷它的出手）
     if (spec.stagger > 0 && e.alive && e.phase !== 'stun' && e.phase !== 'stagger') staggerEnemy(e, spec.stagger * hitMul);
     w.emitNoise(e.x, 1, e.z, NOISE.combatHit, 'combat');
+  }
+}
+
+/** 武器附魔：命中後改變敵人的狀態。 */
+function weaponEnchant(w: World, e: Enemy): void {
+  const ench = w.player.weapon.ench;
+  if (!ench) return;
+  if (ench === 'flame') {
+    // 倒下的敵人腳下也會起火
+    spawnArea(w, 'fire', e.x, e.z, GEAR.flame);
+    return;
+  }
+  if (!e.alive) return;
+  if (ench === 'chill') {
+    e.slowT = Math.max(e.slowT, GEAR.chillDuration);
+    w.emit({ type: 'tipHit', id: e.id, kind: 'chill', x: e.x, y: e.y + 1.2, z: e.z });
+  } else if (ench === 'impact' && !e.perched && !e.boss && !e.push) {
+    const p = w.player;
+    const dx = e.x - p.x;
+    const dz = e.z - p.z;
+    const d = Math.hypot(dx, dz) || 1;
+    e.push = { dx: dx / d, dz: dz / d, left: GEAR.impactDist };
   }
 }
 
@@ -529,7 +560,7 @@ function performUse(w: World, it: Interactable): void {
       for (const [index, item] of c.items.entries()) {
         // 寶箱裡的物品放在寶箱前方（走過去撿）
         const f = forwardFromYaw(it.yaw);
-        w.addPickup('item', 1, it.x + f.x * 1.0 + f.z * index * 0.35, 0.15, it.z + f.z * 1.0 - f.x * index * 0.35, null, item.id, item.level);
+        w.addPickup('item', 1, it.x + f.x * 1.0 + f.z * index * 0.35, 0.15, it.z + f.z * 1.0 - f.x * index * 0.35, null, item.id, item.level, item);
       }
       w.emit({ type: 'chest', id: it.id, x: it.x, z: it.z });
       return;
@@ -558,16 +589,17 @@ function performUse(w: World, it: Interactable): void {
       for (const o of w.interactables) if (o.kind === 'pedestal' && o.roomKey === it.roomKey) o.used = true;
       w.chosenPedestals.add(it.id);
       if (categoryOf(pd.item) === 'potion' || categoryOf(pd.item) === 'scroll') identify(w, pd.item);
-      if (!addItem(w, pd.item, pd.level)) {
+      const gear = pd.ench ? { ench: pd.ench } : undefined;
+      if (!addItem(w, pd.item, pd.level, gear)) {
         const f = forwardFromYaw(it.yaw);
-        w.addPickup('item', 1, it.x + f.x * 0.9, 0.15, it.z + f.z * 0.9, null, pd.item, pd.level);
+        w.addPickup('item', 1, it.x + f.x * 0.9, 0.15, it.z + f.z * 0.9, null, pd.item, pd.level, gear);
         w.emit({ type: 'fullInventory', text: '背包滿了，寶物放在台座前' });
       }
       const statue = w.enemies.find((e) => e.dormant && e.roomKey === it.roomKey);
       if (statue) {
-        w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你拿走了「${trueItemName(pd.item, pd.level)}」`, source: it.roomKey });
+        w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你拿走了「${trueItemName(pd.item, pd.level, pd)}」`, source: it.roomKey });
         wakeHidden(w, statue);
-      } else w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你選了「${trueItemName(pd.item, pd.level)}」，其他寶物沉了下去`, source: it.roomKey });
+      } else w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你選了「${trueItemName(pd.item, pd.level, pd)}」，其他寶物沉了下去`, source: it.roomKey });
       return;
     }
     case 'mimic': {
@@ -677,7 +709,7 @@ export function findInteractTarget(w: World): InteractTarget | null {
         const pd = w.level.pedestals?.[it.ref];
         if (!pd) continue;
         const guarded = w.enemies.some((e) => e.dormant && e.roomKey === it.roomKey);
-        label = guarded ? `E 取走「${trueItemName(pd.item, pd.level)}」` : `E 取走「${trueItemName(pd.item, pd.level)}」（三選一）`;
+        label = guarded ? `E 取走「${trueItemName(pd.item, pd.level, pd)}」` : `E 取走「${trueItemName(pd.item, pd.level, pd)}」（三選一）`;
         break;
       }
       case 'mimic': {

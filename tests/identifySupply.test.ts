@@ -198,6 +198,8 @@ it.each(LOOKS_BEFORE)('%s appearance version %i retains every historical potion 
   const looks = looksFor(seed, version);
   expect(ALL_POTIONS.map((id) => looks.potion[id])).toEqual(potions);
   expect(ALL_SCROLLS.slice(0, 3).map((id) => looks.scroll[id])).toEqual(scrolls);
-  expect(Object.keys(looks.scroll)).toEqual(['teleport', 'mapping', 'sleep', 'identify']);
+  // 新增的卷軸、藥水排在後面，不改變舊外觀
+  expect(Object.keys(looks.scroll)).toEqual(['teleport', 'mapping', 'sleep', 'identify', 'terror', 'removecurse']);
+  expect([looks.scroll.terror, looks.scroll.removecurse, looks.potion.mindvision]).toEqual([4, 5, 6]);
   expect(looks.scroll.identify).toBe([0, 1, 2, 3].find(slot => !(scrolls as readonly number[]).includes(slot)));
 });

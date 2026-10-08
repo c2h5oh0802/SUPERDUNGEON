@@ -290,5 +290,10 @@ export const gameEnglish: Record<string, string> = {
   "長草：躲進草叢深處，外面的敵人就看不見你。正常走路會踩倒草；按住 Shift 潛行穿過就不會。火會讓整片草燒起來。": "Reeds: hide deep in the reeds and enemies outside cannot see you. Walking normally tramples them; hold Shift to sneak through without trampling. Fire sets a whole patch ablaze.",
   "淺水：走在水裡腳步聲更大（潛行步仍然安靜），火在水上燒不起來。": "Shallow water: footsteps in water are louder (sneaking is still silent), and fire will not burn on water.",
   "深坑：掉下去會直接到下一層（落點隨機、受傷）。把敵人推進去、或讓突進者衝進去，它就掉下去了。": "Chasm: falling in drops you straight to the next floor (random landing, with damage). Push an enemy in, or let a Charger rush into it, and it falls.",
-  "按住空白鍵等待就是在搜索：每 {0} 世界秒揭開 {1} m 內的秘密門與隱藏陷阱。等待要付世界時間（會餓）。": "Holding Space to wait also searches: every {0} world second reveals secret doors and hidden traps within {1} m. Waiting spends world time (you get hungrier)."
+  "按住空白鍵等待就是在搜索：每 {0} 世界秒揭開 {1} m 內的秘密門與隱藏陷阱。等待要付世界時間（會餓）。": "Holding Space to wait also searches: every {0} world second reveals secret doors and hidden traps within {1} m. Waiting spends world time (you get hungrier).",
+  "心眼：隔著牆也看得到附近的敵人；⚔ 表示它正在準備攻擊。": "Mind Vision: see nearby enemies through walls; ⚔ means the enemy is preparing an attack.",
+  "恐懼：附近的敵人轉身逃跑幾秒；已鎖定的攻擊仍會完成。": "Terror: nearby enemies turn and flee for a few seconds; locked attacks still finish.",
+  "被詛咒的裝備卸不下來：讀強化卷軸（解除並 +1）或除咒卷軸。": "Cursed equipment cannot be removed: read an Upgrade Scroll (lifts the curse and adds +1) or a Remove Curse Scroll.",
+  "心眼 {0}": "Mind Vision {0}",
+  "潛行步：喧鬧的詛咒仍有腳步聲": "Sneaking: the Noisy curse still makes footsteps"
 };

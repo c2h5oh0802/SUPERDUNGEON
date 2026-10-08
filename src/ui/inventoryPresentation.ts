@@ -1,5 +1,5 @@
 import { POTION_LOOKS, SCROLL_LOOKS, type ArmorId, type ItemId, type PotionId, type ScrollId, type WeaponId } from '../config';
-import { categoryOf, isKnown, looksFor } from '../sim/items';
+import { categoryOf, gearName, isKnown, looksFor } from '../sim/items';
 import type { World } from '../sim/world';
 import type { InvItem, PendingChoice } from '../sim/types';
 
@@ -10,10 +10,12 @@ export const INVENTORY_ART = [
   'potion-look-red', 'potion-look-blue', 'potion-look-green', 'potion-look-violet', 'potion-look-amber', 'potion-look-silver',
   'scroll-look-ash', 'scroll-look-tide', 'scroll-look-thorn', 'scroll-look-star', 'scroll-upgrade', 'scroll-identify',
   'stock-smoke', 'stock-stone', 'stock-arrow', 'stock-arrow-chill', 'stock-arrow-paralysis',
+  'potion-look-ink', 'scroll-look-rust', 'scroll-look-frost',
 ] as const;
 export type InventoryArt = typeof INVENTORY_ART[number];
-const BOTTLES = INVENTORY_ART.slice(9, 15) as readonly InventoryArt[];
-const SCROLLS = INVENTORY_ART.slice(15, 19) as readonly InventoryArt[];
+/** 依外觀索引（POTION_LOOKS、SCROLL_LOOKS 的順序）。 */
+const BOTTLES: readonly InventoryArt[] = [...INVENTORY_ART.slice(9, 15), 'potion-look-ink'];
+const SCROLLS: readonly InventoryArt[] = [...INVENTORY_ART.slice(15, 19), 'scroll-look-rust', 'scroll-look-frost'];
 
 export function inventoryArtUrl(art: InventoryArt): string {
   // Vite rewrites this finite asset glob with the configured relative base.
@@ -47,13 +49,14 @@ export function canPresentChoice(w: World, expected: PendingChoice | null = w.pe
 /** Disclosure is only shown after the read has resolved and opened its choice. */
 export function identifyChoiceDescription(learnedScroll = false): string {
   const reading = learnedScroll ? '你已認出鑑定卷軸，這張已使用；取消／Esc 只放棄額外鑑定，不退還卷軸。' : '取消／Esc 保留卷軸。';
-  return `只選一疊，選中的物品不會消耗。本局同種類一起變已知，其他種類不受影響。世界與飢餓暫停。按數字鍵或點選；${reading}`;
+  return `只選一疊，選中的物品不會消耗。本局同種類一起變已知，其他種類不受影響；未知的裝備只揭曉這一件。世界與飢餓暫停。按數字鍵或點選；${reading}`;
 }
 
 /** Appearance-only even for stale options; first discovery is already spent. */
 export function identifyChoiceMarkup(w: World, options: readonly InvItem[], learnedScroll = false): string {
   const cards = options.map((it, k) => {
-    const name = `${itemAppearance(w, it.id)} · 未知${categoryOf(it.id) === 'potion' ? '藥水' : '卷軸'}`;
+    const c = categoryOf(it.id);
+    const name = c === 'weapon' || c === 'armor' ? gearName(it.id, it.level, it) : `${itemAppearance(w, it.id)} · 未知${c === 'potion' ? '藥水' : '卷軸'}`;
     const key = k < 10 ? `<kbd aria-hidden="true">${(k + 1) % 10}</kbd>` : '';
     return `<button class="choice-card identify-card" data-idx="${k}" aria-label="鑑定${esc(name)}，數量 ${it.count}">${key}<img class="identify-art" src="${esc(inventoryArtUrl(itemArt(w, it.id)))}" alt="" draggable="false" width="512" height="512"><div class="identify-copy"><h3>${esc(name)}</h3><p>這一疊 ×${it.count} · 物品完整保留</p></div></button>`;
   });

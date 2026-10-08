@@ -149,12 +149,12 @@ export function updatePickups(w: World): void {
     }
     if (k.kind === 'item' && k.item) {
       let taken = 0;
-      while (k.amount > 0 && addItem(w, k.item, k.level ?? 0)) { k.amount--; taken++; }
+      while (k.amount > 0 && addItem(w, k.item, k.level ?? 0, k.gear)) { k.amount--; taken++; }
       if (taken > 0) {
         k.taken = k.amount === 0;
         if (k.item === 'potion:healing' && !k.playerDropped) w.stats.healingFound += taken;
         w.emit({ type: 'pickup', kind: 'item', amount: taken, x: k.x, z: k.z,
-          text: itemName(w, k.item, k.level ?? 0) + (taken > 1 ? ` ×${taken}` : '') });
+          text: itemName(w, k.item, k.level ?? 0, k.gear) + (taken > 1 ? ` ×${taken}` : '') });
       }
       if (!k.taken && !k.warned) {
         // 背包滿了：提醒一次
