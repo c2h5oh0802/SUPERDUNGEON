@@ -316,5 +316,10 @@ export const staticEnglish: Record<string, string> = {
   "重新載入": "Reload",
   "本試玩會把遊玩事件與選填回饋傳送至 GameAnalytics，用於改善遊戲。本頁開啟時就會開始收集；詳情如下。": "This playtest sends gameplay events and optional feedback to GameAnalytics to help improve the game. Collection begins when this page opens; see the details below.",
   "這次試玩不傳送分析資料。": "This playtest does not send analytics data.",
-  "（載入期間已中斷，請按繼續）": "(Interrupted while loading; press Continue)"
+  "（載入期間已中斷，請按繼續）": "(Interrupted while loading; press Continue)",
+  "寶箱": "Chest",
+  "上鎖寶庫的門": "Locked vault door",
+  "已發現的陷阱": "Discovered trap",
+  "心眼看到的敵人　按": "Enemy seen with Mind Vision · Press",
+  "寶庫鑰匙": "Vault Key"
 };

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RENDER, WORLD } from '../config';
+import { RENDER, WORLD, floorPalette } from '../config';
 import { hash2 } from '../core/rng';
 import type { LevelData } from '../gen/generator';
 import { T } from '../sim/grid';
@@ -370,6 +370,18 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
 
   // ---------- 烘焙（每個區塊一個網格，可做視錐剔除） ----------
   const t0 = performance.now();
+  // 每層色調：環境光與整體色調倍率（越深越冷）
+  const pal = floorPalette(level.floor);
+  const ambient = { sky: [...pal.sky] as [number, number, number], ground: [...pal.ground] as [number, number, number] };
+  const tinted = (light: Float32Array): Float32Array => {
+    if (pal.tint[0] === 1 && pal.tint[1] === 1 && pal.tint[2] === 1) return light;
+    for (let k = 0; k < light.length; k += 3) {
+      light[k] = light[k]! * pal.tint[0];
+      light[k + 1] = light[k + 1]! * pal.tint[1];
+      light[k + 2] = light[k + 2]! * pal.tint[2];
+    }
+    return light;
+  };
   const group = new THREE.Group();
   let vertexCount = 0;
   for (const b of chunks.values()) {
@@ -377,7 +389,7 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
     const pos = new Float32Array(b.pos);
     const nrm = new Float32Array(b.nrm);
     const ao = new Float32Array(b.ao);
-    const baked = bakeLighting(pos, nrm, ao, lights, occ, { sky: [0.1, 0.1, 0.21], ground: [0.045, 0.036, 0.06] }, g.w, g.h);
+    const baked = tinted(bakeLighting(pos, nrm, ao, lights, occ, ambient, g.w, g.h));
     const geo = b.toGeometry(baked);
     const mesh = new THREE.Mesh(geo, envMaterial);
     mesh.matrixAutoUpdate = false;
@@ -387,7 +399,7 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
   const secrets: SecretDoorVisual[] = secretBuilders.map(({ doorId, wall, frame }) => {
     const mesh = (b: GeoBuilder) => {
       const pos = new Float32Array(b.pos);
-      const baked = bakeLighting(pos, new Float32Array(b.nrm), new Float32Array(b.ao), lights, occ, { sky: [0.1, 0.1, 0.21], ground: [0.045, 0.036, 0.06] }, g.w, g.h);
+      const baked = tinted(bakeLighting(pos, new Float32Array(b.nrm), new Float32Array(b.ao), lights, occ, ambient, g.w, g.h));
       const m = new THREE.Mesh(b.toGeometry(baked), envMaterial);
       m.matrixAutoUpdate = false;
       group.add(m);

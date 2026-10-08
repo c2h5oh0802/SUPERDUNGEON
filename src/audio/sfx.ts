@@ -190,6 +190,16 @@ export class Sfx {
         case 'noise':
           // 自己的腳步聲：輕輕的悶響（提醒你正在出聲）
           if (e.source === 'step') this.noise(0.06, 0.12, 'lowpass', 380, 160, 1);
+          // 水裡的腳步：濺水聲
+          else if (e.source === 'splash') {
+            this.noise(0.14, 0.16, 'bandpass', 1400, 600, 1.5);
+            this.noise(0.08, 0.08, 'highpass', 3000, 2000, 1, null, 0.04);
+          }
+          break;
+        case 'terrain':
+          // 踩倒長草：沙沙聲；開始燃燒：劈啪聲（距離衰減）
+          if (e.kind === 'flat') this.noise(0.18, 0.07, 'highpass', 2600, 1800, 0.8, pos);
+          else if (e.kind === 'burning') this.noise(0.3, 0.12, 'bandpass', 900, 2400, 3, pos);
           break;
         case 'enemyStep':
           this.noise(0.06, 0.08, 'lowpass', 380, 160, 1, pos);

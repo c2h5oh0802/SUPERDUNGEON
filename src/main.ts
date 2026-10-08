@@ -605,7 +605,9 @@ export class App {
           this.refreshPlaytestCue();
           return;
         }
-        if (!practice && w.level.feeling) this.hud.hint(`feeling${this.runCount}`, `第 ${floor} 層・${FEELING_TEXT[w.level.feeling]}`, 7);
+        // 進入樓層的橫幅：樓層名與樓層變化
+        if (!practice && !this.extendedPlay && !this.bossTestActive)
+          this.hud.banner(floor === RUN.floors ? `第 ${floor} 層・守心者大廳` : `第 ${floor} 層`, w.level.feeling ? FEELING_TEXT[w.level.feeling] : '', w.level.feeling ? 6 : 3.5);
         if (this.extendedPlay && floor === 1) {
           this.hud.hint(`freeplay${this.runCount}`, '本次測試已完成。接下來自由探索；這趟冒險不存檔，原本的冒險存檔不受影響。', 8);
           return;

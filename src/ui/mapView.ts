@@ -1,3 +1,4 @@
+import { ITEM_FX } from '../config';
 import { localize } from './i18n';
 import { T, TER } from '../sim/grid';
 import type { World } from '../sim/world';
@@ -20,6 +21,16 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
         maxI = Math.max(maxI, i);
         maxJ = Math.max(maxJ, j);
       }
+  // 心眼：地圖範圍也包含感覺到的敵人
+  if ((w.player.mindT ?? 0) > 0) {
+    for (const e of w.enemies) {
+      if (!e.alive || Math.hypot(e.x - w.player.x, e.z - w.player.z) > ITEM_FX.mindvision.range) continue;
+      minI = Math.min(minI, Math.floor(e.x));
+      minJ = Math.min(minJ, Math.floor(e.z));
+      maxI = Math.max(maxI, Math.floor(e.x));
+      maxJ = Math.max(maxJ, Math.floor(e.z));
+    }
+  }
   if (maxI < minI) {
     minI = 0;
     minJ = 0;
@@ -118,6 +129,14 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
     else if (it.kind === 'mimic' && w.enemies.some((e) => e.id === it.ref && e.alive && e.disguised)) mark(it.x, it.z, '#f2c14e', 'sq', 0.4);
   }
   for (const k of w.pickups) if (k.kind === 'key' && !k.taken && w.isExplored(Math.floor(k.x), Math.floor(k.z))) mark(k.x, k.z, '#ffe08a', 'dia', 0.45);
+  // 心眼：範圍內的敵人（包括偽裝的寶箱怪）在地圖上也看得到
+  if ((w.player.mindT ?? 0) > 0) {
+    for (const e of w.enemies) {
+      if (!e.alive || Math.hypot(e.x - w.player.x, e.z - w.player.z) > ITEM_FX.mindvision.range) continue;
+      const attacking = e.phase === 'windup' || e.phase === 'aim' || e.phase === 'charge' || e.phase === 'active';
+      mark(e.x, e.z, attacking ? '#ff6a4a' : '#b9a6ff', 'dia', 0.75);
+    }
+  }
   // 房間名稱
   ctx.font = `${Math.max(11, Math.round(s * 0.7))}px 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif`;
   ctx.textAlign = 'center';

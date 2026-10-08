@@ -68,6 +68,7 @@ export class Hud {
   private icons = $('icons');
   /** 心眼藥水感覺到的敵人（隔牆）。 */
   private sensed = new Set<number>();
+  private bannerTimer = 0;
   private targets = $('targets');
   private cueEl = $('cue');
   private crosshair = $('crosshair');
@@ -137,6 +138,30 @@ export class Hud {
     while (this.toasts.children.length > 4) this.toasts.firstElementChild?.remove();
     window.setTimeout(() => (el.style.opacity = '0'), dur * 1000);
     window.setTimeout(() => el.remove(), dur * 1000 + 450);
+  }
+
+  /** 進入樓層的橫幅：大字樓層名，下面一行樓層變化（沒有就省略）。 */
+  banner(title: string, sub = '', dur = 4.5): void {
+    let el = document.getElementById('floor-banner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'floor-banner';
+      el.setAttribute('role', 'status');
+      this.root.appendChild(el);
+    }
+    const h = document.createElement('h2');
+    h.textContent = title;
+    el.replaceChildren(h);
+    if (sub) {
+      const p = document.createElement('p');
+      p.textContent = controlText(sub, this.touch);
+      el.appendChild(p);
+    }
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    window.clearTimeout(this.bannerTimer);
+    this.bannerTimer = window.setTimeout(() => el!.classList.remove('show'), dur * 1000);
   }
 
   /** 一次顯示一則提示；顯示中的提示不會被新的蓋掉，新的排隊（最多 3 則）。 */

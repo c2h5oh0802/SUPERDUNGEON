@@ -712,6 +712,29 @@ export const RENDER = {
   fogDensity: 0.045,
 } as const;
 
+export interface FloorPalette {
+  /** 霧與背景色。 */
+  fog: number;
+  /** 烘焙環境光（天空、地面，線性 RGB）。 */
+  sky: readonly [number, number, number];
+  ground: readonly [number, number, number];
+  /** 烘焙光整體的色調倍率（越深越冷）。 */
+  tint: readonly [number, number, number];
+  /** 玩家提燈的顏色（越深越淡、越冷）。 */
+  lantern: number;
+}
+
+/** 每層色調：越往下越冷；第 5 層守心者大廳偏深紫。第 1 層與原本相同。 */
+export const FLOOR_PALETTES: readonly FloorPalette[] = [
+  { fog: 0x141226, sky: [0.1, 0.1, 0.21], ground: [0.045, 0.036, 0.06], tint: [1, 1, 1], lantern: 0xffc48a },
+  { fog: 0x121427, sky: [0.094, 0.104, 0.22], ground: [0.042, 0.037, 0.062], tint: [0.94, 0.96, 1.02], lantern: 0xf8c69a },
+  { fog: 0x0f1729, sky: [0.086, 0.108, 0.228], ground: [0.038, 0.039, 0.064], tint: [0.85, 0.93, 1.05], lantern: 0xe8c8ae },
+  { fog: 0x0c1a28, sky: [0.078, 0.112, 0.232], ground: [0.034, 0.041, 0.064], tint: [0.76, 0.88, 1.06], lantern: 0xd6c8c0 },
+  { fog: 0x170f26, sky: [0.11, 0.084, 0.215], ground: [0.05, 0.032, 0.062], tint: [0.95, 0.84, 1.03], lantern: 0xe8bcc8 },
+];
+
+export const floorPalette = (floor: number): FloorPalette => FLOOR_PALETTES[Math.max(0, Math.min(FLOOR_PALETTES.length - 1, floor - 1))]!;
+
 // ---------- 物品：未鑑定的藥水與卷軸、裝備 ----------
 
 /** 藥水共用隨種子外觀；職業僅決定初始知識。 */

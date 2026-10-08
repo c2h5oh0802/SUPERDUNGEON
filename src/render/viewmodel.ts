@@ -55,6 +55,9 @@ export class Viewmodel {
   private stone = new THREE.Group();
   private flask = new THREE.Group();
   private flaskBody!: THREE.ShaderMaterial;
+  /** 刀刃：附魔與詛咒在這裡發出微光。 */
+  private steel!: THREE.ShaderMaterial;
+  private auraT = 0;
   private bowArrow!: THREE.Mesh;
   private bowArrowMat!: THREE.ShaderMaterial;
   private bowString!: THREE.Mesh;
@@ -76,6 +79,7 @@ export class Viewmodel {
     const gauntlet = this.m(0x55505a);
     const leather = this.m(0x6a4d38);
     const steel = this.m(0xc3cad4, 0xfff0d0);
+    this.steel = steel;
     const wood = this.m(0x6b4a30);
     const gold = this.m(0xd4a64a);
     // 右手
@@ -182,6 +186,13 @@ export class Viewmodel {
     this.bow.visible = bowTool;
     this.stone.visible = tool === 'stone';
     this.shield.visible = SHIELD.enabled && p.cls === 'warrior';
+    // 附魔與詛咒：刀刃微微發光（冰寒藍、衝擊金、烈焰橘、詛咒暗紫）
+    this.auraT += realDt;
+    const aura = p.weapon.curse ? 0x7a3cff : p.weapon.ench === 'chill' ? 0x7cc8ff : p.weapon.ench === 'impact' ? 0xffe0a0 : p.weapon.ench === 'flame' ? 0xff7a2a : 0;
+    if (aura) {
+      this.steel.uniforms.uGlow!.value.setHex(aura);
+      this.steel.uniforms.uGlowAmt!.value = 0.32 + 0.12 * Math.sin(this.auraT * (p.weapon.ench === 'flame' ? 7 : 2.4));
+    } else this.steel.uniforms.uGlowAmt!.value = 0;
     this.bob += realDt * moveSpeed * 2.2;
     const bobAmt = clamp(moveSpeed / 4.5, 0, 1);
     const bx = Math.sin(this.bob) * 0.012 * bobAmt;

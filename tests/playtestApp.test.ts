@@ -56,7 +56,7 @@ vi.mock('../src/render/renderer', () => ({ GameRenderer: class {
 } }));
 vi.mock('../src/ui/hud', () => ({ Hud: class {
   update = vi.fn(); onEvents = vi.fn(); setTouchMode = vi.fn();
-  show = vi.fn(); reset = vi.fn(); setLockBanner = vi.fn(); hint = captured.hint;
+  show = vi.fn(); reset = vi.fn(); setLockBanner = vi.fn(); hint = captured.hint; banner = vi.fn();
 } }));
 vi.mock('../src/audio/sfx', () => ({ Sfx: class {
   setSlow = vi.fn(); setListener = vi.fn(); onEvents = vi.fn(); unlock = vi.fn();

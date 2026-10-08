@@ -1702,3 +1702,45 @@ html[lang='en'] #stealth.alarm::after { content: ' · Alert'; }
 }
 
 #tools .cursed span, #armor.cursed { color: #ff9a86; }
+
+/* 進入樓層的橫幅 */
+#floor-banner {
+  position: absolute;
+  left: 50%;
+  top: 31%;
+  transform: translate(-50%, -8px);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+  max-width: min(640px, 86vw);
+}
+
+#floor-banner.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+#floor-banner h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 34px;
+  letter-spacing: 0.12em;
+  color: #f2e6cf;
+}
+
+#floor-banner p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: #c9d6e6;
+}
+
+body.touch-mode #floor-banner h2 { font-size: 24px; }
+body.touch-mode #floor-banner p { font-size: 12px; }
+
+/* 地圖圖例：上鎖寶庫的門、鑰匙、陷阱、心眼看到的敵人 */
+.c-locked { color: #f2c14e; }
+.c-key { color: #ffe08a; }
+.c-trap { color: #b8603a; }
+.c-mind { color: #b9a6ff; }

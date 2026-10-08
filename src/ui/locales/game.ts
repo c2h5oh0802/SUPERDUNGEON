@@ -295,5 +295,7 @@ export const gameEnglish: Record<string, string> = {
   "恐懼：附近的敵人轉身逃跑幾秒；已鎖定的攻擊仍會完成。": "Terror: nearby enemies turn and flee for a few seconds; locked attacks still finish.",
   "被詛咒的裝備卸不下來：讀強化卷軸（解除並 +1）或除咒卷軸。": "Cursed equipment cannot be removed: read an Upgrade Scroll (lifts the curse and adds +1) or a Remove Curse Scroll.",
   "心眼 {0}": "Mind Vision {0}",
-  "潛行步：喧鬧的詛咒仍有腳步聲": "Sneaking: the Noisy curse still makes footsteps"
+  "潛行步：喧鬧的詛咒仍有腳步聲": "Sneaking: the Noisy curse still makes footsteps",
+  "第 {0} 層": "Floor {0}",
+  "第 {0} 層・守心者大廳": "Floor {0} · Heart Warden’s Hall"
 };

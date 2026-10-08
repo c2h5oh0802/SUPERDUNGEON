@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PLAYER, RENDER } from '../config';
+import { PLAYER, RENDER, floorPalette } from '../config';
 import { clamp, lerp } from '../core/math';
 import type { GameEvent } from '../sim/types';
 import type { World } from '../sim/world';
@@ -97,6 +97,12 @@ export class GameRenderer {
     const props = new PropsVisual(world, this.shared, sampler);
     const terrain = new TerrainVisual(world, this.shared);
     const fx = new FxVisual(world);
+    // 每層色調：霧與背景越深越冷
+    const pal = floorPalette(world.level.floor);
+    (this.scene.background as THREE.Color).set(pal.fog);
+    (this.scene.fog as THREE.FogExp2).color.set(pal.fog);
+    this.shared.uFogColor.value.set(pal.fog);
+    this.shared.uLanternColor.value.setHex(pal.lantern).multiplyScalar(0.55);
     // 樓層變化「黑暗」：火把熄滅，提燈照不遠、霧更濃
     const dark = world.level.feeling === 'dark';
     this.shared.uLanternRange.value = dark ? 5.5 : 7.5;
