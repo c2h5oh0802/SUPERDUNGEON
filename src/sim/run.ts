@@ -21,6 +21,7 @@ import {
 import { generateLevel } from '../gen/validate';
 import type { RunStats } from './types';
 import { World, type PlayerCarry } from './world';
+import { landFromFall } from './dungeon';
 
 // 一局＝同一個種子的 RUN.floors 層。每層開頭的狀態（樓層、帶下來的物資、累積統計）就是存檔內容：
 // 從存檔繼續＝用同一個種子重新生成那一層，再把物資帶進去。
@@ -30,6 +31,10 @@ export interface RunState {
   cls: PlayerClass;
   /** 舊局保留五種藥水的既有外觀；新局使用六種藥水的完整排列。 */
   potionLooksVersion?: 1 | 2;
+  /** 生成版本：2＝程序化樓層；缺少＝舊存檔的兩種模板（照舊繼續）。 */
+  gen?: 1 | 2;
+  /** 怎麼抵達這一層：走樓梯，或從上一層的深坑掉下來（落點隨機、受傷）。 */
+  arrival?: 'stairs' | 'fall';
   /** 目前樓層（1 起算）。 */
   floor: number;
   /** 進入這一層時的玩家狀態（第 1 層為 null＝職業起始裝備）。 */
@@ -39,19 +44,22 @@ export interface RunState {
 }
 
 export function newRun(seed: string, cls: PlayerClass): RunState {
-  return { seed, cls, potionLooksVersion: 2, floor: 1, carry: null, stats: null };
+  return { seed, cls, potionLooksVersion: 2, gen: 2, floor: 1, carry: null, stats: null };
 }
 
 /** 生成這一層並建立世界。 */
 export function createFloorWorld(run: RunState): World {
-  const level = generateLevel(run.seed, { floor: run.floor });
+  const level = generateLevel(run.seed, { floor: run.floor, gen: run.gen ?? 1 });
   level.potionLooksVersion = run.potionLooksVersion ?? 2;
-  return new World(level, { cls: run.cls, carry: run.carry ?? undefined, stats: run.stats ?? undefined });
+  const w = new World(level, { cls: run.cls, carry: run.carry ?? undefined, stats: run.stats ?? undefined });
+  if (run.arrival === 'fall') landFromFall(w);
+  return w;
 }
 
 /** 走下階梯之後的下一層狀態。 */
 export function nextFloor(run: RunState, w: World): RunState {
-  return { ...run, floor: Math.min(RUN.floors, run.floor + 1), carry: w.carry(), stats: w.statsCopy() };
+  const { arrival: _previous, ...rest } = run;
+  return { ...rest, floor: Math.min(RUN.floors, run.floor + 1), ...(w.fell ? { arrival: 'fall' as const } : {}), carry: w.carry(), stats: w.statsCopy() };
 }
 
 // ---------- 存檔 ----------
@@ -99,6 +107,11 @@ export function parseRun(text: string | null): RunState | null {
   if (o.identifyKnowledgeVersion !== undefined && o.identifyKnowledgeVersion !== IDENTIFY_KNOWLEDGE_VERSION) return null;
   if (o.potionLooksVersion !== undefined && o.potionLooksVersion !== 1 && o.potionLooksVersion !== 2) return null;
   const potionLooksVersion = o.potionLooksVersion === undefined ? 1 : o.potionLooksVersion;
+  if (o.gen !== undefined && o.gen !== 1 && o.gen !== 2) return null;
+  if (o.arrival !== undefined && o.arrival !== 'stairs' && o.arrival !== 'fall') return null;
+  const gen = o.gen === 2 ? 2 : 1;
+  // 只有新版樓層有深坑；墜落抵達一定有上一層帶下來的狀態。
+  const arrival = o.arrival === 'fall' && gen === 2 && o.floor !== 1 ? 'fall' : undefined;
   // Legacy floor-4 checkpoints keep their carry and resume exploration floor 4;
   // the new arena follows. Floor-start saves never contain a won/Heart-taken state.
   if (typeof o.seed !== 'string' || !o.seed || o.seed.length > 32) return null;
@@ -208,7 +221,7 @@ export function parseRun(text: string | null): RunState | null {
     };
   }
   if (o.floor !== 1 && (!carry || !stats)) return null;
-  return { seed: o.seed, cls: o.cls as PlayerClass, potionLooksVersion, floor: o.floor, carry, stats };
+  return { seed: o.seed, cls: o.cls as PlayerClass, potionLooksVersion, gen, ...(arrival ? { arrival } : {}), floor: o.floor, carry, stats };
 }
 
 /** Retired lure is discarded, not compensated with a stronger resource. Sleep aliases

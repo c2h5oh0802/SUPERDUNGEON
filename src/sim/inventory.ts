@@ -12,6 +12,7 @@ export type StockKey = 'arrows' | 'stones' | 'bottles';
 export function stockFor(p: Player, kind: PickupKind): { key: StockKey; max: number } | null {
   switch (kind) {
     case 'item':
+    case 'key':
       return null;
     case 'ammo':
       return p.cls === 'huntress' ? { key: 'arrows', max: PLAYER.maxArrows } : { key: 'stones', max: maxStones(p) };

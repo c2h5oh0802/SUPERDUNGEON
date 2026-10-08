@@ -44,7 +44,7 @@ describe('Identify supply preserves existing generation', () => {
   it.each(BEFORE)('%s F%i preserves every non-scroll object and all %i RNG calls', async (seed, floor, calls, hash) => {
     const next = vi.spyOn(Rng.prototype, 'next');
     try {
-      const level = generateLevel(seed, { floor });
+      const level = generateLevel(seed, { floor, gen: 1 });
       expect(next).toHaveBeenCalledTimes(calls);
       expect(level.pickups.filter((p) => p.guaranteedIdentify)).toHaveLength(IDENTIFY.guaranteedPerFloor[floor - 1]);
       expect(await nonScrollFingerprint(level)).toBe(hash);

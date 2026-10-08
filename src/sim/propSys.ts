@@ -3,6 +3,7 @@ import { smoothstep } from '../core/math';
 import { damageEnemy } from './enemySys';
 import { STOCK_NAMES, stockFor } from './inventory';
 import { addItem, itemName } from './items';
+import { triggerTrap } from './dungeon';
 import type { World } from './world';
 
 function doorOccupied(w: World, doorId: number): boolean {
@@ -58,16 +59,22 @@ function circleOverlapsCell(x: number, z: number, r: number, i: number, j: numbe
   return Math.hypot(x - cx, z - cz) < r;
 }
 
-/** 尖刺踏板：踩下 → 預警 → 尖刺 → 重置；玩家與敵人都會觸發。 */
+/** 尖刺踏板：踩下 → 預警 → 尖刺 → 重置；其他陷阱踩到就觸發一次。玩家與敵人都會觸發。 */
 export function updateTraps(w: World, dt: number): void {
   const p = w.player;
   for (const t of w.traps) {
+    if (t.spent) continue;
     t.t += dt;
     switch (t.state) {
       case 'idle': {
-        let trig = !p.dead && inCell(p.x, p.z, t.i, t.j, 0.05);
-        if (!trig) for (const e of w.enemies) if (e.alive && !e.perched && inCell(e.x, e.z, t.i, t.j, 0.05)) trig = true;
-        if (trig) {
+        let by: 'player' | number | null = !p.dead && inCell(p.x, p.z, t.i, t.j, 0.05) ? 'player' : null;
+        if (by === null) for (const e of w.enemies) if (e.alive && !e.perched && inCell(e.x, e.z, t.i, t.j, 0.05)) by = e.id;
+        if (by !== null && t.kind !== 'spikes') {
+          triggerTrap(w, t, by);
+          break;
+        }
+        if (by !== null) {
+          t.hidden = false;
           t.state = 'armed';
           t.t = 0;
           w.emit({ type: 'trapArm', id: t.id, x: t.i + 0.5, y: 0, z: t.j + 0.5 });
@@ -134,6 +141,12 @@ export function updatePickups(w: World): void {
       continue;
     }
     if (distance > PLAYER.pickupRadius) continue;
+    if (k.kind === 'key') {
+      w.keys += k.amount;
+      k.taken = true;
+      w.emit({ type: 'pickup', kind: 'key', amount: k.amount, x: k.x, z: k.z, text: '寶庫鑰匙（只能用在這一層）' });
+      continue;
+    }
     if (k.kind === 'item' && k.item) {
       let taken = 0;
       while (k.amount > 0 && addItem(w, k.item, k.level ?? 0)) { k.amount--; taken++; }

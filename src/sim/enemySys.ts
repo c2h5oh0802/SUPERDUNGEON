@@ -251,7 +251,7 @@ export function becomeAlert(w: World, e: Enemy): void {
 }
 
 /** 可疑事件只記住事件位置，不取得玩家位置。門行動計時不隨狀態切換重設。 */
-function investigate(w: World, e: Enemy, target: V2): void {
+export function investigate(w: World, e: Enemy, target: V2): void {
   if (e.state === 'sleep') w.emit({ type: 'wakeUp', id: e.id, x: e.x, y: e.y, z: e.z });
   e.state = 'investigate';
   e.target = { ...target };
@@ -386,7 +386,7 @@ function perceive(w: World, e: Enemy, interval: number): void {
     return;
   }
   if (e.state !== 'alert') findCorpses(w, e);
-  let range: number = e.state === 'alert' ? PERCEPTION.alertRange : PERCEPTION.range;
+  let range: number = (e.state === 'alert' ? PERCEPTION.alertRange : PERCEPTION.range) * w.sightMul;
   if (e.suspicious) range *= PERCEPTION.suspiciousRangeMul;
   if (e.awakened) range *= PERCEPTION.awakenedRangeMul;
   if (d > range) return;

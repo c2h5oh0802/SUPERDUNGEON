@@ -1,10 +1,12 @@
 import type { PracticeTrialId } from './practiceTrials';
+import { buildLevelV2 } from './generatorV2';
+import type { SpecialKind } from './topology';
 import { ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Nav } from '../sim/nav';
-import { Grid, T, type DoorState, type TileId } from '../sim/grid';
+import { Grid, T, TER, type DoorState, type TileId } from '../sim/grid';
 import { layoutById, layoutsByRole, type EnemyKind, type Face, type RoomLayout } from './rooms';
 import { RUN_TEMPLATES, TEMPLATE_ARENA, TEMPLATE_PRACTICE, type Template, type TemplateRoom } from './templates';
 
@@ -22,13 +24,15 @@ export interface EnemySpawn {
   veteran?: boolean;
   /** Arena boss; dedicated combat AI, no Sleep or random loot. */
   boss?: boolean;
+  /** 帶著這一層上鎖寶庫的鑰匙（倒下時掉落）。 */
+  carriesKey?: boolean;
 }
 
 /**
  * 地上的物資。生成只放中性的「彈藥袋」（ammo），撿到時依職業變成一般箭或投擲石，
  * 所以同一個種子兩個職業的關卡完全相同。arrows／stone 是射出去之後可以撿回的箭與石頭。
  */
-export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'item';
+export type PickupKind = 'ammo' | 'arrows' | 'stone' | 'bottle' | 'item' | 'key';
 
 export interface PickupSpawn {
   /** Fixed Identify supply, separate from ordinary random scroll rolls. */
@@ -85,12 +89,38 @@ export interface RoomInst {
 }
 
 export interface SpecialRoom {
-  kind: 'embers' | 'sentries';
+  kind: SpecialKind;
   roomKey: string;
-  solution: 'potion:frost' | 'potion:invisibility';
-  supply: V2;
+  /** 只有需要特定物品才能安全通過的房間有保底解法（餘燼：冰霜；守望：隱形）。 */
+  solution?: 'potion:frost' | 'potion:invisibility';
+  supply?: V2;
   fire?: V2;
 }
+
+/** 陷阱種類：第 1 層只有看得見的尖刺；第 2 層起出現其他種類，部分隱藏。 */
+export type TrapKind = 'spikes' | 'alarm' | 'fire' | 'frost' | 'gas' | 'dart' | 'teleport';
+
+export interface TrapSpawn {
+  i: number;
+  j: number;
+  /** 預設尖刺。 */
+  kind?: TrapKind;
+  /** 看不見，直到被發現或觸發。 */
+  hidden?: boolean;
+}
+
+/** 上鎖寶庫的台座：三選一，拿走一件，其他的沉下去。 */
+export interface PedestalSpawn {
+  x: number;
+  z: number;
+  yaw: number;
+  roomKey: string;
+  item: ItemId;
+  level: number;
+}
+
+/** 樓層變化：同一套規則，每層打起來不一樣。 */
+export type FloorFeeling = 'dark' | 'flooded' | 'overgrown' | 'traps' | 'secrets';
 
 export interface LevelData {
   seed: string;
@@ -113,9 +143,13 @@ export interface LevelData {
   heart: PropSpawn | null;
   stairs: StairsSpawn | null;
   resupply: PropSpawn | null;
-  traps: Array<{ i: number; j: number }>;
+  traps: TrapSpawn[];
   torches: TorchSpawn[];
   practice: boolean;
+  /** 生成版本：2＝程序化樓層結構與地形、秘密、寶庫；缺少＝舊版兩種模板。 */
+  gen?: 2;
+  feeling?: FloorFeeling | null;
+  pedestals?: PedestalSpawn[];
   /** Isolated public playtest; never serialized as a campaign RunState. */
   publicPlaytest?: 'calibration' | 'core';
   /** Same-floor public route only; no campaign serialization or navigation rule. */
@@ -126,28 +160,31 @@ export interface LevelData {
   specialRooms?: SpecialRoom[];
 }
 
-const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };
+export const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };
 
 // Provisional chapter budget: keep F1's two fixed chest bottles, then one per
 // exploration floor. Chest order is template-stable (ember cache, sentry vault).
-const FIXED_CHEST_HEALING_PER_FLOOR = [2, 1, 1, 1, 0] as const;
+export const FIXED_CHEST_HEALING_PER_FLOOR = [2, 1, 1, 1, 0] as const;
 
 export const PILLAR_R = 0.42;
 export const PROP_SIZES = {
   chest: { r: 0.5, h: 0.9 },
   heart: { r: 0.55, h: 1.25 },
   resupply: { r: 0.5, h: 1.0 },
+  pedestal: { r: 0.4, h: 1.0 },
 } as const;
 
-interface DoorDraft {
+export interface DoorDraft {
   cells: Array<[number, number]>;
   axis: 'x' | 'z';
   arch: boolean;
   barred: boolean;
   barSide: -1 | 1;
+  locked?: boolean;
+  hidden?: boolean;
 }
 
-interface Draft {
+export interface Draft {
   w: number;
   h: number;
   tiles: TileId[];
@@ -160,19 +197,22 @@ interface Draft {
   heart: PropSpawn | null;
   stairs: StairsSpawn | null;
   resupply: PropSpawn | null;
-  traps: Array<{ i: number; j: number }>;
+  traps: TrapSpawn[];
   torches: TorchSpawn[];
   spawn: { x: number; z: number; yaw: number } | null;
+  /** 地形覆蓋層（TER），與 tiles 同大小。 */
+  terrain: number[];
+  pedestalSpots: Array<{ x: number; z: number; yaw: number; roomKey: string }>;
 }
 
-function roomOrigin(_t: Template, r: TemplateRoom, layout: RoomLayout): { x0: number; z0: number } {
+export function roomOrigin(_t: Template, r: TemplateRoom, layout: RoomLayout): { x0: number; z0: number } {
   const S = WORLD.slotSize;
   const W = layout.rows[0]!.length;
   const H = layout.rows.length;
   return { x0: 1 + r.col * S + (S - W) / 2, z0: 1 + r.row * S + (S - H) / 2 };
 }
 
-function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, tierBonus = 0): void {
+export function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, tierBonus = 0): void {
   const { x0, z0 } = roomOrigin(t, tr, layout);
   const W = layout.rows[0]!.length;
   const H = layout.rows.length;
@@ -213,6 +253,19 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, 
         case 'X':
           tile = T.Stairs;
           stairsCells.push([i, j]);
+          break;
+        case '"':
+          d.terrain[j * d.w + i] = TER.Reeds;
+          break;
+        case '~':
+          d.terrain[j * d.w + i] = TER.Water;
+          break;
+        case '_':
+          tile = T.Chasm;
+          break;
+        case 'V':
+          d.pillars.push({ x: cx, z: cz, ...PROP_SIZES.pedestal, kind: 'prop' });
+          d.pedestalSpots.push({ x: cx, z: cz, yaw: faceInward(li, lj, W, H), roomKey: tr.key });
           break;
         case 'o':
           d.pillars.push({ x: cx, z: cz, r: PILLAR_R, h: WORLD.wallHeight, kind: 'pillar' });
@@ -296,22 +349,23 @@ function stampRoom(d: Draft, t: Template, tr: TemplateRoom, layout: RoomLayout, 
 }
 
 /** 物件面向房間中心最近的方向（靠牆的物件朝內）。 */
-function faceInward(li: number, lj: number, W: number, H: number): number {
+export function faceInward(li: number, lj: number, W: number, H: number): number {
   const dx = li + 0.5 - W / 2;
   const dz = lj + 0.5 - H / 2;
   if (Math.abs(dx) > Math.abs(dz)) return dx > 0 ? FACE_YAW.W : FACE_YAW.E;
   return dz > 0 ? FACE_YAW.N : FACE_YAW.S;
 }
 
-function connect(
+export function connect(
   d: Draft,
   t: Template,
   a: TemplateRoom,
   b: TemplateRoom,
   la: RoomLayout,
   lb: RoomLayout,
-  type: 'door' | 'open' | 'oneway',
+  type: 'door' | 'open' | 'oneway' | 'locked' | 'secret',
   barFrom: string | undefined,
+  doorOn?: string,
 ): void {
   const oa = roomOrigin(t, a, la);
   const ob = roomOrigin(t, b, lb);
@@ -323,7 +377,8 @@ function connect(
   let A = { o: oa, W: Wa, H: Ha, r: a };
   let B = { o: ob, W: Wb, H: Hb, r: b };
   if (b.col < a.col || b.row < a.row) [A, B] = [B, A];
-  const doorOnB = B.r.tier >= A.r.tier; // 門放在較深的房間邊界
+  const doorOnB = doorOn ? doorOn === B.r.key : B.r.tier >= A.r.tier; // 門放在較深的房間邊界
+  const flags = { locked: type === 'locked' || undefined, hidden: type === 'secret' || undefined };
   if (A.r.row === B.r.row) {
     // 水平連接：門在東／西牆上，沿 z 軸
     const zc = A.o.z0 + A.H / 2 - 1;
@@ -336,7 +391,7 @@ function connect(
     const doorX = doorOnB ? bx : ax;
     const archX = doorOnB ? ax : bx;
     const barSide: -1 | 1 = type === 'oneway' ? (barFrom === B.r.key ? 1 : -1) : 1;
-    d.doors.push({ cells: [[doorX, zc], [doorX, zc + 1]], axis: 'z', arch: type === 'open', barred: type === 'oneway', barSide });
+    d.doors.push({ cells: [[doorX, zc], [doorX, zc + 1]], axis: 'z', arch: type === 'open', barred: type === 'oneway', barSide, ...clean(flags) });
     d.doors.push({ cells: [[archX, zc], [archX, zc + 1]], axis: 'z', arch: true, barred: false, barSide: 1 });
     corridorTorch(d, ax + 1, bx - 1, zc, 'h');
   } else {
@@ -350,13 +405,20 @@ function connect(
     const doorZ = doorOnB ? bz : az;
     const archZ = doorOnB ? az : bz;
     const barSide: -1 | 1 = type === 'oneway' ? (barFrom === B.r.key ? 1 : -1) : 1;
-    d.doors.push({ cells: [[xc, doorZ], [xc + 1, doorZ]], axis: 'x', arch: type === 'open', barred: type === 'oneway', barSide });
+    d.doors.push({ cells: [[xc, doorZ], [xc + 1, doorZ]], axis: 'x', arch: type === 'open', barred: type === 'oneway', barSide, ...clean(flags) });
     d.doors.push({ cells: [[xc, archZ], [xc + 1, archZ]], axis: 'x', arch: true, barred: false, barSide: 1 });
     corridorTorch(d, az + 1, bz - 1, xc, 'v');
   }
 }
 
-function corridorTorch(d: Draft, from: number, to: number, lane: number, dir: 'h' | 'v'): void {
+/** 只保留為 true 的旗標，舊版門的資料形狀不變。 */
+function clean<T extends Record<string, true | undefined>>(o: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const k of Object.keys(o) as Array<keyof T>) if (o[k]) out[k] = o[k];
+  return out;
+}
+
+export function corridorTorch(d: Draft, from: number, to: number, lane: number, dir: 'h' | 'v'): void {
   const len = to - from + 1;
   if (len < 4) return;
   const mid = Math.floor((from + to) / 2);
@@ -364,7 +426,7 @@ function corridorTorch(d: Draft, from: number, to: number, lane: number, dir: 'h
   else d.torches.push({ x: lane + 0.12, y: 2.6, z: mid + 0.5, nx: 1, nz: 0 });
 }
 
-function roomTorches(d: Draft, room: RoomInst, rng: Rng): void {
+export function roomTorches(d: Draft, room: RoomInst, rng: Rng): void {
   const { x0, z0, w: W, h: H } = room;
   const isOpen = (i: number, j: number) => d.tiles[j * d.w + i] === T.Floor;
   const isWall = (i: number, j: number) => d.tiles[j * d.w + i] === T.Wall;
@@ -388,7 +450,7 @@ function roomTorches(d: Draft, room: RoomInst, rng: Rng): void {
   }
 }
 
-function assignLayouts(t: Template, rng: Rng): Map<string, RoomLayout> {
+export function assignLayouts(t: Template, rng: Rng): Map<string, RoomLayout> {
   const out = new Map<string, RoomLayout>();
   const pools = new Map<string, RoomLayout[]>();
   for (const r of t.rooms) {
@@ -453,7 +515,7 @@ function mirrorDraft(d: Draft): void {
   }
 }
 
-function fillWalls(d: Draft): void {
+export function fillWalls(d: Draft): void {
   const { w, h, tiles } = d;
   const isSpace = (t: TileId) => t !== T.Void && t !== T.Wall;
   const out = tiles.slice();
@@ -479,7 +541,7 @@ function fillWalls(d: Draft): void {
 }
 
 /** 從 a 到 b 的直線都是地板、沒有柱子（巡邏路線不會卡住）。 */
-function clearLine(d: Draft, ax: number, az: number, bx: number, bz: number): boolean {
+export function clearLine(d: Draft, ax: number, az: number, bx: number, bz: number): boolean {
   const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
   for (let k = 0; k <= n; k++) {
     const x = ax + ((bx - ax) * k) / n;
@@ -498,7 +560,7 @@ function clearLine(d: Draft, ax: number, az: number, bx: number, bz: number): bo
 }
 
 /** 較深的樓層：部分閒置的地面敵人改成在房間裡來回巡邏。 */
-function addPatrols(d: Draft, rng: Rng, chance: number): void {
+export function addPatrols(d: Draft, rng: Rng, chance: number): void {
   if (chance <= 0) return;
   const traps = new Set(d.traps.map((t) => `${t.i},${t.j}`));
   for (const e of d.enemies) {
@@ -522,7 +584,7 @@ function addPatrols(d: Draft, rng: Rng, chance: number): void {
   }
 }
 
-function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
+export function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
   const spots = rng.shuffle(d.pickupSpots.slice());
   const item = (r: { id: ItemId; level: number }) => ({ kind: 'item' as const, amount: 1, item: r.id, level: r.level });
   // 依重要程度排序（地上的位置不夠時，後面的先省略）：每層一張強化卷軸、未知的藥水與卷軸、一件裝備
@@ -549,7 +611,7 @@ function placePickups(d: Draft, rng: Rng, floor: number): PickupSpawn[] {
 }
 
 /** Leave specialist firing galleries intact; ordinary sanctum archers can reposition. */
-function groundCampaignArchers(d: Draft, grid: Grid): void {
+export function groundCampaignArchers(d: Draft, grid: Grid): void {
   const sanctums = new Set(d.rooms.filter((r) => r.layoutId === 'sanctum').map((r) => r.key));
   const archers = d.enemies.filter((e) => e.kind === 'archer' && e.perched && sanctums.has(e.roomKey));
   if (!archers.length) return;
@@ -575,13 +637,16 @@ export interface GenerateOptions {
   practice?: boolean;
   /** 第幾層（1 起算，預設 1）。 */
   floor?: number;
-  /** 強制模板（測試用） */
+  /** 強制模板（測試用）；指定時一律用舊版生成。 */
   template?: 'A' | 'B';
+  /** 生成版本（預設 2）；1＝舊版兩種模板，供舊存檔繼續。 */
+  gen?: 1 | 2;
 }
 
 /** 單次嘗試（未驗證）。 */
 export function buildLevel(seed: string, attempt: number, opts: GenerateOptions = {}): LevelData {
   const floor = opts.practice ? 1 : Math.max(1, Math.min(RUN.floors, opts.floor ?? 1));
+  if (!opts.practice && !opts.template && (opts.gen ?? 2) === 2 && floor <= RUN.explorationFloors) return buildLevelV2(seed, attempt, floor);
   // 第 1 層沿用原本的種子字串，其他樓層各自獨立（同一個種子的每一層都固定）
   const rng = new Rng(floor === 1 ? `${seed}#${attempt}` : `${seed}#F${floor}#${attempt}`);
   const fi = floor - 1;
@@ -610,6 +675,8 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
     traps: [],
     torches: [],
     spawn: null,
+    terrain: new Array<number>(w * h).fill(0),
+    pedestalSpots: [],
   };
   const layouts = assignLayouts(t, rng);
   if (!opts.practice && floor <= RUN.explorationFloors) {
@@ -637,7 +704,7 @@ export function buildLevel(seed: string, attempt: number, opts: GenerateOptions 
   for (const e of t.edges) {
     const a = t.rooms.find((r) => r.key === e.a)!;
     const b = t.rooms.find((r) => r.key === e.b)!;
-    connect(d, t, a, b, layouts.get(a.key)!, layouts.get(b.key)!, e.type, e.barFrom);
+    connect(d, t, a, b, layouts.get(a.key)!, layouts.get(b.key)!, e.type, e.barFrom, e.doorOn);
   }
   fillWalls(d);
   for (const room of d.rooms) roomTorches(d, room, rng);

@@ -13,7 +13,7 @@ describe('地城生成', () => {
     const mirrors = new Set<boolean>();
     let retries = 0;
     for (const seed of SEEDS) {
-      const l = generateLevel(seed);
+      const l = generateLevel(seed, { gen: 1 });
       expect(validateLevel(l).ok).toBe(true);
       templates.add(l.templateId);
       mirrors.add(l.mirrored);
@@ -59,7 +59,7 @@ describe('地城生成', () => {
 
   it('入口房沒有敵人、沒有寶物被放在自己才能開的門後', () => {
     for (const seed of SEEDS.slice(0, 40)) {
-      const l = generateLevel(seed);
+      const l = generateLevel(seed, { gen: 1 });
       const e = l.rooms.find((r) => r.role === 'entrance')!;
       for (const en of l.enemies) {
         const inside = en.x >= e.x0 && en.x < e.x0 + e.w && en.z >= e.z0 && en.z < e.z0 + e.h;

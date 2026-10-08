@@ -4,7 +4,7 @@ export { weaponDamage } from './equipment';
 import { eatRation } from './hunger';
 import { consumeHuntingMark } from './huntingMark';
 import { meleeCandidates } from './meleeTargets';
-import { addItem, categoryOf, drinkPotion, completeConversion, dropFromBag, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction } from './items';
+import { addItem, categoryOf, drinkPotion, completeConversion, dropFromBag, equipFromBag, identify, isKnown, queueUse, readScroll, takeForAction, trueItemName } from './items';
 import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
@@ -490,6 +490,15 @@ function interact(w: World, t: InteractTarget): void {
   switch (it.kind) {
     case 'door': {
       const d = w.grid.doors[it.ref]!;
+      if (d.locked) {
+        if (w.keys <= 0) return;
+        w.keys--;
+        d.locked = false;
+        w.emit({ type: 'unlock', id: d.id, x: d.cx, z: d.cz, text: '寶庫的鎖打開了' });
+        setDoor(w, d.id, true, 'player');
+        startAction(w, 'use');
+        return;
+      }
       if (d.barred) {
         d.barred = false;
         w.emit({ type: 'unbar', x: d.cx, z: d.cz });
@@ -539,6 +548,21 @@ function performUse(w: World, it: Interactable): void {
       return;
     case 'stairs':
       return;
+    case 'pedestal': {
+      // 寶庫三選一：拿走一件，同一間的其他台座沉下去
+      if (it.used) return;
+      const pd = w.level.pedestals?.[it.ref];
+      if (!pd) return;
+      for (const o of w.interactables) if (o.kind === 'pedestal' && o.roomKey === it.roomKey) o.used = true;
+      if (categoryOf(pd.item) === 'potion' || categoryOf(pd.item) === 'scroll') identify(w, pd.item);
+      if (!addItem(w, pd.item, pd.level)) {
+        const f = forwardFromYaw(it.yaw);
+        w.addPickup('item', 1, it.x + f.x * 0.9, 0.15, it.z + f.z * 0.9, null, pd.item, pd.level);
+        w.emit({ type: 'fullInventory', text: '背包滿了，寶物放在台座前' });
+      }
+      w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你選了「${trueItemName(pd.item, pd.level)}」，其他寶物沉了下去`, source: it.roomKey });
+      return;
+    }
     case 'resupply':
       if (p.cls === 'huntress') {
         p.arrows = PLAYER.maxArrows;
@@ -609,7 +633,15 @@ export function findInteractTarget(w: World): InteractTarget | null {
       case 'door': {
         const door = w.grid.doors[it.ref]!;
         const gateHint = w.publicPlaytestDoorHint(door.id);
+        if (door.hidden) continue;
         if (gateHint) { label = gateHint; enabled = false; }
+        else if (door.locked) {
+          if (w.keys > 0) label = 'E 用鑰匙打開寶庫';
+          else {
+            label = '上鎖了：需要這一層的寶庫鑰匙';
+            enabled = false;
+          }
+        }
         else if (door.barred) {
           if (doorSide(w, it) === door.barSide) label = 'E 拉開門閂';
           else {
@@ -625,7 +657,14 @@ export function findInteractTarget(w: World): InteractTarget | null {
       case 'heart':
         enabled = w.heartAvailable;
         label = w.level.goal === 'descend' ? `E 走下階梯（第 ${w.level.floor + 1} 層）` : enabled ? 'E 取走沉眠之心' : '守心者仍在：沉眠之心尚未解封';
+        if (w.level.goal === 'descend' && w.keys > 0 && w.grid.doors.some((d) => d.locked)) label += '；寶庫鑰匙只能用在這一層';
         break;
+      case 'pedestal': {
+        const pd = w.level.pedestals?.[it.ref];
+        if (!pd) continue;
+        label = `E 取走「${trueItemName(pd.item, pd.level)}」（三選一）`;
+        break;
+      }
       case 'stairs':
         label = '來時的階梯：回不去了';
         enabled = false;

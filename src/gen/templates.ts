@@ -3,7 +3,7 @@ import type { Role } from './rooms';
 // 手工拓撲模板：房間放在 4×3 的格位上，相鄰格位之間以通道相連。
 // 種子決定使用哪個模板、是否鏡像、每個房間的佈局與內容。
 
-export type EdgeType = 'door' | 'open' | 'oneway';
+export type EdgeType = 'door' | 'open' | 'oneway' | 'locked' | 'secret';
 
 export interface TemplateRoom {
   key: string;
@@ -23,10 +23,12 @@ export interface TemplateEdge {
   type: EdgeType;
   /** oneway：可以拉開門閂的一側（房間 key）。 */
   barFrom?: string;
+  /** 門板放在哪個房間的邊界（預設：層級較深的那一側）。 */
+  doorOn?: string;
 }
 
 export interface Template {
-  id: 'A' | 'B' | 'practice' | 'arena';
+  id: 'A' | 'B' | 'practice' | 'arena' | 'gen';
   name: string;
   cols: number;
   rows: number;

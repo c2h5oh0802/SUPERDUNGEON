@@ -101,7 +101,7 @@ describe('PublicCalibration authoritative lethal protection', () => {
     updateProjectiles(world, .2);
     expect(bolt.alive).toBe(false);
 
-    world.traps.push({ id: 1, i: Math.floor(x), j: Math.floor(z), state: 'spikes', t: 0, hitSet: new Set() });
+    world.traps.push({ id: 1, i: Math.floor(x), j: Math.floor(z), state: 'spikes', t: 0, hitSet: new Set(), kind: 'spikes', hidden: false, spent: false, noticeT: 0 });
     updateTraps(world, .01);
     shatterPotion(world, 'fire', x, .1, z);
     updateAreas(world, ITEM_FX.area.fire.tick, () => {});

@@ -11,8 +11,23 @@ export const T = {
   Platform: 4,
   Door: 5,
   Stairs: 6,
+  /** 深坑：可以走進去（會掉到下一層）；導航與生成視為不可通行。 */
+  Chasm: 7,
 } as const;
 export type TileId = (typeof T)[keyof typeof T];
+
+/** 地面上的地形（覆蓋在地板格上，不改變碰撞）。 */
+export const TER = {
+  None: 0,
+  /** 長草：擋視線；走過（非潛行）會踩倒。 */
+  Reeds: 1,
+  Water: 2,
+  /** 被踩倒的草：不擋視線，仍可燃。 */
+  Flat: 3,
+  /** 燒過的草。 */
+  Ash: 4,
+} as const;
+export type TerrainId = (typeof TER)[keyof typeof TER];
 
 export interface Pillar {
   x: number;
@@ -38,6 +53,10 @@ export interface DoorState {
   barSide: -1 | 1;
   /** 拱門：沒有門板、永遠打開。 */
   arch: boolean;
+  /** 上鎖：要這一層的鑰匙才能打開。 */
+  locked?: boolean;
+  /** 秘密門：看起來像牆，被發現之前不能互動。 */
+  hidden?: boolean;
   cx: number;
   cz: number;
 }
@@ -57,6 +76,8 @@ export class Grid {
   readonly h: number;
   readonly tiles: Uint8Array;
   readonly doorIndex: Int16Array;
+  /** 地形覆蓋層（TER）。不列舉，舊版關卡的序列化內容保持不變。 */
+  declare readonly terrain: Uint8Array;
   readonly pillars: Pillar[] = [];
   readonly doors: DoorState[] = [];
   private pillarCells = new Map<number, number[]>();
@@ -66,6 +87,30 @@ export class Grid {
     this.h = h;
     this.tiles = new Uint8Array(w * h);
     this.doorIndex = new Int16Array(w * h).fill(-1);
+    Object.defineProperty(this, 'terrain', { value: new Uint8Array(w * h), enumerable: false });
+  }
+
+  terrainAt(i: number, j: number): TerrainId {
+    if (!this.inBounds(i, j)) return TER.None;
+    return this.terrain[j * this.w + i] as TerrainId;
+  }
+
+  setTerrain(i: number, j: number, t: TerrainId): void {
+    if (this.inBounds(i, j)) this.terrain[j * this.w + i] = t;
+  }
+
+  /** 線段穿過長草的水平長度（公尺）；用於視線遮擋。 */
+  reedLength(ax: number, az: number, bx: number, bz: number): number {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 1e-6) return 0;
+    const n = Math.ceil(len / 0.25);
+    const step = len / n;
+    let total = 0;
+    for (let k = 0; k < n; k++) {
+      const f = (k + 0.5) / n;
+      if (this.terrainAt(Math.floor(ax + (bx - ax) * f), Math.floor(az + (bz - az) * f)) === TER.Reeds) total += step;
+    }
+    return total;
   }
 
   inBounds(i: number, j: number): boolean {
@@ -115,7 +160,7 @@ export class Grid {
   /** 角色能否站在此格（門只在完全打開時可通行）。 */
   walkBlocked(i: number, j: number): boolean {
     const t = this.get(i, j);
-    if (t === T.Floor) return false;
+    if (t === T.Floor || t === T.Chasm) return false;
     if (t === T.Door) {
       const d = this.doorAt(i, j)!;
       return d.progress < 0.999;
@@ -134,6 +179,7 @@ export class Grid {
     switch (this.get(i, j)) {
       case T.Floor:
       case T.Door:
+      case T.Chasm:
         return 0;
       case T.Low:
         return WORLD.lowWallHeight;
@@ -262,7 +308,8 @@ export class Grid {
     // 地板與天花板
     if (dy < 0 && b.y < 0) {
       const t = a.y / -dy;
-      if (t >= 0 && t <= 1) best = this.mk(a, dx, dy, dz, t, 'floor');
+      // 深坑沒有地板：東西會一直往下掉
+      if (t >= 0 && t <= 1 && this.get(Math.floor(a.x + dx * t), Math.floor(a.z + dz * t)) !== T.Chasm) best = this.mk(a, dx, dy, dz, t, 'floor');
     }
     if (dy > 0 && b.y > WORLD.wallHeight) {
       const t = (WORLD.wallHeight - a.y) / dy;
@@ -327,7 +374,7 @@ export class Grid {
     forSight: boolean,
   ): SegHit | null {
     const tile = this.get(i, j);
-    if (tile === T.Floor) return null;
+    if (tile === T.Floor || tile === T.Chasm) return null;
     const y0 = a.y + dy * t0;
     const y1 = a.y + dy * t1;
     if (tile === T.Door) {
@@ -361,7 +408,7 @@ export class Grid {
   /** 以 2D 方式判斷視線可否通過（牆、關閉的門、柱子擋；矮牆與高台不擋）。供地圖探索。 */
   sightBlocked2D(i: number, j: number): boolean {
     const t = this.get(i, j);
-    if (t === T.Floor || t === T.Low || t === T.Platform) return false;
+    if (t === T.Floor || t === T.Low || t === T.Platform || t === T.Chasm) return false;
     if (t === T.Door) return this.doorAt(i, j)!.progress < 0.6;
     return true;
   }

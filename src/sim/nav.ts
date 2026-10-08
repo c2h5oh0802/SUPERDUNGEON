@@ -141,7 +141,11 @@ export class Nav {
   passable(idx: number, ignoreBars = false): boolean {
     if (idx < 0 || this.open[idx] === 0) return false;
     const d = this.doorOf[idx]!;
-    if (d >= 0 && !ignoreBars && this.grid.doors[d]!.barred) return false;
+    if (d >= 0 && !ignoreBars) {
+      const door = this.grid.doors[d]!;
+      // 門閂、上鎖、秘密門：導航視為牆（拉開、開鎖、發現之後才通）
+      if (door.barred || door.locked || door.hidden) return false;
+    }
     return true;
   }
 

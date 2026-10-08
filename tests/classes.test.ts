@@ -488,7 +488,7 @@ describe('戰士：位置推擊', () => {
     g.state = 'alert';
     g.awareness = 1;
     w.player.z = 12.8;
-    w.traps.push({ id: 0, i: 9, j: 10, state: 'idle', t: 0, hitSet: new Set() });
+    w.traps.push({ id: 0, i: 9, j: 10, state: 'idle', t: 0, hitSet: new Set(), kind: 'spikes', hidden: false, spent: false, noticeT: 0 });
     w.player.yaw = 0;
     push(w);
     expect(g.phase).toBe('stagger');

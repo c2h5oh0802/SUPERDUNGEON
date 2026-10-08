@@ -1,7 +1,7 @@
 import type { ArmorId, ItemId, PlayerClass, PotionId, TalentId, TipKind, Tool, WeaponId } from '../config';
 import type { V2, V3 } from '../core/math';
 import type { EnemyKind } from '../gen/rooms';
-import type { PickupKind } from '../gen/generator';
+import type { PickupKind, TrapKind } from '../gen/generator';
 
 export type { Tool, TipKind };
 export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'convert' | 'drop' | 'stunned';
@@ -119,6 +119,10 @@ export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'r
 export interface Enemy {
   /** Target-local temporary mark; absolute world time, not carried between floors. */
   huntingMarkUntil?: number;
+  /** 掉進深坑（沒有屍體留在原地）。 */
+  fell?: boolean;
+  /** 帶著寶庫鑰匙，倒下時掉落。 */
+  carriesKey?: boolean;
   id: number;
   kind: EnemyKind;
   x: number;
@@ -272,9 +276,16 @@ export interface Trap {
   state: 'idle' | 'armed' | 'spikes' | 'reset';
   t: number;
   hitSet: Set<number>;
+  kind: TrapKind;
+  /** 看不見：被發現或觸發後才顯示。 */
+  hidden: boolean;
+  /** 一次性陷阱觸發過了（尖刺會重置，其他不會）。 */
+  spent: boolean;
+  /** 被動察覺的累積世界秒。 */
+  noticeT: number;
 }
 
-export type InteractKind = 'door' | 'chest' | 'heart' | 'stairs' | 'resupply';
+export type InteractKind = 'door' | 'chest' | 'heart' | 'stairs' | 'resupply' | 'pedestal';
 
 export interface Interactable {
   id: number;
@@ -353,7 +364,17 @@ export type GameEventType =
   | 'block'
   | 'bump'
   | 'tipHit'
-  | 'helmet';
+  | 'helmet'
+  | 'trapTrigger'
+  | 'trapFound'
+  | 'secretFound'
+  | 'searched'
+  | 'fall'
+  | 'landed'
+  | 'unlock'
+  | 'pedestal'
+  | 'terrain'
+  | 'steam';
 
 export interface GameEvent {
   type: GameEventType;

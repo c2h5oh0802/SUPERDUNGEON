@@ -124,7 +124,7 @@ describe('healing supply is real inventory, never generic enemy stock', () => {
     for (const seed of ['FLOW1', 'FLOW2', 'LIVING1']) {
       let reliable = 0, foods = 0, upgrades = 0;
       for (let floor = 1; floor <= 5; floor++) {
-        const l = generateLevel(seed, { floor });
+        const l = generateLevel(seed, { floor, gen: 1 });
         expect(l.pickups.every((p) => p.kind !== ('potion' as string))).toBe(true);
         if (floor === 5) { expect(l.chests).toHaveLength(0); expect(l.pickups).toHaveLength(0); continue; }
         expect(l.chests).toHaveLength(2);

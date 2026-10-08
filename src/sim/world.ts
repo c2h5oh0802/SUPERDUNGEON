@@ -1,5 +1,5 @@
 import { recordSensesEvent, expireSenses, type SoundCue } from './senses';
-import { CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
+import { CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TERRAIN, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { armorFootstepRadius, armorReduction, armorSneakSpeedMul } from './equipment';
@@ -15,6 +15,9 @@ import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy } from 
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
 import { updateProjectiles } from './projectileSys';
 import { updateDoors, updatePickups, updateSmokes, updateTraps } from './propSys';
+import { trample, updateDungeon } from './dungeon';
+import { TER } from './grid';
+import { inArea } from './items';
 import type {
   Area,
   Enemy,
@@ -136,6 +139,20 @@ export class World {
   encounterState: 'none' | 'dormant' | 'active' | 'resolved' = 'none';
   /** 有敵人發現了屍體：整層戒備。 */
   alarm = false;
+  /** 掉進深坑（下一層從隨機位置開始）。 */
+  fell = false;
+  /** 這一層的寶庫鑰匙（不帶到下一層）。 */
+  keys = 0;
+  /** 燃燒中的草：格子索引 → 已燒的世界秒。 */
+  readonly burning = new Map<number, number>();
+  /** 秘密門被動察覺的累積世界秒（門 id → 秒）。 */
+  readonly notice = new Map<number, number>();
+  /** 按住等待（搜索）的累積世界秒。 */
+  searchT = 0;
+  /** 本幀是否按住等待。 */
+  waiting = false;
+  /** 樓層變化「黑暗」：敵人的視距倍率。 */
+  readonly sightMul: number;
   /** 等待玩家選擇（天賦、強化）：顯示選擇時世界暫停。 */
   pendingChoice: PendingChoice | null = null;
   readonly choiceQueue: PendingChoice[] = [];
@@ -191,6 +208,7 @@ export class World {
       return c < 0 ? [] : [this.enav.center(c)];
     });
     this.explored = new Uint8Array(this.grid.w * this.grid.h);
+    this.sightMul = level.feeling === 'dark' ? 0.7 : 1;
     this.rng = new Rng(`${level.seed}#drops#${level.floor}`);
     const cls = opts.cls ?? 'warrior';
     const start = CLASSES[cls].start;
@@ -263,7 +281,8 @@ export class World {
     }
     for (const e of level.enemies) this.enemies.push(createEnemy(this, e));
     for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level);
-    level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set() }));
+    level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set(),
+      kind: t.kind ?? 'spikes', hidden: !!t.hidden, spent: false, noticeT: 0 }));
     for (const d of this.grid.doors) {
       if (d.arch) continue;
       this.interactables.push({ id: this.nextId++, kind: 'door', x: d.cx, z: d.cz, yaw: 0, used: false, ref: d.id, roomKey: '' });
@@ -304,6 +323,9 @@ export class World {
         ref: 0,
         roomKey: level.resupply.roomKey,
       });
+    (level.pedestals ?? []).forEach((pd, k) =>
+      this.interactables.push({ id: this.nextId++, kind: 'pedestal', x: pd.x, z: pd.z, yaw: pd.yaw, used: false, ref: k, roomKey: pd.roomKey }),
+    );
     for (const room of level.specialRooms ?? []) if (room.fire) {
       const a = ITEM_FX.area.fire;
       this.areas.push({ id: this.nextId++, kind: 'fire', ...room.fire, radius: a.radius,
@@ -363,16 +385,19 @@ export class World {
     p.pitch = input.pitch;
     startActions(this, input);
     p.sneaking = input.sneak && !p.dead;
+    this.waiting = input.wait;
     const dist = movePlayer(this, input, realDt);
     p.lastMoveDist = dist;
+    // 非潛行走過長草會踩倒；潛行步小心穿過不會
+    if (dist > 0 && !p.sneaking) trample(this, p.x, p.z);
     // End protection before this frame's projectiles/enemy attacks can resolve.
     this.enterPublicCore();
     updatePickups(this);
     this.footsteps(dist);
     const worldDt = computeWorldDt({
       realDt,
-      // 潛行步：每公尺花比較多世界時間（安靜要付時間）
-      moveDist: dist * (p.sneaking ? this.sneakTimeMul() : 1),
+      // 潛行步：每公尺花比較多世界時間（安靜要付時間）；冰霜裡每一步都更費時
+      moveDist: dist * (p.sneaking ? this.sneakTimeMul() : 1) * (inArea(this, 'frost', p.x, p.z) ? 2 : 1),
       actionRemaining: this.actionRemaining(),
       waitHeld: input.wait,
     });
@@ -410,7 +435,8 @@ export class World {
     this.stepAcc += dist;
     if (this.stepAcc < STEALTH.footstepEvery) return;
     this.stepAcc -= STEALTH.footstepEvery;
-    this.emitNoise(p.x, 0.1, p.z, armorFootstepRadius(p.armor.id), 'step');
+    const water = this.grid.terrainAt(Math.floor(p.x), Math.floor(p.z)) === TER.Water;
+    this.emitNoise(p.x, 0.1, p.z, armorFootstepRadius(p.armor.id) * (water ? TERRAIN.waterStepMul : 1), water ? 'splash' : 'step');
   }
 
   /** 護甲減傷（至少受 1）。 */
@@ -442,6 +468,8 @@ export class World {
       this.updateEncounter();
       updateDoors(this, dt);
       updateTraps(this, dt);
+      updateDungeon(this, dt);
+      if (this.outcome !== 'none') break;
       updateSmokes(this, dt);
       updateAreas(this, dt, (e, dmg, src) => damageEnemy(this, e, dmg, { source: src, sneak: false, head: false, x: e.x, y: 0.5, z: e.z }));
       updateBuffs(this, dt);
@@ -454,6 +482,8 @@ export class World {
   /** 視線：地形＋煙霧。近距離（煙中可見距離內）不受煙霧影響。 */
   canSee(a: V3, b: V3): boolean {
     if (!this.grid.lineOfSight(a, b)) return false;
+    // 長草：穿過夠深的草叢就看不見（站在草叢深處的人也看不出去）
+    if (this.grid.reedLength(a.x, a.z, b.x, b.z) >= TERRAIN.reedBlock) return false;
     return !this.smokeBlocks(a, b);
   }
 

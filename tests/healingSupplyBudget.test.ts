@@ -55,7 +55,7 @@ describe('provisional chapter healing supply v2', () => {
     const next = vi.spyOn(Rng.prototype, 'next');
     const scrolls = replayLegacyScrollPool();
     try {
-      const level = generateLevel(seed, { floor });
+      const level = generateLevel(seed, { floor, gen: 1 });
       // Ignore only the separately tested, appended fixed Identify opportunity.
       level.pickups = level.pickups.filter((p) => !p.guaranteedIdentify);
       expect(next).toHaveBeenCalledTimes(calls);
@@ -150,12 +150,12 @@ describe('provisional chapter healing supply v2', () => {
   }, 30000);
 
   it('retains random Healing even in the chest whose fixed bottle was removed', () => {
-    const level = generateLevel('HEAL-BUDGET4', { floor: 2 });
+    const level = generateLevel('HEAL-BUDGET4', { floor: 2, gen: 1 });
     expect(level.chests[1]!.contents.items).toEqual([{ id: 'potion:healing', level: 0 }]);
   });
 
   it.each([['FLOW1', 13], ['FLOW2', 11], ['LIVING1', 11]] as const)('%s total including random rolls is %i, exactly three fewer', (seed, expected) => {
-    const total = Array.from({ length: 5 }, (_, k) => totalHealing(generateLevel(seed, { floor: k + 1 })))
+    const total = Array.from({ length: 5 }, (_, k) => totalHealing(generateLevel(seed, { floor: k + 1, gen: 1 })))
       .reduce((sum, count) => sum + count, 0);
     expect(total).toBe(expected);
   });

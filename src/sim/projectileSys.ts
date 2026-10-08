@@ -5,6 +5,8 @@ import { movingSpheresTOI, type V3 } from '../core/math';
 import { segmentCylinder, segmentEnemy } from './characterHit';
 import { shieldBlocks } from './classSys';
 import { shatterPotion } from './items';
+import { triggerTrapAt } from './dungeon';
+import { T } from './grid';
 import { hasTalent } from './progress';
 import { chargerHelmet, damageEnemy, enemyForward, wardenCrownClosed } from './enemySys';
 import type { World } from './world';
@@ -178,6 +180,8 @@ export function updateProjectiles(w: World, dt: number): void {
       p.vel = { x: p.vel.x, y: p.vel.y - p.gravity * dt, z: p.vel.z };
       const g = w.grid;
       if ((p.lifetime === undefined ? p.age > PROJECTILES.maxLife : p.age >= p.lifetime) || p.pos.x < 0 || p.pos.z < 0 || p.pos.x > g.w || p.pos.z > g.h) p.alive = false;
+      // 掉進深坑的東西就不見了
+      else if (p.pos.y < -0.5 && g.get(Math.floor(p.pos.x), Math.floor(p.pos.z)) === T.Chasm) p.alive = false;
     }
   }
   // 3) 清除
@@ -205,6 +209,8 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
     case 'stone': {
       w.emit({ type: 'hitWall', x: at.x, y: at.y, z: at.z, kind: 'stone' });
       w.emitNoise(at.x, at.y, at.z, PROJECTILES.stone.noise, 'stone');
+      // 石頭落在陷阱上會觸發它
+      if (kind === 'floor') triggerTrapAt(w, at.x, at.z);
       // 石頭彈回自己這一側落地
       const h = Math.hypot(p.vel.x, p.vel.z) || 1;
       dropStone(w, at.x - (p.vel.x / h) * 0.3, at.z - (p.vel.z / h) * 0.3);
@@ -213,6 +219,7 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
     case 'bottle':
       p.alive = true;
       breakBottle(w, p, at, false);
+      if (kind === 'floor') triggerTrapAt(w, at.x, at.z);
       break;
   }
 }

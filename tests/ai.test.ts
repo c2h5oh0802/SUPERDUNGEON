@@ -147,14 +147,14 @@ describe('敵人 AI', () => {
 describe('陷阱', () => {
   it('敵人踩到踏板：預警 → 尖刺 → 受傷；玩家也會觸發', () => {
     const w = makeWorld(undefined, [{ kind: 'guard', x: 6.5, z: 6.5, state: 'idle' }]);
-    w.traps.push({ id: 0, i: 6, j: 6, state: 'idle', t: 0, hitSet: new Set() });
+    w.traps.push({ id: 0, i: 6, j: 6, state: 'idle', t: 0, hitSet: new Set(), kind: 'spikes', hidden: false, spent: false, noticeT: 0 });
     w.advance(1 / 120);
     expect(w.traps[0]!.state).toBe('armed');
     w.advance(TRAP.warn + 0.05);
     expect(w.enemies[0]!.hp).toBe(E.guard.hp - TRAP.damage);
     // 玩家
     const w2 = makeWorld();
-    w2.traps.push({ id: 0, i: Math.floor(w2.player.x), j: Math.floor(w2.player.z), state: 'idle', t: 0, hitSet: new Set() });
+    w2.traps.push({ id: 0, i: Math.floor(w2.player.x), j: Math.floor(w2.player.z), state: 'idle', t: 0, hitSet: new Set(), kind: 'spikes', hidden: false, spent: false, noticeT: 0 });
     w2.advance(TRAP.warn + 0.1);
     expect(w2.player.hp).toBe(w2.player.maxHp - TRAP.damage);
   });

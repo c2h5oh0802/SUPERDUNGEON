@@ -1,5 +1,6 @@
 import { ENEMIES, HUNGER, IDENTIFY, ITEM_FX, PERCEPTION, PLAYER, RUN } from '../config';
 import { Nav } from '../sim/nav';
+import { T } from '../sim/grid';
 import { buildLevel, type GenerateOptions, type LevelData } from './generator';
 
 export interface ValidationResult {
@@ -35,6 +36,8 @@ export function validateLevel(l: LevelData): ValidationResult {
 
   if (g.circleBlocked(l.spawn.x, l.spawn.z, PLAYER.radius)) errors.push('出生點被阻擋');
   const seen = pnav.flood(l.spawn.x, l.spawn.z, false);
+  // 拉開門閂、打開上鎖與秘密門之後才走得到的地方（寶箱、寶庫台座）
+  const seenAll = pnav.flood(l.spawn.x, l.spawn.z, true);
 
   const need = (label: string, x: number, z: number, within = 1.6) => {
     if (!reachableNear(pnav, seen, x, z, within)) errors.push(`${label} 不可達`);
@@ -45,7 +48,10 @@ export function validateLevel(l: LevelData): ValidationResult {
     if (!l.stairs) errors.push('缺少出口階梯');
     else need('出口階梯', l.stairs.front.x, l.stairs.front.z, 0.9);
   }
-  l.chests.forEach((c, k) => need(`寶箱 ${k}`, c.x, c.z));
+  l.chests.forEach((c, k) => {
+    if (!reachableNear(pnav, seenAll, c.x, c.z, 1.6)) errors.push(`寶箱 ${k} 不可達`);
+  });
+  for (const [k, p] of (l.pedestals ?? []).entries()) if (!reachableNear(pnav, seenAll, p.x, p.z, 1.6)) errors.push(`寶庫台座 ${k} 不可達`);
   if (l.resupply) need('補給台', l.resupply.x, l.resupply.z);
 
   // 不經過陷阱也能抵達沉眠之心
@@ -93,8 +99,25 @@ export function validateLevel(l: LevelData): ValidationResult {
     }
     for (const room of l.specialRooms ?? []) {
       if (!optional.some((r) => r.key === room.roomKey)) errors.push('特殊房不是可選支線');
-      if (!l.pickups.some((p) => p.item === room.solution && p.x === room.supply.x && p.z === room.supply.z)) errors.push('特殊房缺少保底物資');
-      if (!reachableNear(pnav, safe, room.supply.x, room.supply.z, PLAYER.pickupRadius)) errors.push('特殊房物資需要穿過自身危險');
+      const supply = room.supply;
+      if (!room.solution || !supply) continue;
+      if (!l.pickups.some((p) => p.item === room.solution && p.x === supply.x && p.z === supply.z)) errors.push('特殊房缺少保底物資');
+      if (!reachableNear(pnav, safe, supply.x, supply.z, PLAYER.pickupRadius)) errors.push('特殊房物資需要穿過自身危險');
+    }
+    if (l.gen === 2) {
+      const vaults = (l.specialRooms ?? []).filter((r) => r.kind === 'vault');
+      const keys = l.pickups.filter((p) => p.kind === 'key');
+      if (keys.length !== vaults.length) errors.push('寶庫鑰匙數量錯誤');
+      if ((l.pedestals ?? []).length !== vaults.length * 3) errors.push('寶庫台座數量錯誤');
+      if (vaults.length && !g.doors.some((d) => d.locked)) errors.push('寶庫沒有上鎖');
+      for (const k of keys) if (!reachableNear(pnav, safe, k.x, k.z, PLAYER.pickupRadius)) errors.push('鑰匙不在可達主線');
+      // 上鎖與秘密門後面只有可選的特殊房
+      for (const r of optional) {
+        if (!(l.specialRooms ?? []).some((s) => s.roomKey === r.key && (s.kind === 'vault' || s.kind === 'stash'))) continue;
+        if (reachableNear(pnav, seen, r.x0 + r.w / 2, r.z0 + r.h / 2, 3)) errors.push('上鎖或秘密房沒有被門隔開');
+      }
+      const doorCells = new Set(g.doors.flatMap((d) => d.cells.map(([i, j]) => `${i},${j}`)));
+      for (const t of l.traps) if (doorCells.has(`${t.i},${t.j}`) || g.get(t.i, t.j) !== T.Floor) errors.push('陷阱位置錯誤');
     }
   }
 

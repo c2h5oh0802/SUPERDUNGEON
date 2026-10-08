@@ -214,15 +214,17 @@ describe('optional resource rooms have useful alternatives, never a main-route i
       expect(l.specialRooms?.map((s) => s.kind)).toEqual(['embers', 'sentries']);
       const nav = new Nav(l.grid, PLAYER.radius), seen = nav.flood(l.spawn.x, l.spawn.z, false);
       for (const room of l.specialRooms!) {
-        const cell = nav.nearestPassable(room.supply.x, room.supply.z);
+        if (!room.supply) continue;
+        const supply = room.supply;
+        const cell = nav.nearestPassable(supply.x, supply.z);
         expect(seen[cell]).toBe(1);
-        expect(l.rooms.filter((r) => r.optional).every((r) => room.supply.x < r.x0 || room.supply.x > r.x0 + r.w || room.supply.z < r.z0 || room.supply.z > r.z0 + r.h)).toBe(true);
+        expect(l.rooms.filter((r) => r.optional).every((r) => supply.x < r.x0 || supply.x > r.x0 + r.w || supply.z < r.z0 || supply.z > r.z0 + r.h)).toBe(true);
       }
     }
   }, 30000);
 
   it('local Frost removes fire HP exposure, leaves distant fires, and retains its ordinary slow role', () => {
-    const w = new World(generateLevel('ROOM-ADVANTAGE'));
+    const w = new World(generateLevel('ROOM-ADVANTAGE', { gen: 1 }));
     const fire = w.areas.find((a) => a.kind === 'fire')!;
     w.enemies.splice(0); w.player.x = fire.x; w.player.z = fire.z; const hp = w.player.hp;
     w.advance(.51); expect(w.player.hp).toBeLessThan(hp);
@@ -234,7 +236,7 @@ describe('optional resource rooms have useful alternatives, never a main-route i
 
   it('sentry room sightline sees a visible approach but invisibility permits opening the same optional chest', () => {
     const setup = () => {
-      const w = new World(generateLevel('SENTRY-ADVANTAGE'));
+      const w = new World(generateLevel('SENTRY-ADVANTAGE', { gen: 1 }));
       const special = w.level.specialRooms!.find((s) => s.kind === 'sentries')!;
       w.enemies.splice(0, w.enemies.length, ...w.enemies.filter((e) => e.roomKey === special.roomKey));
       const chest = w.interactables.find((i) => i.kind === 'chest' && i.roomKey === special.roomKey)!;
@@ -286,7 +288,7 @@ describe('consumable responsibility edges', () => {
   });
 
   it('Frost room has a safe stock-opening approach; optional bag loot accepts a visible HP risk or local extinction', () => {
-    const w = new World(generateLevel('FIRE-ALTERNATIVE'));
+    const w = new World(generateLevel('FIRE-ALTERNATIVE', { gen: 1 }));
     w.enemies.splice(0); const room = w.level.specialRooms!.find((s) => s.kind === 'embers')!;
     const chest = w.interactables.find((i) => i.kind === 'chest' && i.roomKey === room.roomKey)!;
     const fire = w.areas[0]!, nav = new Nav(w.grid, PLAYER.radius), seen = nav.flood(w.player.x, w.player.z, false);

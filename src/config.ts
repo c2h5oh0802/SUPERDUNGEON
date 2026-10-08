@@ -372,6 +372,56 @@ export const TRAP = {
   damage: 3,
 } as const;
 
+/**
+ * 生成版本 2：程序化樓層（索引＝樓層 − 1，只用於第 1–4 層探索層）。
+ * 主線房間數含入口與出口；特殊房接在分岔死路。
+ */
+export const DUNGEON = {
+  cols: 5,
+  rows: 4,
+  mainRooms: [6, 7, 8, 8],
+  minExitDepth: [3, 4, 4, 5],
+  loops: [1, 1, 2, 2],
+  shortcutChance: [0, 0.5, 0.5, 0.6],
+  /** 特殊房數量；第 2 層起其中一間固定是上鎖寶庫。 */
+  specials: [2, 3, 3, 3],
+  /** 房間難度加成（決定版型裡哪些敵人出現）。 */
+  tierBonus: [-1, 0, 0, 1],
+  /** 樓層變化出現的機率。 */
+  feelingChance: [0, 0.5, 0.5, 0.5],
+  /** 散落在走道與房間裡的陷阱數量，以及隱藏的比例。 */
+  scatteredTraps: [0, 2, 3, 4],
+  hiddenTrapChance: [0, 0.5, 0.6, 0.7],
+  /** 沒有樓層變化時，戰鬥房出現一小片草或水的機率。 */
+  patchChance: 0.3,
+  /** 樓層變化「淹水」「荒蕪」時，戰鬥房出現大片水或草的機率。 */
+  feelingPatchChance: 0.75,
+} as const;
+
+/** 地形：長草、淺水、深坑。 */
+export const TERRAIN = {
+  /** 視線穿過長草的累積長度達到這個值就被擋住（公尺）。 */
+  reedBlock: 1.5,
+  /** 走在水裡（非潛行）腳步聲半徑倍率。 */
+  waterStepMul: 1.5,
+  /** 火延燒到相鄰長草的時間（世界秒）與一格草燒多久。 */
+  burnSpread: 0.6,
+  burnLife: 3,
+  /** 掉進深坑：到下一層，受傷但至少留 1 生命。 */
+  fallDamage: 3,
+} as const;
+
+/** 秘密門與隱藏陷阱。 */
+export const SEARCH = {
+  /** 按住等待（空白）滿這麼多世界秒，揭開半徑內的秘密。 */
+  waitTime: 1,
+  radius: 4,
+  /** 貼近並面對秘密門，或靠近隱藏陷阱，累積這麼多世界秒就會察覺。 */
+  noticeTime: 1,
+  noticeDoorRange: 1.6,
+  noticeTrapRange: 2,
+} as const;
+
 export const DOOR = {
   moveTime: 0.3,
   losBlockBelow: 0.6,

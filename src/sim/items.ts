@@ -25,6 +25,7 @@ import { lullEnemy } from './enemySys';
 import { Rng } from '../core/rng';
 import { rollConsumable, rollItem } from '../gen/loot';
 import { Nav } from './nav';
+import { TER } from './grid';
 import { hasTalent, maxTipped, queueChoice } from './progress';
 import type { Area, Enemy, InvItem, PendingChoice, PendingUse, UpgradeTarget } from './types';
 import type { World } from './world';
@@ -90,6 +91,17 @@ export function itemName(w: World, id: ItemId, level = 0): string {
   if (c === 'weapon') return `${WEAPONS[keyOf(id) as keyof typeof WEAPONS].name}${lv}`;
   if (c === 'armor') return `${ARMORS[keyOf(id) as keyof typeof ARMORS].name}${lv}`;
   if (!isKnown(w, id)) return lookName(w, id);
+  if (c === 'potion') return POTIONS[keyOf(id) as PotionId].name;
+  return SCROLLS[keyOf(id) as ScrollId | 'upgrade'].name;
+}
+
+/** 不管這一局認不認得，物品的真實名稱（寶庫台座標明種類）。 */
+export function trueItemName(id: ItemId, level = 0): string {
+  const c = categoryOf(id);
+  const lv = level ? ` +${level}` : '';
+  if (c === 'food') return '乾糧';
+  if (c === 'weapon') return `${WEAPONS[keyOf(id) as keyof typeof WEAPONS].name}${lv}`;
+  if (c === 'armor') return `${ARMORS[keyOf(id) as keyof typeof ARMORS].name}${lv}`;
   if (c === 'potion') return POTIONS[keyOf(id) as PotionId].name;
   return SCROLLS[keyOf(id) as ScrollId | 'upgrade'].name;
 }
@@ -292,8 +304,13 @@ export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: n
   spawnArea(w, id, x, z);
 }
 
-function spawnArea(w: World, kind: Area['kind'], x: number, z: number): void {
+export function spawnArea(w: World, kind: Area['kind'], x: number, z: number): void {
   const spec = ITEM_FX.area[kind];
+  // 火落在水上只冒出蒸氣
+  if (kind === 'fire' && w.grid.terrainAt(Math.floor(x), Math.floor(z)) === TER.Water) {
+    w.emit({ type: 'steam', x, y: 0.2, z, radius: spec.radius });
+    return;
+  }
   if (kind === 'frost') {
     // Local overlap only. No global fire physics or terrain/prop destruction.
     for (let k = w.areas.length - 1; k >= 0; k--) {
@@ -439,7 +456,7 @@ export function refreshIdentifyChoice(w: World, choice: Extract<PendingChoice, {
   return false;
 }
 
-function teleport(w: World): void {
+export function teleport(w: World): void {
   const p = w.player;
   const nav = new Nav(w.grid, PLAYER.radius);
   const seen = nav.flood(w.level.spawn.x, w.level.spawn.z, false);
