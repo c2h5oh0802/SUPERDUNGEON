@@ -411,6 +411,26 @@ export const TERRAIN = {
   fallDamage: 3,
 } as const;
 
+/** 陷阱名稱（揭開後顯示）。 */
+export const TRAP_NAMES = {
+  spikes: '尖刺踏板',
+  alarm: '警報陷阱',
+  fire: '火焰陷阱',
+  frost: '冰霜陷阱',
+  gas: '麻痺氣體陷阱',
+  dart: '飛鏢陷阱',
+  teleport: '傳送陷阱',
+} as const;
+
+/** 樓層變化的說明（進入該層時顯示）。 */
+export const FEELING_TEXT = {
+  dark: '黑暗：這一層的火把都熄了。提燈照不遠，敵人也看不遠。',
+  flooded: '淹水：到處是積水，走在水裡腳步聲更大，火也燒不起來。',
+  overgrown: '荒蕪：長草叢生，適合躲藏，也容易延燒。',
+  traps: '陷阱密布：小心腳下，按住空白鍵等待就會搜索附近。',
+  secrets: '你感覺這一層藏著秘密：仔細看看牆上的裂縫。',
+} as const;
+
 /** 秘密門與隱藏陷阱。 */
 export const SEARCH = {
   /** 按住等待（空白）滿這麼多世界秒，揭開半徑內的秘密。 */

@@ -1,4 +1,6 @@
 import { PLAYER, TALENTS, type TalentId, type ItemId } from '../config';
+import { T, TER } from '../sim/grid';
+import { revealAround } from '../sim/dungeon';
 import { hungerState } from '../sim/hunger';
 import { addItem } from '../sim/items';
 import { damageEnemy, wardenCrownClosed } from '../sim/enemySys';
@@ -189,6 +191,33 @@ export function installDevApi(app: App): void {
         chests: l.chests.map((c) => ({ x: c.x, z: c.z })),
       };
     },
+    /** 生成版本 2 的地城資訊：地形、秘密門、上鎖門、陷阱、寶庫（只讀）。 */
+    dungeon() {
+      const w = app.world;
+      if (!w) return null;
+      const g = w.grid;
+      const cells: Record<'reeds' | 'flat' | 'water' | 'chasm', Array<[number, number]>> = { reeds: [], flat: [], water: [], chasm: [] };
+      for (let j = 0; j < g.h; j++) for (let i = 0; i < g.w; i++) {
+        const t = g.terrainAt(i, j);
+        if (t === TER.Reeds) cells.reeds.push([i, j]);
+        else if (t === TER.Flat) cells.flat.push([i, j]);
+        else if (t === TER.Water) cells.water.push([i, j]);
+        if (g.get(i, j) === T.Chasm) cells.chasm.push([i, j]);
+      }
+      return {
+        gen: w.level.gen ?? 1,
+        feeling: w.level.feeling ?? null,
+        keys: w.keys,
+        fell: w.fell,
+        cells,
+        doors: g.doors.filter((d) => d.hidden !== undefined || d.locked !== undefined)
+          .map((d) => ({ id: d.id, cx: d.cx, cz: d.cz, axis: d.axis, hidden: !!d.hidden, locked: !!d.locked, progress: d.progress })),
+        traps: w.traps.map((t) => ({ id: t.id, i: t.i, j: t.j, kind: t.kind, hidden: t.hidden, spent: t.spent, state: t.state })),
+        pedestals: w.interactables.filter((it) => it.kind === 'pedestal').map((it) => ({ id: it.id, x: it.x, z: it.z, used: it.used, item: w.level.pedestals?.[it.ref]?.item })),
+        specialRooms: w.level.specialRooms ?? [],
+        keyPickups: w.pickups.filter((k) => k.kind === 'key' && !k.taken).map((k) => ({ x: k.x, z: k.z })),
+      };
+    },
     /** 自動化輔助：以玩家半徑的導航格求路徑（只讀，不移動角色）。 */
     pathTo(x: number, z: number, ignoreBars = false) {
       const w = app.world;
@@ -237,6 +266,17 @@ export function installDevApi(app: App): void {
       smoke(x: number, z: number) {
         const w = app.world;
         if (w) w.smokes.push({ id: w.nextId++, x, y: 1, z, age: 1, radius: 4, air: false });
+      },
+      /** 狀態注入：立刻走下這一層（測試用）。 */
+      descend() {
+        const w = app.world;
+        if (w && w.level.goal === 'descend' && w.outcome === 'none') w.outcome = 'descend';
+      },
+      /** 狀態注入：揭開整層的秘密門與隱藏陷阱。 */
+      revealAll() {
+        const w = app.world;
+        if (!w) return 0;
+        return revealAround(w, w.player.x, w.player.z, 9999);
       },
       teleport(x: number, z: number) {
         const w = app.world;

@@ -658,6 +658,17 @@ export class EnemyVisual {
       // Immediate open/close is intentional: visible protection never lags its hit rule.
       panel.rotation.set(crownClosed ? 0 : -0.3, 0, crownClosed ? 0 : i === 0 ? -1.1 : 1.1);
     }
+    if (!e.alive && e.fell) {
+      // 掉進深坑：往下墜落，很快就看不見
+      const t = e.deathT;
+      this.root.position.y = t < 1.4 ? e.y - 4.9 * t * t : -60;
+      this.body.rotation.x = Math.min(1.2, t * 2);
+      this.eyes.visible = false;
+      this.rig.uTintAmt.value = 0;
+      u.uGlowAmt!.value = 0;
+      this.applyPose(this.pose);
+      return;
+    }
     if (!e.alive) {
       // 死亡：向後倒下（世界時間）
       const k = smoothstep(0, ENEMY_DEATH_FALL_TIME, e.deathT);

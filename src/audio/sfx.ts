@@ -382,6 +382,50 @@ export class Sfx {
           this.tone('square', 700, 520, 0.18, 0.12, pos);
           if (e.kind === 'warden') this.tone('triangle', 1450, 1320, 0.3, 0.13, pos);
           break;
+        case 'trapTrigger':
+          if (e.kind === 'alarm') {
+            // 警報：刺耳的鈴聲
+            for (let k = 0; k < 4; k++) this.tone('square', 1500, 1450, 0.12, 0.16, pos, k * 0.16);
+          } else if (e.kind === 'teleport') this.tone('sine', 300, 1600, 0.4, 0.2, pos);
+          else if (e.kind === 'dart') this.noise(0.06, 0.3, 'highpass', 3000, 2000, 1, pos);
+          else {
+            this.tone('square', 1300, 1250, 0.04, 0.14, pos);
+            this.noise(0.4, 0.35, 'lowpass', 1800, 400, 1, pos);
+          }
+          break;
+        case 'secretFound':
+          // 石牆鬆動的悶響＋發現的音
+          this.noise(0.5, 0.4, 'lowpass', 500, 150, 1, pos);
+          this.tone('sine', 660, 990, 0.35, 0.12, null, 0.1);
+          break;
+        case 'trapFound':
+          this.tone('triangle', 880, 1100, 0.18, 0.1);
+          break;
+        case 'searched':
+          if (!e.amount) this.tone('sine', 300, 280, 0.12, 0.05);
+          break;
+        case 'steam':
+          this.noise(0.6, 0.3, 'highpass', 3500, 1500, 1, pos);
+          break;
+        case 'unlock':
+          this.tone('square', 500, 380, 0.08, 0.15, pos);
+          this.tone('triangle', 1200, 1500, 0.2, 0.1, pos, 0.08);
+          break;
+        case 'pedestal':
+          this.tone('sine', 520, 780, 0.5, 0.14, pos);
+          this.noise(1.2, 0.25, 'lowpass', 300, 80, 1, pos, 0.2);
+          break;
+        case 'fall':
+          if (e.kind === 'player') this.noise(0.8, 0.5, 'bandpass', 900, 200, 1);
+          else {
+            this.tone('sine', 600, 120, 0.7, 0.2, pos);
+            this.noise(0.6, 0.25, 'bandpass', 800, 200, 1, pos);
+          }
+          break;
+        case 'landed':
+          this.tone('sine', 80, 40, 0.4, 0.5);
+          this.noise(0.25, 0.5, 'lowpass', 600, 150, 1);
+          break;
         default:
       }
     }

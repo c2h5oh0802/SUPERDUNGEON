@@ -249,8 +249,10 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
   // 固定的治療藥水放在不必找秘密門就拿得到的寶箱（秘密藏室排最後）。
   const fixedHealing = FIXED_CHEST_HEALING_PER_FLOOR[fi] ?? 0;
   const stashKeys = new Set(d.rooms.filter((r) => t.specials.get(r.key) === 'stash').map((r) => r.key));
-  const byAccess = d.chests.slice().sort((a, b) => Number(stashKeys.has(a.roomKey)) - Number(stashKeys.has(b.roomKey)));
-  for (const c of byAccess.slice(fixedHealing)) c.contents.items.shift();
+  const accessible = d.chests.filter((c) => !stashKeys.has(c.roomKey));
+  for (const c of d.chests) if (!accessible.slice(0, fixedHealing).includes(c)) c.contents.items.shift();
+  // 寶箱不夠時，剩下的固定治療藥水改放在主線房間的地上（總數與舊版相同）
+  const looseHealing = Math.max(0, fixedHealing - accessible.length);
   for (const c of d.chests) c.contents.items.push(rollItem(rng, floor));
 
   // 寶庫三選一：一件已強化的裝備、一張強化卷軸、一瓶治療藥水（位置順序隨機）。
@@ -338,6 +340,10 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
       if (approach) q = approach;
     }
     pickups.push({ kind: 'item', amount: 1, item: 'food:ration', level: 0, x: q.x, z: q.z });
+  }
+  for (let k = 0; k < looseHealing; k++) {
+    const q = supplyAt(1 + k);
+    pickups.push({ kind: 'item', amount: 1, item: 'potion:healing', level: 0, x: q.x, z: q.z });
   }
   const specialRooms: SpecialRoom[] = [];
   for (const room of d.rooms.filter((r) => r.optional)) {

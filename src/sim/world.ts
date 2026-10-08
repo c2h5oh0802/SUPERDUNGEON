@@ -143,6 +143,8 @@ export class World {
   fell = false;
   /** 這一層的寶庫鑰匙（不帶到下一層）。 */
   keys = 0;
+  /** 寶庫裡被選走的台座（互動物件 id）。 */
+  readonly chosenPedestals = new Set<number>();
   /** 燃燒中的草：格子索引 → 已燒的世界秒。 */
   readonly burning = new Map<number, number>();
   /** 秘密門被動察覺的累積世界秒（門 id → 秒）。 */
@@ -203,7 +205,9 @@ export class World {
     this.grid = level.grid;
     this.enav = new Nav(this.grid, Math.max(ENEMIES.guard.radius, ENEMIES.archer.radius, ENEMIES.charger.radius));
     // 房間中心投影到既有導航格；入口不列入目的地，不改生成與可達性規則。
-    this.roamPoints = level.rooms.filter((r) => r.role !== 'entrance').flatMap((r) => {
+    // 上鎖的寶庫與秘密藏室不是巡邏目的地（敵人也打不開那些門）。
+    const sealed = new Set((level.specialRooms ?? []).filter((s) => s.kind === 'vault' || s.kind === 'stash').map((s) => s.roomKey));
+    this.roamPoints = level.rooms.filter((r) => r.role !== 'entrance' && !sealed.has(r.key)).flatMap((r) => {
       const c = this.enav.nearestPassable(r.x0 + r.w / 2, r.z0 + r.h / 2);
       return c < 0 ? [] : [this.enav.center(c)];
     });
@@ -397,7 +401,7 @@ export class World {
     const worldDt = computeWorldDt({
       realDt,
       // 潛行步：每公尺花比較多世界時間（安靜要付時間）；冰霜裡每一步都更費時
-      moveDist: dist * (p.sneaking ? this.sneakTimeMul() : 1) * (inArea(this, 'frost', p.x, p.z) ? 2 : 1),
+      moveDist: dist * (p.sneaking ? this.sneakTimeMul() : 1) * (this.inFrost() ? 2 : 1),
       actionRemaining: this.actionRemaining(),
       waitHeld: input.wait,
     });
@@ -414,6 +418,11 @@ export class World {
   }
 
   private stepAcc = 0;
+
+  /** 玩家站在冰霜裡。 */
+  inFrost(): boolean {
+    return inArea(this, 'frost', this.player.x, this.player.z);
+  }
 
   /** 潛行步的每公尺世界時間倍率。 */
   sneakTimeMul(): number {

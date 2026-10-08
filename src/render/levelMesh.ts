@@ -39,8 +39,16 @@ export interface FlameSpot {
   nz: number;
 }
 
+/** 秘密門：被發現前是一面有裂縫的牆，發現後換成正常的門框。 */
+export interface SecretDoorVisual {
+  doorId: number;
+  wall: THREE.Mesh;
+  frame: THREE.Mesh;
+}
+
 export interface LevelVisual {
   group: THREE.Group;
+  secrets: SecretDoorVisual[];
   flames: FlameSpot[];
   flameMaterial: THREE.ShaderMaterial;
   lights: BakeLight[];
@@ -107,13 +115,51 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
         continue;
       }
       const t = g.get(Math.floor(px), Math.floor(pz));
-      const top = t === T.Floor || t === T.Door ? 0 : t === T.Low ? WORLD.lowWallHeight : t === T.Platform ? WORLD.platformHeight : H + 1;
+      const top = t === T.Floor || t === T.Door || t === T.Chasm ? 0 : t === T.Low ? WORLD.lowWallHeight : t === T.Platform ? WORLD.platformHeight : H + 1;
       if (py < top) occN++;
     }
     return 1 - 0.45 * (occN / samples.length) - 0.18 * Math.exp(-Math.max(0, y) * 2.5) * (ny > 0.5 ? 0 : 1);
   };
 
   const col = (hex: number, i: number, j: number, k = 0, amt = 0.08) => jitterColor(hex, h(i, j, k), amt);
+
+  /** 一格牆朝某一側的牆面（石塊、踢腳、簷口）。 */
+  const wallFace = (b: GeoBuilder, i: number, j: number, s: number, floorH: number, cracked = false) => {
+    const side = SIDES[s]!;
+    const O = side.O(i, j);
+    const U = side.U;
+    const N = side.N;
+    const k = s * 7;
+    b.wallFlat(O, U, N, 0, 1, floorH, 3.42, 0, col(C.grout, i, j, k, 0.02));
+    if (floorH < 0.42) b.wallBlock(O, U, N, 0, 1, 0, 0.42, 0.1, 0.04, col(C.plinth, i, j, k + 1));
+    for (let c = 0; c < 4; c++) {
+      const v0 = 0.42 + c * 0.75;
+      const v1 = v0 + 0.75;
+      if (v1 <= floorH) continue;
+      const d = 0.045 + (h(i, j, k + c + 2) - 0.5) * 0.03;
+      if ((c + ((i + j) & 1)) % 2 === 0) b.wallBlock(O, U, N, 0, 1, Math.max(v0, floorH), v1, d, 0.04, col(C.wall, i, j, k + c + 3, 0.1));
+      else {
+        const split = 0.5 + (h(i, j, k + c + 9) - 0.5) * 0.3;
+        b.wallBlock(O, U, N, 0, split, Math.max(v0, floorH), v1, d, 0.04, col(C.wall, i, j, k + c + 13, 0.1));
+        b.wallBlock(O, U, N, split, 1, Math.max(v0, floorH), v1, d * 0.9, 0.04, col(C.wall, i, j, k + c + 17, 0.1));
+      }
+    }
+    if (cracked) {
+      // 細細的裂縫：仔細看才看得出來
+      // 只在一格上畫一道斷續的細縫，顏色接近石縫
+      if (h(i, j, k + 29) < 0.5) {
+        const base = 0.3 + h(i, j, k + 30) * 0.4;
+        for (let c = 0; c < 3; c++) {
+          const u = base + (h(i, j, k + 31 + c) - 0.5) * 0.12;
+          const v = 0.9 + c * 0.55 + h(i, j, k + 35 + c) * 0.2;
+          b.wallBlock(O, U, N, u - 0.008, u + 0.008, v, v + 0.28, 0.07, 0.003, col(0x2e2630, i, j, k + 36 + c, 0.04));
+        }
+      }
+    }
+    b.wallBlock(O, U, N, 0, 1, 3.42, 3.68, 0.13, 0.05, col(C.cornice, i, j, k + 20, 0.05));
+    b.wallFlat(O, U, N, 0, 1, 3.68, H, 0.02, col(C.plaster, i, j, k + 21, 0.06));
+  };
+  const secretBuilders: Array<{ doorId: number; wall: GeoBuilder; frame: GeoBuilder }> = [];
 
   // ---------- 牆面 ----------
   for (let j = 0; j < g.h; j++) {
@@ -130,27 +176,7 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
           const r = level.stairs.rise;
           if (side.di === -r.x && side.dj === -r.z) continue;
         }
-        const floorH = neighborFloorHeight(nt);
-        const O = side.O(i, j);
-        const U = side.U;
-        const N = side.N;
-        const k = s * 7;
-        gb.wallFlat(O, U, N, 0, 1, floorH, 3.42, 0, col(C.grout, i, j, k, 0.02));
-        if (floorH < 0.42) gb.wallBlock(O, U, N, 0, 1, 0, 0.42, 0.1, 0.04, col(C.plinth, i, j, k + 1));
-        for (let c = 0; c < 4; c++) {
-          const v0 = 0.42 + c * 0.75;
-          const v1 = v0 + 0.75;
-          if (v1 <= floorH) continue;
-          const d = 0.045 + (h(i, j, k + c + 2) - 0.5) * 0.03;
-          if ((c + ((i + j) & 1)) % 2 === 0) gb.wallBlock(O, U, N, 0, 1, Math.max(v0, floorH), v1, d, 0.04, col(C.wall, i, j, k + c + 3, 0.1));
-          else {
-            const split = 0.5 + (h(i, j, k + c + 9) - 0.5) * 0.3;
-            gb.wallBlock(O, U, N, 0, split, Math.max(v0, floorH), v1, d, 0.04, col(C.wall, i, j, k + c + 13, 0.1));
-            gb.wallBlock(O, U, N, split, 1, Math.max(v0, floorH), v1, d * 0.9, 0.04, col(C.wall, i, j, k + c + 17, 0.1));
-          }
-        }
-        gb.wallBlock(O, U, N, 0, 1, 3.42, 3.68, 0.13, 0.05, col(C.cornice, i, j, k + 20, 0.05));
-        gb.wallFlat(O, U, N, 0, 1, 3.68, H, 0.02, col(C.plaster, i, j, k + 21, 0.06));
+        wallFace(gb, i, j, s, neighborFloorHeight(nt));
       }
     }
   }
@@ -161,6 +187,18 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
     const i0 = Math.min(c0[0], c1[0]);
     const j0 = Math.min(c0[1], c1[1]);
     use(d.cx, d.cz);
+    const main = gb;
+    let frameB = gb;
+    if (d.hidden) {
+      // 秘密門：牆面與門框各自獨立成網格，發現時切換
+      const wallB = new GeoBuilder();
+      wallB.aoFn = aoFn;
+      frameB = new GeoBuilder();
+      frameB.aoFn = aoFn;
+      const open = d.axis === 'x' ? [0, 1] : [2, 3];
+      for (const [i, j] of d.cells) for (const s of open) wallFace(wallB, i, j, s, 0, true);
+      secretBuilders.push({ doorId: d.id, wall: wallB, frame: frameB });
+    }
     // 門洞頂（門楣底面）
     for (const [i, j] of d.cells) {
       gb.quad([i, WORLD.doorHeight, j], [i + 1, WORLD.doorHeight, j], [i + 1, WORLD.doorHeight, j + 1], [i, WORLD.doorHeight, j + 1], col(C.lintel, i, j, 40), [0, -1, 0]);
@@ -177,15 +215,16 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
             { O: [i0 + 1, 0, j0], U: [0, 0, 1], N: [1, 0, 0] },
           ];
     for (const f of faces) {
-      gb.wallFlat(f.O, f.U, f.N, 0, 2, WORLD.doorHeight, H, 0.0, col(C.plaster, i0, j0, 42));
-      gb.wallBlock(f.O, f.U, f.N, -0.35, 2.35, WORLD.doorHeight, WORLD.doorHeight + 0.5, 0.14, 0.05, col(C.lintel, i0, j0, 43, 0.04));
-      gb.wallBlock(f.O, f.U, f.N, 0.78, 1.22, WORLD.doorHeight - 0.05, WORLD.doorHeight + 0.72, 0.19, 0.05, col(C.keystone, i0, j0, 44, 0.04));
+      frameB.wallFlat(f.O, f.U, f.N, 0, 2, WORLD.doorHeight, H, 0.0, col(C.plaster, i0, j0, 42));
+      frameB.wallBlock(f.O, f.U, f.N, -0.35, 2.35, WORLD.doorHeight, WORLD.doorHeight + 0.5, 0.14, 0.05, col(C.lintel, i0, j0, 43, 0.04));
+      frameB.wallBlock(f.O, f.U, f.N, 0.78, 1.22, WORLD.doorHeight - 0.05, WORLD.doorHeight + 0.72, 0.19, 0.05, col(C.keystone, i0, j0, 44, 0.04));
       for (let s = 0; s < 3; s++) {
         const v0 = s * 1.0;
-        gb.wallBlock(f.O, f.U, f.N, -0.35, 0.02, v0, v0 + 1.0, 0.13, 0.05, col(C.lintel, i0, j0, 45 + s, 0.06));
-        gb.wallBlock(f.O, f.U, f.N, 1.98, 2.35, v0, v0 + 1.0, 0.13, 0.05, col(C.lintel, i0, j0, 49 + s, 0.06));
+        frameB.wallBlock(f.O, f.U, f.N, -0.35, 0.02, v0, v0 + 1.0, 0.13, 0.05, col(C.lintel, i0, j0, 45 + s, 0.06));
+        frameB.wallBlock(f.O, f.U, f.N, 1.98, 2.35, v0, v0 + 1.0, 0.13, 0.05, col(C.lintel, i0, j0, 49 + s, 0.06));
       }
     }
+    gb = main;
   }
 
   // ---------- 地板與天花板 ----------
@@ -206,8 +245,23 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
           gb.flag(i, j + 0.5, i + 1, j + 1, -y, 0.03, 0.035, col(C.floor, i, j, 67, 0.12));
         }
       }
-      if (t === T.Floor || t === T.Low || t === T.Platform) {
+      if (t === T.Floor || t === T.Low || t === T.Platform || t === T.Chasm) {
         gb.quad([i, H, j], [i + 1, H, j], [i + 1, H, j + 1], [i, H, j + 1], col(C.ceiling, i, j, 68, 0.05), [0, -1, 0]);
+      }
+      if (t === T.Chasm) {
+        // 深坑：坑壁往下延伸，底部一片漆黑
+        const PIT = 5;
+        gb.quad([i, -PIT, j], [i + 1, -PIT, j], [i + 1, -PIT, j + 1], [i, -PIT, j + 1], col(0x07060b, i, j, 80, 0.02), [0, 1, 0]);
+        for (let s = 0; s < 4; s++) {
+          const side = SIDES[s]!;
+          if (g.get(i + side.di, j + side.dj) === T.Chasm) continue;
+          const O = side.O(i, j);
+          const N: Vec = [-side.N[0], 0, -side.N[2]];
+          gb.wallFlat(O, side.U, N, 0, 1, -1.1, -0.02, 0, col(C.wall, i, j, 81 + s, 0.1));
+          gb.wallFlat(O, side.U, N, 0, 1, -PIT, -1.1, 0, col(0x1a1622, i, j, 85 + s, 0.05));
+          // 坑緣的石頭
+          gb.wallBlock(O, side.U, N, 0, 1, -0.25, 0.02, 0.06, 0.03, col(C.threshold, i, j, 89 + s, 0.08));
+        }
       }
       if (t === T.Low || t === T.Platform) {
         const top = t === T.Low ? WORLD.lowWallHeight : WORLD.platformHeight;
@@ -330,6 +384,20 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
     group.add(mesh);
     vertexCount += b.vertexCount;
   }
+  const secrets: SecretDoorVisual[] = secretBuilders.map(({ doorId, wall, frame }) => {
+    const mesh = (b: GeoBuilder) => {
+      const pos = new Float32Array(b.pos);
+      const baked = bakeLighting(pos, new Float32Array(b.nrm), new Float32Array(b.ao), lights, occ, { sky: [0.1, 0.1, 0.21], ground: [0.045, 0.036, 0.06] }, g.w, g.h);
+      const m = new THREE.Mesh(b.toGeometry(baked), envMaterial);
+      m.matrixAutoUpdate = false;
+      group.add(m);
+      vertexCount += b.vertexCount;
+      return m;
+    };
+    const s = { doorId, wall: mesh(wall), frame: mesh(frame) };
+    s.frame.visible = false;
+    return s;
+  });
   const bakeMs = performance.now() - t0;
   const flamePoints = buildFlamePoints(flames);
   group.add(flamePoints.points);
@@ -350,6 +418,7 @@ export function buildLevelVisual(level: LevelData, envMaterial: THREE.Material):
   }
   return {
     group,
+    secrets,
     flames,
     flameMaterial: flamePoints.material,
     lights,

@@ -5,7 +5,7 @@ import { CalibrationObserver, type CalibrationMilestoneType } from './playtest/c
 import { createPublicPlaytestWorld, type PlaytestStage } from './playtest/scenario';
 import { createBrowserPlaytestTelemetry, normalizePlaytestSource, type PlaytestTelemetry, type PlaytestEventName, type PlaytestFun, type PlaytestIssue } from './playtest/telemetry';
 import { Sfx } from './audio/sfx';
-import { ALL_CLASSES, ENEMY_DEATH_FALL_TIME, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
+import { FEELING_TEXT, ALL_CLASSES, ENEMY_DEATH_FALL_TIME, HEALING_POTION, RUN, TALENTS, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type ClassInfo, type PlayerClass } from './config';
 import { addItem, identify, queueUse, upgradeLabel } from './sim/items';
 import { focusChoice, focusInventory, renderIdentifyChoice, renderInventory } from './ui/inventory';
 import { canPresentChoice, identifyChoiceDescription } from './ui/inventoryPresentation';
@@ -605,6 +605,7 @@ export class App {
           this.refreshPlaytestCue();
           return;
         }
+        if (!practice && w.level.feeling) this.hud.hint(`feeling${this.runCount}`, `第 ${floor} 層・${FEELING_TEXT[w.level.feeling]}`, 7);
         if (this.extendedPlay && floor === 1) {
           this.hud.hint(`freeplay${this.runCount}`, '本次測試已完成。接下來自由探索；這趟冒險不存檔，原本的冒險存檔不受影響。', 8);
           return;

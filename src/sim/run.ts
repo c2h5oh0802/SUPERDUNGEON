@@ -58,8 +58,11 @@ export function createFloorWorld(run: RunState): World {
 
 /** 走下階梯之後的下一層狀態。 */
 export function nextFloor(run: RunState, w: World): RunState {
-  const { arrival: _previous, ...rest } = run;
-  return { ...rest, floor: Math.min(RUN.floors, run.floor + 1), ...(w.fell ? { arrival: 'fall' as const } : {}), carry: w.carry(), stats: w.statsCopy() };
+  const next: RunState = { ...run, floor: Math.min(RUN.floors, run.floor + 1), carry: w.carry(), stats: w.statsCopy() };
+  // 抵達方式只記錄「掉下來」；走樓梯是預設
+  if (w.fell) next.arrival = 'fall';
+  else delete next.arrival;
+  return next;
 }
 
 // ---------- 存檔 ----------

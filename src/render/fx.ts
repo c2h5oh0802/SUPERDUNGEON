@@ -201,6 +201,32 @@ export class FxVisual {
         case 'helmet':
           this.burst(x, y, z, e.kind === 'warden' ? 18 : 10, e.kind === 'warden' ? [1, 0.75, 0.35] : [0.9, 0.9, 0.8], 3, 0.25);
           break;
+        case 'trapTrigger': {
+          const c: Record<string, [number, number, number]> = {
+            alarm: [1, 0.3, 0.3], fire: [1, 0.5, 0.15], frost: [0.6, 0.85, 1], gas: [0.75, 0.5, 1], dart: [0.9, 0.9, 0.8], teleport: [1, 0.4, 0.9],
+          };
+          this.burst(x, 0.3, z, 26, c[e.kind ?? ''] ?? [1, 0.7, 0.4], 3.5, 0.6);
+          break;
+        }
+        case 'secretFound':
+          // 牆面崩落的灰塵
+          this.burst(x, 1.5, z, 40, [0.75, 0.68, 0.6], 2.5, 0.9);
+          break;
+        case 'trapFound':
+          this.burst(x, 0.2, z, 14, [1, 0.85, 0.5], 1.5, 0.6);
+          break;
+        case 'steam':
+          this.burst(x, 0.3, z, 30, [0.85, 0.9, 0.95], 2, 0.9);
+          break;
+        case 'unlock':
+          this.burst(x, 1.4, z, 24, [1, 0.85, 0.4], 3, 0.5);
+          break;
+        case 'pedestal':
+          this.burst(x, 1.2, z, 30, [1, 0.88, 0.5], 2.5, 0.8);
+          break;
+        case 'fall':
+          if (e.kind !== 'player') this.burst(x, 0.2, z, 18, [0.6, 0.55, 0.5], 2, 0.6);
+          break;
         default:
       }
     }

@@ -34,12 +34,12 @@ export function createSharedUniforms(): SharedUniforms {
   };
 }
 
-const FOG_GLSL = /* glsl */ `
+export const FOG_GLSL = /* glsl */ `
   float fogF = 1.0 - exp(-uFogDensity * uFogDensity * vViewDepth * vViewDepth);
   col = mix(col, uFogColor, clamp(fogF, 0.0, 1.0));
 `;
 
-const COMMON_UNIFORMS_GLSL = /* glsl */ `
+export const COMMON_UNIFORMS_GLSL = /* glsl */ `
   uniform vec3 uFogColor;
   uniform float uFogDensity;
   uniform float uSlow;

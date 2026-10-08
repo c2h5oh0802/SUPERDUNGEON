@@ -855,5 +855,14 @@ export function levelSignature(l: LevelData): string {
     chests: l.chests.map((c) => [c.x, c.z, c.contents]),
     specialRooms: l.specialRooms,
     encounter: l.encounter,
+    // 生成版本 2 才有的內容；舊版簽章保持不變
+    ...(l.gen === 2 ? {
+      gen: l.gen,
+      feeling: l.feeling,
+      terrain: Array.from(l.grid.terrain).join(''),
+      traps: l.traps.map((t) => [t.i, t.j, t.kind ?? 'spikes', !!t.hidden]),
+      pedestals: (l.pedestals ?? []).map((p) => [r(p.x), r(p.z), p.item, p.level]),
+      secret: l.grid.doors.map((d) => [!!d.hidden, !!d.locked]),
+    } : {}),
   });
 }

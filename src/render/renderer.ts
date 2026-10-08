@@ -10,12 +10,14 @@ import { buildLevelVisual, type LevelVisual } from './levelMesh';
 import { LightSampler } from './lightSampler';
 import { createEnvMaterial, createSharedUniforms, type SharedUniforms } from './materials';
 import { PropsVisual } from './props';
+import { TerrainVisual } from './terrain';
 import { Viewmodel } from './viewmodel';
 
 interface RunVisual {
   world: World;
   level: LevelVisual;
   props: PropsVisual;
+  terrain: TerrainVisual;
   fx: FxVisual;
   enemies: EnemyVisual[];
   sampler: LightSampler;
@@ -93,15 +95,21 @@ export class GameRenderer {
     const occ = new Occluder(world.grid);
     const sampler = new LightSampler(level.lights, occ);
     const props = new PropsVisual(world, this.shared, sampler);
+    const terrain = new TerrainVisual(world, this.shared);
     const fx = new FxVisual(world);
+    // 樓層變化「黑暗」：火把熄滅，提燈照不遠、霧更濃
+    const dark = world.level.feeling === 'dark';
+    this.shared.uLanternRange.value = dark ? 5.5 : 7.5;
+    this.shared.uFogDensity.value = dark ? 0.07 : RENDER.fogDensity;
+    (this.scene.fog as THREE.FogExp2).density = dark ? 0.07 : RENDER.fogDensity;
     const enemies = world.enemies.map((e) => {
       const v = new EnemyVisual(e, this.shared);
       sampler.apply(v.rig, e.x, 1.2, e.z);
       return v;
     });
-    this.scene.add(level.group, props.group, fx.group);
+    this.scene.add(level.group, props.group, terrain.group, fx.group);
     for (const v of enemies) this.scene.add(v.root);
-    this.run = { world, level, props, fx, enemies, sampler };
+    this.run = { world, level, props, terrain, fx, enemies, sampler };
     this.syncObservationView();
     this.deathT = 0;
     this.hurtKick = 0;
@@ -113,9 +121,10 @@ export class GameRenderer {
   clearWorld(): void {
     const r = this.run;
     if (!r) return;
-    this.scene.remove(r.level.group, r.props.group, r.fx.group);
+    this.scene.remove(r.level.group, r.props.group, r.terrain.group, r.fx.group);
     r.level.dispose();
     r.props.dispose();
+    r.terrain.dispose();
     r.fx.dispose();
     for (const v of r.enemies) {
       this.scene.remove(v.root);
@@ -128,6 +137,7 @@ export class GameRenderer {
     const r = this.run;
     if (!r) return;
     r.fx.onEvents(events);
+    r.terrain.onEvents(events);
     for (const e of events) {
       if (e.type === 'playerHurt' && !this.opts.reducedMotion) this.hurtKick = 1;
       if (e.type === 'heart') (this.shared.uAccentPos.value as THREE.Vector3).set(0, -100, 0);
@@ -169,6 +179,11 @@ export class GameRenderer {
     const wdt = w.lastWorldDt;
     r.props.update(this.realTime);
     r.fx.update(this.realTime);
+    for (const sd of r.level.secrets) {
+      const hidden = !!w.grid.doors[sd.doorId]?.hidden;
+      sd.wall.visible = hidden;
+      sd.frame.visible = !hidden;
+    }
     this.lightT -= realDt;
     const relight = this.lightT <= 0;
     if (relight) this.lightT = 0.25;

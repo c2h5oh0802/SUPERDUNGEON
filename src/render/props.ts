@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { categoryOf, itemColor } from '../sim/items';
+import type { TrapKind } from '../gen/generator';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WORLD } from '../config';
 import { smoothstep } from '../core/math';
@@ -55,19 +56,41 @@ interface DoorVis {
   door: DoorState;
   group: THREE.Group;
   bar: THREE.Object3D | null;
+  lock: THREE.Object3D | null;
 }
 
 interface TrapVis {
   trap: Trap;
-  spikes: THREE.Mesh;
+  root: THREE.Group;
+  spikes: THREE.Mesh | null;
   ringMat: THREE.ShaderMaterial;
 }
+
+interface PedestalVis {
+  id: number;
+  roomKey: string;
+  group: THREE.Group;
+  item: THREE.Object3D;
+  sink: number;
+}
+
+/** 陷阱揭開後的符文顏色：一看就知道是哪一種。 */
+const TRAP_COLORS: Record<TrapKind, number> = {
+  spikes: 0x8a5a3a,
+  alarm: 0xe04848,
+  fire: 0xff7a2a,
+  frost: 0x6ad0ff,
+  gas: 0xb070ff,
+  dart: 0xc8c8b0,
+  teleport: 0xff5ad8,
+};
 
 export class PropsVisual {
   readonly group = new THREE.Group();
   private doors: DoorVis[] = [];
   private traps: TrapVis[] = [];
   private chests: Array<{ id: number; lid: THREE.Group }> = [];
+  private pedestals: PedestalVis[] = [];
   private heart: { group: THREE.Group; gem: THREE.Mesh; glow: THREE.Sprite } | null = null;
   private pickups = new Map<number, { obj: THREE.Object3D; mat: THREE.ShaderMaterial }>();
   private mats: THREE.Material[] = [];
@@ -89,6 +112,7 @@ export class PropsVisual {
       else if (it.kind === 'heart' && world.level.goal === 'descend') this.buildDescent(it.x, it.z);
       else if (it.kind === 'heart') this.buildHeart(it.x, it.z);
       else if (it.kind === 'resupply') this.buildResupply(it.x, it.z);
+      else if (it.kind === 'pedestal') this.buildPedestal(it.id, it.ref, it.roomKey, it.x, it.z);
     }
   }
 
@@ -132,24 +156,70 @@ export class PropsVisual {
       const g = merge([{ geo: T(new THREE.BoxGeometry(2.3, 0.2, 0.14), 0, 1.35, 0.17 * (d.axis === 'x' ? d.barSide : -d.barSide)), color: 0x553925 }]);
       bar = this.add(g, m, group, true);
     }
+    let lock: THREE.Object3D | null = null;
+    if (d.locked) {
+      // 上鎖的寶庫門：鐵條＋金色鎖頭（兩面都看得到）
+      const pieces: Piece[] = [];
+      for (const side of [1, -1]) {
+        for (const y of [0.9, 1.9]) pieces.push({ geo: T(new THREE.BoxGeometry(2.05, 0.1, 0.05), 0, y, 0.11 * side), color: 0x2c2a33 });
+        pieces.push({ geo: T(new THREE.BoxGeometry(0.26, 0.3, 0.1), 0, 1.35, 0.14 * side), color: 0xd9a94a, glow: 1 });
+        pieces.push({ geo: T(new THREE.TorusGeometry(0.08, 0.025, 6, 10, Math.PI), 0, 1.53, 0.14 * side), color: 0x9a9aa8 });
+      }
+      lock = this.add(merge(pieces), this.mat(this.rigAt(d.cx, 1.5, d.cz), 0xf2c14e, 0), group, true);
+    }
     this.group.add(group);
-    return { door: d, group, bar };
+    return { door: d, group, bar, lock };
   }
 
   private buildTrap(t: Trap): TrapVis {
     const g = new THREE.Group();
     g.position.set(t.i + 0.5, 0, t.j + 0.5);
     const rig = this.rigAt(t.i + 0.5, 0.3, t.j + 0.5);
-    const ringMat = this.mat(rig, 0xff6a1a, 0);
+    const color = TRAP_COLORS[t.kind];
+    const ringMat = this.mat(rig, color, 0);
     const ring = new THREE.RingGeometry(0.22, 0.3, 16);
     ring.rotateX(-Math.PI / 2);
-    this.add(merge([{ geo: T(new THREE.BoxGeometry(0.86, 0.05, 0.86), 0, 0.02, 0), color: 0x3d3a44 }, { geo: T(ring, 0, 0.052, 0), color: 0x8a5a3a, glow: 1 }]), ringMat, g);
-    const cones: Piece[] = [];
-    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) cones.push({ geo: T(new THREE.ConeGeometry(0.07, 0.55, 5), a * 0.25, 0.275, b * 0.25), color: 0xb9bec8, glow: 0.6 });
-    const spikes = this.add(merge(cones), ringMat, g);
-    spikes.position.y = -0.56;
+    const plate: Piece[] = [{ geo: T(new THREE.BoxGeometry(0.86, 0.05, 0.86), 0, 0.02, 0), color: 0x3d3a44 }, { geo: T(ring, 0, 0.052, 0), color, glow: 1 }];
+    if (t.kind !== 'spikes') {
+      // 符文：十字刻痕，顏色表示種類
+      for (const r of [0, Math.PI / 2]) plate.push({ geo: T(new THREE.BoxGeometry(0.5, 0.012, 0.05), 0, 0.052, 0, 0, r + Math.PI / 4), color, glow: 1 });
+    }
+    this.add(merge(plate), ringMat, g);
+    let spikes: THREE.Mesh | null = null;
+    if (t.kind === 'spikes') {
+      const cones: Piece[] = [];
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) cones.push({ geo: T(new THREE.ConeGeometry(0.07, 0.55, 5), a * 0.25, 0.275, b * 0.25), color: 0xb9bec8, glow: 0.6 });
+      spikes = this.add(merge(cones), ringMat, g);
+      spikes.position.y = -0.56;
+    }
+    g.visible = !t.hidden;
     this.group.add(g);
-    return { trap: t, spikes, ringMat };
+    return { trap: t, root: g, spikes, ringMat };
+  }
+
+  /** 寶庫台座：石柱上浮著寶物；選了一件，其他的台座沉下去。 */
+  private buildPedestal(id: number, ref: number, roomKey: string, x: number, z: number): void {
+    const pd = this.world.level.pedestals?.[ref];
+    if (!pd) return;
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    const m = this.mat(this.rigAt(x, 1, z), 0xf2c14e, 0.2);
+    this.add(merge([
+      { geo: T(new THREE.CylinderGeometry(0.42, 0.5, 0.18, 8), 0, 0.09, 0), color: 0x6f665c },
+      { geo: T(new THREE.CylinderGeometry(0.3, 0.34, 0.72, 8), 0, 0.54, 0), color: 0x857a6c },
+      { geo: T(new THREE.CylinderGeometry(0.42, 0.36, 0.12, 8), 0, 0.96, 0), color: 0x9a8e7d },
+      { geo: T(new THREE.TorusGeometry(0.34, 0.02, 6, 16).rotateX(Math.PI / 2), 0, 1.03, 0), color: 0xd9a94a, glow: 0.8 },
+    ]), m, g, true);
+    const cat = categoryOf(pd.item);
+    const geo = this.pickupGeometry(cat === 'potion' ? 'bottle' : `item:${cat}`, 1);
+    const im = this.mat(this.rigAt(x, 1.3, z), itemColor(this.world.level.seed, pd.item, this.world.level.potionLooksVersion), 0);
+    const item = new THREE.Mesh(geo.body, im);
+    item.add(new THREE.Mesh(geo.outline, this.outline));
+    item.position.set(0, 1.12, 0);
+    item.scale.setScalar(1.4);
+    g.add(item);
+    this.group.add(g);
+    this.pedestals.push({ id, roomKey, group: g, item, sink: 0 });
   }
 
   private buildChest(id: number, x: number, z: number, yaw: number): void {
@@ -287,6 +357,12 @@ export class PropsVisual {
       pieces.push({ geo: T(new THREE.BoxGeometry(0.42, 0.34, 0.12), 0, 0.1, 0).rotateX(-Math.PI / 2 + 0.2), color: 0xffffff, glow: 0.3 });
       pieces.push({ geo: T(new THREE.BoxGeometry(0.16, 0.12, 0.12), -0.24, 0.08, -0.1), color: 0xcccccc });
       pieces.push({ geo: T(new THREE.BoxGeometry(0.16, 0.12, 0.12), 0.24, 0.08, -0.1), color: 0xcccccc });
+    } else if (kind === 'key') {
+      // 寶庫鑰匙：金色的環＋齒
+      pieces.push({ geo: T(new THREE.TorusGeometry(0.08, 0.025, 6, 12).rotateX(Math.PI / 2), -0.12, 0.08, 0), color: 0xf2c14e, glow: 1 });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.26, 0.03, 0.035), 0.06, 0.08, 0), color: 0xf2c14e, glow: 1 });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.035, 0.03, 0.08), 0.17, 0.08, 0.04), color: 0xf2c14e, glow: 1 });
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.035, 0.03, 0.06), 0.11, 0.08, 0.03), color: 0xf2c14e, glow: 1 });
     } else if (kind === 'stone') {
       pieces.push({ geo: T(new THREE.IcosahedronGeometry(0.08, 0), 0, 0.07, 0), color: 0xa8a092, glow: 0.4 });
     } else {
@@ -305,7 +381,7 @@ export class PropsVisual {
     const isItem = p.kind === 'item' && !!p.item;
     const color = isItem
       ? itemColor(this.world.level.seed, p.item!, this.world.level.potionLooksVersion)
-      : p.kind === 'arrows' || p.kind === 'ammo'
+      : p.kind === 'arrows' || p.kind === 'ammo' || p.kind === 'key'
         ? 0xf2c14e
         : p.kind === 'stone'
             ? 0xd8d0c0
@@ -331,10 +407,33 @@ export class PropsVisual {
     const w = this.world;
     for (const d of this.doors) {
       d.group.position.y = d.door.progress * (WORLD.doorHeight - 0.1);
+      d.group.visible = !d.door.hidden;
       if (d.bar) d.bar.visible = d.door.barred;
+      if (d.lock) d.lock.visible = !!d.door.locked;
+    }
+    for (const pv of this.pedestals) {
+      const it = w.interactables.find((i) => i.id === pv.id);
+      if (!it?.used) {
+        pv.item.rotation.y = realTime * 1.1 + pv.id;
+        pv.item.position.y = 1.12 + Math.sin(realTime * 1.8 + pv.id) * 0.04;
+        continue;
+      }
+      // 被選走的那一座：寶物消失；其他的連同寶物一起沉下去
+      if (w.chosenPedestals.has(pv.id)) pv.item.visible = false;
+      else {
+        pv.sink = Math.min(1, pv.sink + 0.02);
+        pv.group.position.y = -1.2 * pv.sink;
+        if (pv.sink >= 1) pv.group.visible = false;
+      }
     }
     for (const t of this.traps) {
       const tr = t.trap;
+      t.root.visible = !tr.hidden;
+      if (!t.spikes) {
+        // 一次性陷阱：觸發過就暗下來
+        t.ringMat.uniforms.uGlowAmt!.value = tr.spent ? 0 : 0.35 + 0.15 * Math.sin(realTime * 2.5 + tr.id);
+        continue;
+      }
       let y = -0.56;
       let glow = 0;
       if (tr.state === 'armed') {

@@ -203,7 +203,8 @@ export function movePlayer(w: World, input: FrameInput, realDt: number): number 
     ix /= len;
     iz /= len;
   }
-  const speed = PLAYER.moveSpeed * (p.sneaking ? w.sneakSpeedMul() : 1) * actionMoveMultiplier(w);
+  // 冰霜：移速減半、每公尺的世界時間加倍（和潛行步一樣，慢要付時間）
+  const speed = PLAYER.moveSpeed * (p.sneaking ? w.sneakSpeedMul() : 1) * actionMoveMultiplier(w) * (w.inFrost() ? 0.5 : 1);
   const tx = (rx * ix + fwd.x * iz) * speed;
   const tz = (rz * ix + fwd.z * iz) * speed;
   const maxDv = PLAYER.accel * realDt;
@@ -554,6 +555,7 @@ function performUse(w: World, it: Interactable): void {
       const pd = w.level.pedestals?.[it.ref];
       if (!pd) return;
       for (const o of w.interactables) if (o.kind === 'pedestal' && o.roomKey === it.roomKey) o.used = true;
+      w.chosenPedestals.add(it.id);
       if (categoryOf(pd.item) === 'potion' || categoryOf(pd.item) === 'scroll') identify(w, pd.item);
       if (!addItem(w, pd.item, pd.level)) {
         const f = forwardFromYaw(it.yaw);

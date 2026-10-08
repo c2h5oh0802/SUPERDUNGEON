@@ -1,5 +1,5 @@
 import { localize } from './i18n';
-import { T } from '../sim/grid';
+import { T, TER } from '../sim/grid';
 import type { World } from '../sim/world';
 
 /** 自動地圖：只畫玩家看過的格子與已發現的重要地點；不顯示敵人。 */
@@ -44,8 +44,13 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
       const t = g.get(i, j);
       let c = '';
       switch (t) {
-        case T.Floor:
-          c = '#3b3450';
+        case T.Floor: {
+          const ter = g.terrainAt(i, j);
+          c = ter === TER.Water ? '#2c4a5c' : ter === TER.Reeds ? '#3c5236' : ter === TER.Flat ? '#45503c' : '#3b3450';
+          break;
+        }
+        case T.Chasm:
+          c = '#08070c';
           break;
         case T.Wall:
           c = '#7a6c5e';
@@ -61,7 +66,8 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
           break;
         case T.Door: {
           const d = g.doorAt(i, j)!;
-          c = d.arch ? '#3b3450' : d.barred ? '#c07040' : d.progress > 0.5 ? '#7a5a3a' : '#a8743e';
+          // 秘密門在被發現前畫成牆；上鎖的寶庫門是金色
+          c = d.hidden ? '#7a6c5e' : d.arch ? '#3b3450' : d.locked ? '#f2c14e' : d.barred ? '#c07040' : d.progress > 0.5 ? '#7a5a3a' : '#a8743e';
           break;
         }
         default:
@@ -71,9 +77,12 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
       ctx.fillRect(ox + i * s, oz + j * s, Math.ceil(s), Math.ceil(s));
     }
   }
+  const trapColor: Record<string, string> = {
+    spikes: '#b8603a', alarm: '#e04848', fire: '#ff7a2a', frost: '#6ad0ff', gas: '#b070ff', dart: '#c8c8b0', teleport: '#ff5ad8',
+  };
   for (const t of w.traps) {
-    if (!w.isExplored(t.i, t.j)) continue;
-    ctx.fillStyle = '#b8603a';
+    if (!w.isExplored(t.i, t.j) || t.hidden) continue;
+    ctx.fillStyle = t.spent ? '#4a4450' : trapColor[t.kind] ?? '#b8603a';
     ctx.fillRect(ox + (t.i + 0.25) * s, oz + (t.j + 0.25) * s, s * 0.5, s * 0.5);
   }
   const mark = (x: number, z: number, color: string, shape: 'sq' | 'dia' | 'tri', size = 0.45) => {
@@ -104,7 +113,9 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
     else if (it.kind === 'heart' && !w.heartTaken) mark(it.x, it.z, '#5aa8ff', 'dia', 0.6);
     else if (it.kind === 'stairs') mark(it.x, it.z, '#8ccaff', 'tri', 0.6);
     else if (it.kind === 'resupply') mark(it.x, it.z, '#3fe0c0', 'sq', 0.4);
+    else if (it.kind === 'pedestal') mark(it.x, it.z, it.used ? '#6b6275' : '#f2c14e', 'dia', 0.35);
   }
+  for (const k of w.pickups) if (k.kind === 'key' && !k.taken && w.isExplored(Math.floor(k.x), Math.floor(k.z))) mark(k.x, k.z, '#ffe08a', 'dia', 0.45);
   // 房間名稱
   ctx.font = `${Math.max(11, Math.round(s * 0.7))}px 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif`;
   ctx.textAlign = 'center';

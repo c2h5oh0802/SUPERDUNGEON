@@ -216,7 +216,7 @@ export function triggerTrap(w: World, t: Trap, by: 'player' | 'thrown' | number)
   switch (t.kind) {
     case 'alarm':
       // 很大的聲響：附近的敵人過來查看
-      w.emitNoise(x, 1, z, 20, 'alarm');
+      w.emitNoise(x, 1, z, 24, 'alarm');
       break;
     case 'fire':
     case 'frost':

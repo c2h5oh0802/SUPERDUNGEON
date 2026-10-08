@@ -1,5 +1,6 @@
 import { trialInfo } from '../gen/practiceTrials';
-import { ARMORS, HUNGER, PLAYER, RUN, TALENT_FX, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type TipKind, type Tool } from '../config';
+import { ARMORS, HUNGER, PLAYER, RUN, SEARCH, TALENT_FX, TRAP_NAMES, XP, TIP_NAMES, TOOL_NAMES, WEAPONS, classInfo, type TipKind, type Tool } from '../config';
+import { T, TER } from '../sim/grid';
 import { knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
 import { hasTalent, nextLevelXp } from '../sim/progress';
@@ -283,13 +284,66 @@ export class Hud {
         case 'hitEnemy':
           if (e.sneak) this.toast('奇襲：取得先手', 'good', 1.2);
           break;
+        case 'secretFound':
+          this.toast('你發現了一道秘密門', 'big', 2.4);
+          break;
+        case 'trapFound':
+          this.toast(`你發現了${TRAP_NAMES[e.kind as keyof typeof TRAP_NAMES] ?? '陷阱'}`, 'good', 2);
+          this.hint('trap-found', '發現的陷阱會一直顯示。把敵人推上去、或丟石頭過去，都能先觸發它。', 7);
+          break;
+        case 'searched':
+          if (e.amount) this.toast(`搜索：發現 ${e.amount} 處`, 'good', 1.8);
+          else this.toast('搜索：附近沒有發現什麼', '', 1.2);
+          break;
+        case 'trapTrigger': {
+          if (e.source === 'enemy') break;
+          const msg: Record<string, string> = {
+            alarm: '警報陷阱！附近的敵人聽到了', fire: '火焰陷阱！', frost: '冰霜陷阱：站在冰霜裡每一步都更費時',
+            gas: '麻痺氣體陷阱！', dart: '飛鏢陷阱！', teleport: '傳送陷阱！',
+          };
+          if (msg[e.kind ?? '']) this.toast(msg[e.kind ?? '']!, 'bad', 2);
+          break;
+        }
+        case 'unlock':
+        case 'pedestal':
+          if (e.text) this.toast(e.text, 'big', 2.6);
+          break;
+        case 'landed':
+          this.toast(e.amount ? `你從深坑掉了下來 −${e.amount}` : '你從深坑掉了下來', 'bad', 2.6);
+          break;
+        case 'fall':
+          if (e.kind === 'player') this.toast('你掉進了深坑……', 'big', 2);
+          else this.toast('敵人掉進深坑！', 'good', 1.6);
+          break;
+        case 'steam':
+          this.toast('火落在水裡，只冒出蒸氣', '', 1.4);
+          break;
         default:
       }
+      if (e.type === 'pickup' && e.kind === 'key')
+        this.hint('vault-key', '寶庫鑰匙：找到這一層上鎖的門（地圖上的金色門），裡面的三件寶物只能拿一件。下樓後鑰匙就沒用了。', 9);
     }
+  }
+
+  /** 第一次碰到新地形時的說明。 */
+  private terrainHints(w: World): void {
+    const p = w.player;
+    const g = w.grid;
+    const here = g.terrainAt(Math.floor(p.x), Math.floor(p.z));
+    if (here === TER.Reeds || here === TER.Flat)
+      this.hint('reeds', '長草：躲進草叢深處，外面的敵人就看不見你。正常走路會踩倒草；按住 Shift 潛行穿過就不會。火會讓整片草燒起來。', 9);
+    if (here === TER.Water) this.hint('water', `淺水：走在水裡腳步聲更大（潛行步仍然安靜），火在水上燒不起來。`, 7);
+    for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+      if (g.get(Math.floor(p.x) + di, Math.floor(p.z) + dj) !== T.Chasm) continue;
+      this.hint('chasm', '深坑：掉下去會直接到下一層（落點隨機、受傷）。把敵人推進去、或讓突進者衝進去，它就掉下去了。', 9);
+      return;
+    }
+    if (w.waiting && !p.action) this.hint('search', `按住空白鍵等待就是在搜索：每 ${SEARCH.waitTime} 世界秒揭開 ${SEARCH.radius} m 內的秘密門與隱藏陷阱。等待要付世界時間（會餓）。`, 8);
   }
 
   update(w: World, r: GameRenderer, realDt: number): void {
     const p = w.player;
+    if (!w.level.publicPlaytest) this.terrainHints(w);
     this.set('cls', p.cls, () => {
       const info = classInfo(p.cls);
       this.badge.className = p.cls;
@@ -322,7 +376,8 @@ export class Hud {
     const trialDone = trial && (trial.id === 'heart-warden' ? p.hasHeart : trial.id === 'cluster-bypass' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
     const trialGoal = trial?.id === 'heart-warden' && w.encounterState === 'resolved' && !p.hasHeart
       ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
-    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}|${w.publicPlaytestPhase}|${w.publicPlaytestDoorReady}`, () => {
+    const vaultLocked = w.grid.doors.some((d) => d.locked);
+    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}|${w.publicPlaytestPhase}|${w.publicPlaytestDoorReady}|${w.keys}|${vaultLocked}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = controlText(w.level.publicPlaytest
         ? (w.publicPlaytestPhase === 'core' ? '核心遭遇：清除兩名敵人' : w.publicPlaytestDoorReady ? '前方的門已解鎖：開門後走進去' : '開放練習：觀察時間與攻擊，擊倒盾衛')
@@ -331,7 +386,7 @@ export class Hud {
         : w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
         : w.level.goal === 'descend'
-          ? `${f}：找到往下的階梯`
+          ? `${f}：找到往下的階梯${w.keys > 0 && vaultLocked ? ' · 持有寶庫鑰匙' : ''}`
           : `${f}（首領層）：${w.heartAvailable ? '取得沉眠之心' : '擊倒守心者，解封沉眠之心'}`, this.touch);
       this.objective.classList.toggle('escape', p.hasHeart);
       this.heartStatus.classList.toggle('hidden', !p.hasHeart);
