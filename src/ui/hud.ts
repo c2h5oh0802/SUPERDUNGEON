@@ -280,6 +280,11 @@ export class Hud {
             ? '守心者：攻擊變亮後方向鎖定，側移閃開；反擊亮起時鬆開再按攻擊。紫紅穩勢只抗打斷、不減傷；第二階段連斬兩次，收招再追擊。'
             : '守心者：攻擊變亮後方向鎖定，側移閃開。紫紅穩勢只抗打斷、不減傷；第二階段連斬兩次，收招與失衡時露頭。', 9);
           if (e.kind === 'guard') this.hint('guard', '盾衛舉劍後，揮擊方向會鎖定：側移或後退就能躲開。');
+          if (e.kind === 'rat') this.hint('rat', '溝鼠成群出現：咬得輕、出手快，一箭或一劍就倒。別讓牠們圍住你；重斧可以一次掃兩隻。');
+          if (e.kind === 'bomber') this.hint('bomber', p.cls === 'huntress'
+            ? '投彈手舉起火瓶：瓶子飛在空中時拿著弓，對準菱形標記射爆它。落地會起火，長草會延燒。'
+            : '投彈手舉起火瓶：落點鎖定後側移避開；瓶子飛到眼前時揮劍，可以把它打回去。落地會起火。', 9);
+          if (e.kind === 'sentry') this.hint('sentry', '號角哨兵舉起號角：吹完整層戒備、附近的敵人會朝你過來。吹完之前打中它（投擲石、箭、推擊都可以）就能打斷。', 9);
           break;
         case 'hitEnemy':
           if (e.sneak) this.toast('奇襲：取得先手', 'good', 1.2);
@@ -317,6 +322,21 @@ export class Hud {
           break;
         case 'steam':
           this.toast('火落在水裡，只冒出蒸氣', '', 1.4);
+          break;
+        case 'horn':
+          this.toast('號角響起！附近的敵人朝你過來', 'bad', 2.6);
+          break;
+        case 'reinforce':
+          if (e.text) this.toast(e.text, 'bad', 2.6);
+          this.hint('reinforce', '在同一層待太久，敵人會從來時的樓梯陸續走進來。拖延要付代價。', 8);
+          break;
+        case 'mimicWake':
+          this.toast('那不是寶箱！', 'bad', 2);
+          this.hint('mimic', '寶箱怪：偽裝成寶箱，蓋子會微微起伏。打開、貼近或攻擊它就會醒來咬人；倒下會吐出寶物。', 9);
+          break;
+        case 'statueWake':
+          this.toast('石像活過來了！', 'bad', 2.2);
+          this.hint('statue', '石像守衛：揮劍很慢但很重，鎖定後一樣可以反擊、閃開；不吃奇襲。', 8);
           break;
         default:
       }
@@ -642,7 +662,8 @@ export class Hud {
       let el = this.iconEls.get(e.id);
       let cls = '';
       let text = '';
-      if (e.alive && this.visible.has(e.id)) {
+      // 偽裝的寶箱怪、沒醒的石像：沒有任何圖示（不能從介面看穿）
+      if (e.alive && this.visible.has(e.id) && !e.disguised && !e.dormant) {
         if (e.state === 'sleep') {
           cls = 'sleep';
           text = 'Zz';
@@ -657,6 +678,12 @@ export class Hud {
           cls = 'aware';
           text = '?';
           this.hint('aware', '敵人頭上的圈填滿就會發現你：退出牠的視線，或用煙霧遮住。');
+        }
+        // 精英持鑰者：金色的★
+        if (e.carriesKey) {
+          cls = `${cls || 'carrier'} keyed`.trim();
+          text = `${text}★`;
+          this.hint('carrier', '頭上有金色★的精英帶著這一層的寶庫鑰匙：擊倒它，鑰匙就會掉出來。', 8);
         }
         // Marks belong to a visible target, never a global buff or a through-wall marker.
         if ((e.huntingMarkUntil ?? 0) > w.time) {

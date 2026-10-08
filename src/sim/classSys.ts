@@ -3,7 +3,7 @@ import { meleeCandidates } from './meleeTargets';
 import { hasTalent } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, aimPoint, crosshairPoint } from './aim';
-import { becomeAlert, wardenBraced, wardenWindup } from './enemySys';
+import { becomeAlert, meleeSpec, wardenBraced, wardenWindup } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
@@ -12,7 +12,7 @@ import type { Enemy, Projectile } from './types';
 // - 獵手：藥劑箭改變敵人的時間軸（見 projectileSys、enemySys）；獵人之眼只提供資訊，不修改彈道。
 
 export interface CounterThreat {
-  kind: 'guard' | 'charger' | 'archer' | 'warden' | 'bolt';
+  kind: 'guard' | 'charger' | 'archer' | 'warden' | 'bolt' | 'rat' | 'mimic' | 'statue' | 'bomber' | 'bottle';
   id: number;
 }
 
@@ -25,7 +25,14 @@ export function attackCommitted(e: Enemy): boolean {
   if (!e.alive || e.state !== 'alert') return false;
   switch (e.kind) {
     case 'guard':
+    case 'rat':
+    case 'mimic':
+    case 'statue':
       return e.phase === 'windup' && e.locked;
+    case 'bomber':
+      return e.phase === 'aim' && e.locked;
+    case 'sentry':
+      return false;
     case 'charger':
       return (e.phase === 'windup' && e.locked) || e.phase === 'charge';
     case 'archer':
@@ -99,12 +106,12 @@ export function counterThreat(w: World): CounterThreat | null {
       // Each fixed tell must leave enough time for the counter swing to connect.
       const duration = wardenWindup(e);
       if (d <= reach && duration - e.phaseT >= cs.windup) return { kind: 'warden', id: e.id };
-    } else if (e.kind === 'guard') {
-      // 反擊斬的作用要在盾衛揮下之前開始
-      const remain = ENEMIES.guard.windup - e.phaseT;
-      if (d <= reach && remain >= cs.windup - 0.01) return { kind: 'guard', id: e.id };
-    } else if (e.kind === 'archer') {
-      if (d <= reach) return { kind: 'archer', id: e.id };
+    } else if (e.kind === 'guard' || e.kind === 'rat' || e.kind === 'mimic' || e.kind === 'statue') {
+      // 反擊斬的作用要在敵人揮下之前開始
+      const remain = meleeSpec(e).windup - e.phaseT;
+      if (d <= reach && remain >= cs.windup - 0.01) return { kind: e.kind, id: e.id };
+    } else if (e.kind === 'archer' || e.kind === 'bomber') {
+      if (d <= reach) return { kind: e.kind, id: e.id };
     } else if (e.phase === 'windup') {
       if (d <= reach) return { kind: 'charger', id: e.id };
     } else {
@@ -120,7 +127,7 @@ export function counterThreat(w: World): CounterThreat | null {
   }
   const chest = { x: p.x, y: 1.3, z: p.z };
   for (const b of w.projectiles) {
-    if (!b.alive || b.kind !== 'bolt' || b.owner === 'player') continue;
+    if (!b.alive || (b.kind !== 'bolt' && b.kind !== 'bottle') || b.owner === 'player') continue;
     const rx = chest.x - b.pos.x;
     const ry = chest.y - b.pos.y;
     const rz = chest.z - b.pos.z;
@@ -140,7 +147,7 @@ export function counterThreat(w: World): CounterThreat | null {
       if (b.lifetime - b.age <= contact + TIME.maxSubstep + 1e-8 || contact >= windup + WEAPONS[p.weapon.id].active * timeMul) continue;
     }
     if (!inFront(w, b.pos.x, b.pos.z, 0.15)) continue;
-    return { kind: 'bolt', id: b.id };
+    return { kind: b.kind === 'bottle' ? 'bottle' : 'bolt', id: b.id };
   }
   return null;
 }
@@ -157,7 +164,7 @@ export function applyCounter(w: World, e: Enemy): boolean {
     w.emit({ type: 'stun', id: e.id, x: e.x, y: 1.0, z: e.z });
   } else {
     e.phase = 'stagger';
-    e.staggerDur = e.kind === 'warden' ? ENEMIES.warden.stagger : e.kind === 'guard' ? ENEMIES.guard.stagger : ENEMIES.archer.stagger;
+    e.staggerDur = e.kind === 'warden' ? ENEMIES.warden.stagger : ENEMIES[e.kind].stagger;
     e.aimPoint = null;
     e.hitDone = true;
     if (e.warden) {
@@ -178,7 +185,7 @@ export function deflectBolts(w: World): number {
   const c = CLASSES.warrior;
   let n = 0;
   for (const b of w.projectiles) {
-    if (!b.alive || b.kind !== 'bolt' || b.owner === 'player') continue;
+    if (!b.alive || (b.kind !== 'bolt' && b.kind !== 'bottle') || b.owner === 'player') continue;
     const dx = b.pos.x - p.x;
     const dy = b.pos.y - 1.3;
     const dz = b.pos.z - p.z;
@@ -198,6 +205,21 @@ export function deflectBolts(w: World): number {
       vy = view.y;
       vz = view.z;
       len = 1;
+    }
+    if (b.kind === 'bottle') {
+      // 火瓶：朝準星拋回去（仍然是拋物線，落地或撞到敵人才碎）
+      const sp = 11;
+      b.vel = { x: (vx / len) * sp, y: (vy / len) * sp + 3, z: (vz / len) * sp };
+      b.avgVel = { ...b.vel };
+      b.next = { ...b.pos };
+      b.owner = 'player';
+      b.deflected = true;
+      b.age = 0;
+      b.hitSet = new Set();
+      w.stats.deflects++;
+      w.emit({ type: 'deflect', id: b.id, x: b.pos.x, y: b.pos.y, z: b.pos.z, kind: 'bottle' });
+      n++;
+      continue;
     }
     b.vel = { x: (vx / len) * c.deflectSpeed, y: (vy / len) * c.deflectSpeed, z: (vz / len) * c.deflectSpeed };
     b.avgVel = { ...b.vel };
@@ -354,7 +376,8 @@ export function hunterEye(w: World): HunterEye[] {
   const maxT = CLASSES.huntress.eyeMaxT;
   const eye = { x: p.x, y: AIM_EYE_Y, z: p.z };
   for (const q of w.projectiles) {
-    if (!q.alive || q.kind !== 'bottle' || q.owner !== 'player') continue;
+    // 自己丟的瓶子與投彈手的火瓶都有標記
+    if (!q.alive || q.kind !== 'bottle') continue;
     const land = landingOf(w, q, maxT);
     const info: HunterEye = { id: q.id, landing: land ? land.at : null, aim: null, meet: null };
     const delay = timeToRelease(w);

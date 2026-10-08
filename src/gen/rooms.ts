@@ -8,7 +8,7 @@
 //   "  長草（擋視線）  ~  淺水           _  深坑          V  寶庫台座
 
 export type Face = 'N' | 'S' | 'E' | 'W';
-export type EnemyKind = 'guard' | 'archer' | 'charger' | 'warden';
+export type EnemyKind = 'guard' | 'archer' | 'charger' | 'warden' | 'rat' | 'bomber' | 'sentry' | 'mimic' | 'statue';
 export type Role = 'entrance' | 'combat' | 'treasure' | 'heart' | 'shortcut' | 'practice';
 
 export interface EnemyDef {
@@ -857,6 +857,28 @@ export const LAYOUTS: RoomLayout[] = [
       '##########',
     ],
     enemies: [],
+  },
+  {
+    id: 'statue-hall', name: '石像大廳', role: 'treasure', v2: true, special: true,
+    rows: [
+      '##############',
+      '#............#',
+      '#.o........o.#',
+      '#............#',
+      '#............#',
+      '#......1.....#',
+      '#............#',
+      '#......V.....#',
+      '#............#',
+      '#............#',
+      '#.o........o.#',
+      '#............#',
+      '#.s..........#',
+      '##############',
+    ],
+    enemies: [
+      { m: '1', kind: 'statue', state: 'idle', face: 'S', tier: 0 },
+    ],
   },
 ];
 

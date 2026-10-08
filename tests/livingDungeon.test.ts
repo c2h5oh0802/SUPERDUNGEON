@@ -275,6 +275,8 @@ describe('活的地下城 v1', () => {
       expect(w.roamPoints.length).toBeGreaterThan(1);
       for (const e of w.enemies) {
         if (e.perched) { expect(e.patrol).toEqual([]); continue; }
+        // 寶箱怪、石像守衛是埋伏型：原地不動
+        if (e.disguised || e.dormant) { expect(e.patrol).toEqual([]); continue; }
         expect(e.patrol.some((p) => Math.hypot(p.x - e.post.x, p.z - e.post.z) > 8)).toBe(true);
         if (e.state !== 'sleep') expect(e.state).toBe('patrol');
       }

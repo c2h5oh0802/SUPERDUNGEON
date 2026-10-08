@@ -1,4 +1,4 @@
-import { DUNGEON, ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
+import { DUNGEON, ENCOUNTERS, ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Nav } from '../sim/nav';
@@ -13,6 +13,7 @@ import {
   roomTorches,
   stampRoom,
   type Draft,
+  type EnemySpawn,
   type FloorFeeling,
   type LevelData,
   type PedestalSpawn,
@@ -29,7 +30,7 @@ import { buildTopology, type GenTemplate, type SpecialKind } from './topology';
 // 只用於第 1–4 層探索層；舊存檔（生成版本 1）照舊走 generator.ts 的兩種模板。
 
 const FEELINGS: FloorFeeling[] = ['dark', 'flooded', 'overgrown', 'traps', 'secrets'];
-const SPECIAL_POOL: SpecialKind[] = ['embers', 'sentries', 'gauntlet', 'stash', 'guarded'];
+const SPECIAL_POOL: SpecialKind[] = ['embers', 'sentries', 'gauntlet', 'stash', 'guarded', 'statue'];
 const SPECIAL_LAYOUTS: Record<SpecialKind, string[]> = {
   embers: ['ember-cache'],
   sentries: ['sentry-vault'],
@@ -37,6 +38,7 @@ const SPECIAL_LAYOUTS: Record<SpecialKind, string[]> = {
   gauntlet: ['trap-ring', 'trap-hall'],
   stash: ['secret-stash'],
   guarded: ['vault', 'vault-gallery'],
+  statue: ['statue-hall'],
 };
 const TRAP_WEIGHTS: Array<[TrapKind, number]> = [
   ['spikes', 2], ['alarm', 2], ['fire', 1], ['frost', 1], ['gas', 1], ['dart', 1], ['teleport', 1],
@@ -60,7 +62,8 @@ export function floorFeeling(seed: string, floor: number): FloorFeeling | null {
 function pickSpecials(rng: Rng, floor: number, feeling: FloorFeeling | null): SpecialKind[] {
   const count = DUNGEON.specials[floor - 1] ?? 2;
   const out: SpecialKind[] = floor >= 2 ? ['vault'] : [];
-  const pool = rng.shuffle(SPECIAL_POOL.slice());
+  // 石像大廳從第 2 層起出現
+  const pool = rng.shuffle(SPECIAL_POOL.filter((k) => floor >= 2 || k !== 'statue'));
   // 樓層變化指定的特殊房先放進來
   const want: SpecialKind | null = feeling === 'secrets' ? 'stash' : feeling === 'traps' ? 'gauntlet' : null;
   if (want) out.push(want);
@@ -131,6 +134,57 @@ function assignLayoutsV2(t: GenTemplate, rng: Rng): Map<string, RoomLayout> {
   return out;
 }
 
+/** 依樓層把版型裡的敵人換成新的種類：盾衛位 → 鼠群／號角哨兵，弩手位 → 投彈手。特殊房不換。 */
+function substituteEnemies(d: Draft, t: GenTemplate, rng: Rng, fi: number): void {
+  const out: EnemySpawn[] = [];
+  let sentries = 0;
+  const free = (x: number, z: number) => d.tiles[Math.floor(z) * d.w + Math.floor(x)] === T.Floor &&
+    !d.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + ENEMIES.rat.radius + 0.05) &&
+    !out.some((o) => Math.hypot(o.x - x, o.z - z) < 0.65);
+  for (const e of d.enemies) {
+    if (t.specials.has(e.roomKey) || e.boss) { out.push(e); continue; }
+    if (e.kind === 'guard' && !e.perched) {
+      const r = rng.next();
+      if (r < ENCOUNTERS.rats[fi]!) {
+        const offsets: Array<[number, number]> = [[0, 0], [0.8, 0.45], [-0.7, 0.6], [0.1, -0.85]];
+        let n = 0;
+        for (const [ox, oz] of offsets) {
+          if (n >= ENCOUNTERS.ratPack) break;
+          const x = e.x + ox;
+          const z = e.z + oz;
+          if (!free(x, z)) continue;
+          out.push({ ...e, kind: 'rat', x, z, patrol: e.patrol.map((p) => ({ ...p })), veteran: false });
+          n++;
+        }
+        continue;
+      }
+      if (r < ENCOUNTERS.rats[fi]! + ENCOUNTERS.sentry[fi]! && sentries < ENCOUNTERS.maxSentries) {
+        sentries++;
+        out.push({ ...e, kind: 'sentry' });
+        continue;
+      }
+    } else if (e.kind === 'archer' && rng.chance(ENCOUNTERS.bomber[fi]!)) {
+      out.push({ ...e, kind: 'bomber' });
+      continue;
+    }
+    out.push(e);
+  }
+  d.enemies.length = 0;
+  d.enemies.push(...out);
+}
+
+/** 精英持鑰者：主線上較深房間裡的盾衛或突進者。 */
+function pickCarrier(d: Draft, t: GenTemplate, rng: Rng): EnemySpawn | null {
+  const depth = (key: string) => t.depth.get(key) ?? 0;
+  const maxDepth = Math.max(...d.rooms.map((r) => depth(r.key)));
+  const cands = d.enemies.filter((e) => !e.perched && (e.kind === 'guard' || e.kind === 'charger') &&
+    !t.specials.has(e.roomKey) && depth(e.roomKey) >= Math.max(1, Math.floor(maxDepth / 2)) &&
+    d.rooms.find((r) => r.key === e.roomKey)?.role === 'combat');
+  // 優先挑還不是老兵的敵人，讓這一層的老兵數量不因此減少
+  const fresh = cands.filter((e) => !e.veteran);
+  return fresh.length ? rng.pick(fresh) : cands.length ? rng.pick(cands) : null;
+}
+
 /** 單次嘗試（未驗證）：第 1–4 層。 */
 export function buildLevelV2(seed: string, attempt: number, floor: number): LevelData {
   const fi = floor - 1;
@@ -175,10 +229,11 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
     for (const e of d.enemies.filter((e) => e.roomKey === room.key))
       e.yaw = Math.atan2(-(chest.x - e.x), -(chest.z + 1.3 - e.z));
   }
+  substituteEnemies(d, t, rng, fi);
   const wake = RUN.wakeChance[fi]!;
   for (const e of d.enemies) if (e.state === 'sleep' && rng.chance(wake)) e.state = 'idle';
   addPatrols(d, rng, RUN.patrolChance[fi]!);
-  const vetPool = d.enemies.filter((e) => !e.perched && e.kind !== 'archer');
+  const vetPool = d.enemies.filter((e) => !e.perched && (e.kind === 'guard' || e.kind === 'charger'));
   for (let k = 0; k < RUN.veterans[fi]! && vetPool.length; k++) vetPool.splice(rng.int(0, vetPool.length - 1), 1)[0]!.veteran = true;
   for (const e of t.edges) {
     const a = t.rooms.find((r) => r.key === e.a)!;
@@ -245,6 +300,20 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
     }
   }
 
+  // 寶箱怪：特殊房裡的一個寶箱其實是怪物（第 3 層起）。
+  // 餘燼側室與守望寶庫的寶箱是解法的獎勵，不換。
+  if (rng.chance(ENCOUNTERS.mimic[fi] ?? 0)) {
+    const mimicRooms = new Set<SpecialKind>(['guarded', 'gauntlet', 'stash']);
+    const cands = d.chests.filter((c) => mimicRooms.has(t.specials.get(c.roomKey)!));
+    if (cands.length) {
+      const c = rng.pick(cands);
+      d.chests.splice(d.chests.indexOf(c), 1);
+      const k = d.pillars.findIndex((p) => p.kind === 'prop' && p.x === c.x && p.z === c.z);
+      if (k >= 0) d.pillars.splice(k, 1);
+      d.enemies.push({ kind: 'mimic', x: c.x, z: c.z, y: 0, yaw: c.yaw, state: 'sleep', patrol: [], perched: false, roomKey: c.roomKey,
+        loot: { ammo: 2, bottles: 0, items: [rollItem(rng, floor), rollItem(rng, floor)] } });
+    }
+  }
   const pickups: PickupSpawn[] = placePickups(d, rng, floor);
   // 固定的治療藥水放在不必找秘密門就拿得到的寶箱（秘密藏室排最後）。
   const fixedHealing = FIXED_CHEST_HEALING_PER_FLOOR[fi] ?? 0;
@@ -266,6 +335,13 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
       { item: 'potion:healing', level: 0 },
     ]);
     spots.forEach((p, k) => pedestals.push({ ...p, item: offers[k]!.item, level: offers[k]!.level }));
+  }
+  // 石像大廳：台座上只有一件已強化的武器，拿走就會喚醒石像
+  for (const room of d.rooms.filter((r) => t.specials.get(r.key) === 'statue')) {
+    const spot = d.pedestalSpots.find((p) => p.roomKey === room.key);
+    if (!spot) continue;
+    const weapons = ['weapon:longsword', 'weapon:knife', 'weapon:axe', 'weapon:spear'] as const;
+    pedestals.push({ ...spot, item: rng.pick(weapons), level: floor >= 4 ? 2 : 1 });
   }
 
   const grid = new Grid(w, h);
@@ -358,8 +434,15 @@ export function buildLevelV2(seed: string, attempt: number, floor: number): Leve
       specialRooms.push({ kind, roomKey: room.key, solution, supply, fire });
     } else specialRooms.push({ kind, roomKey: room.key });
   }
-  // 寶庫的鑰匙：放在不經過任何上鎖、秘密門就能走到的較深的房間。
-  if (pedestals.length) {
+  // 寶庫的鑰匙：由這一層的精英敵人攜帶；找不到合適的敵人時，放在較深的主線房間。
+  const carrier = pedestals.some((p) => d.rooms.find((r) => r.key === p.roomKey && t.specials.get(r.key) === 'vault'))
+    ? pickCarrier(d, t, rng) : null;
+  if (carrier) {
+    carrier.carriesKey = true;
+    carrier.veteran = true;
+    carrier.elite = rng.pick(ENCOUNTERS.eliteTraits);
+  }
+  if (!carrier && pedestals.some((p) => d.rooms.find((r) => r.key === p.roomKey && t.specials.get(r.key) === 'vault'))) {
     const vaultKey = d.rooms.find((r) => t.specials.get(r.key) === 'vault')!.key;
     const vaultParent = t.edges.find((e) => e.b === vaultKey)!.a;
     const depthOf = (r: RoomInst) => t.depth.get(r.key) ?? 0;

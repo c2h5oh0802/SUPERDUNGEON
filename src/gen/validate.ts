@@ -107,8 +107,11 @@ export function validateLevel(l: LevelData): ValidationResult {
     if (l.gen === 2) {
       const vaults = (l.specialRooms ?? []).filter((r) => r.kind === 'vault');
       const keys = l.pickups.filter((p) => p.kind === 'key');
-      if (keys.length !== vaults.length) errors.push('寶庫鑰匙數量錯誤');
-      if ((l.pedestals ?? []).length !== vaults.length * 3) errors.push('寶庫台座數量錯誤');
+      const carriers = l.enemies.filter((e) => e.carriesKey);
+      if (keys.length + carriers.length !== vaults.length) errors.push('寶庫鑰匙數量錯誤');
+      for (const c of carriers) if (!reachableNear(pnav, safe, c.x, c.z, 2)) errors.push('持鑰者不在可達主線');
+      const statues = (l.specialRooms ?? []).filter((r) => r.kind === 'statue');
+      if ((l.pedestals ?? []).length !== vaults.length * 3 + statues.length) errors.push('寶庫台座數量錯誤');
       if (vaults.length && !g.doors.some((d) => d.locked)) errors.push('寶庫沒有上鎖');
       for (const k of keys) if (!reachableNear(pnav, safe, k.x, k.z, PLAYER.pickupRadius)) errors.push('鑰匙不在可達主線');
       // 上鎖與秘密門後面只有可選的特殊房

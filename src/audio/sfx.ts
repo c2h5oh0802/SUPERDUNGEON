@@ -313,7 +313,23 @@ export class Sfx {
             }
           } else if (e.kind === 'guard') this.noise(0.5, 0.22, 'bandpass', 1800, 4200, 6, pos);
           else if (e.kind === 'archer') this.tone('sawtooth', 140, 260, 0.8, 0.07, pos);
-          else {
+          else if (e.kind === 'rat') {
+            // 吱吱叫
+            this.tone('square', 1900, 2500, 0.07, 0.05, pos);
+            this.tone('square', 2100, 2700, 0.07, 0.05, pos, 0.1);
+          } else if (e.kind === 'bomber') this.noise(ENEMIES.bomber.windup, 0.12, 'highpass', 5200, 3400, 1, pos); // 引信嘶嘶聲
+          else if (e.kind === 'sentry') {
+            // 舉起號角：低沉漸強的長音
+            this.tone('sawtooth', 150, 190, ENEMIES.sentry.hornWindup, 0.06, pos);
+            this.tone('triangle', 300, 380, ENEMIES.sentry.hornWindup, 0.04, pos);
+          } else if (e.kind === 'mimic') {
+            this.noise(0.45, 0.25, 'bandpass', 380, 900, 5, pos);
+            this.tone('sawtooth', 90, 70, 0.45, 0.1, pos);
+          } else if (e.kind === 'statue') {
+            // 石頭摩擦
+            this.noise(ENEMIES.statue.windup, 0.3, 'lowpass', 260, 120, 1, pos);
+            this.tone('triangle', 110, 85, ENEMIES.statue.windup, 0.1, pos);
+          } else {
             this.tone('sawtooth', 70, 55, 0.8, 0.14, pos);
             this.noise(0.8, 0.12, 'lowpass', 300, 150, 1, pos);
           }
@@ -425,6 +441,25 @@ export class Sfx {
         case 'landed':
           this.tone('sine', 80, 40, 0.4, 0.5);
           this.noise(0.25, 0.5, 'lowpass', 600, 150, 1);
+          break;
+        case 'horn':
+          // 號角：兩聲長鳴
+          for (let k = 0; k < 2; k++) {
+            this.tone('sawtooth', 196, 185, 0.7, 0.18, pos, k * 0.85);
+            this.tone('triangle', 392, 370, 0.7, 0.1, pos, k * 0.85);
+          }
+          break;
+        case 'reinforce':
+          // 遠處樓梯傳來的腳步聲
+          for (let k = 0; k < 4; k++) this.noise(0.09, 0.22, 'lowpass', 500, 200, 1, pos, k * 0.32);
+          break;
+        case 'mimicWake':
+          this.tone('sawtooth', 120, 60, 0.5, 0.25, pos);
+          this.noise(0.3, 0.35, 'bandpass', 600, 1500, 3, pos);
+          break;
+        case 'statueWake':
+          this.noise(1.2, 0.4, 'lowpass', 300, 90, 1, pos);
+          this.tone('sine', 70, 45, 1.0, 0.3, pos);
           break;
         default:
       }

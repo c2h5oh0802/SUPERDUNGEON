@@ -1299,6 +1299,13 @@ button.ghost {
   outline: 2px solid var(--gold);
 }
 
+/* 精英持鑰者：金色的★ */
+.eicon.keyed {
+  color: var(--gold);
+  outline: 2px solid var(--gold);
+  box-shadow: 0 0 10px rgba(242, 193, 78, 0.55);
+}
+
 .eicon.marked {
   min-width: 32px;
   width: auto;

@@ -1,5 +1,5 @@
 import { recordSensesEvent, expireSenses, type SoundCue } from './senses';
-import { CLASSES, CLASS_KNOWLEDGE, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TERRAIN, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
+import { CLASSES, CLASS_KNOWLEDGE, ENCOUNTERS, ITEM_FX, ENEMIES, PLAYER, SMOKE, STEALTH, TERRAIN, TIME, RENDER, type ArmorId, type ItemId, type PlayerClass, type TalentId, type WeaponId } from '../config';
 import { updateHunger } from './hunger';
 import { Rng } from '../core/rng';
 import { armorFootstepRadius, armorReduction, armorSneakSpeedMul } from './equipment';
@@ -145,6 +145,9 @@ export class World {
   keys = 0;
   /** 寶庫裡被選走的台座（互動物件 id）。 */
   readonly chosenPedestals = new Set<number>();
+  /** 增援：已經來了幾次、下一次的世界時間。 */
+  reinforcements = 0;
+  private nextReinforce: number = ENCOUNTERS.reinforce.after;
   /** 燃燒中的草：格子索引 → 已燒的世界秒。 */
   readonly burning = new Map<number, number>();
   /** 秘密門被動察覺的累積世界秒（門 id → 秒）。 */
@@ -284,6 +287,9 @@ export class World {
       this.baseRealTime = opts.stats.realTime;
     }
     for (const e of level.enemies) this.enemies.push(createEnemy(this, e));
+    // 寶箱怪看起來就是一個寶箱（可以「打開」）
+    for (const e of this.enemies) if (e.kind === 'mimic' && e.disguised)
+      this.interactables.push({ id: this.nextId++, kind: 'mimic', x: e.x, z: e.z, yaw: e.yaw, used: false, ref: e.id, roomKey: e.roomKey });
     for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level);
     level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set(),
       kind: t.kind ?? 'spikes', hidden: !!t.hidden, spent: false, noticeT: 0 }));
@@ -419,6 +425,37 @@ export class World {
 
   private stepAcc = 0;
 
+  /** 在同一層待太久：每隔一段世界時間有巡邏者從來時的樓梯走進來（每層有上限）。 */
+  private updateReinforcements(): void {
+    const r = ENCOUNTERS.reinforce;
+    if (this.level.gen !== 2 || this.level.encounter || !this.level.stairs || this.reinforcements >= r.max || this.time < this.nextReinforce) return;
+    // 從來時的入口走進來
+    const at = this.level.spawn;
+    // 玩家就站在入口時先不出現（晚 5 秒再試），不在眼前憑空生出敵人
+    if (Math.hypot(this.player.x - at.x, this.player.z - at.z) < r.clearance) {
+      this.nextReinforce = this.time + 5;
+      return;
+    }
+    this.reinforcements++;
+    this.nextReinforce = this.time + r.every;
+    const roll = this.rng.next();
+    const kinds: Array<'guard' | 'rat' | 'bomber' | 'charger'> = this.level.floor <= 1
+      ? (roll < 0.5 ? ['rat', 'rat', 'rat'] : ['guard'])
+      : roll < 0.4 ? ['guard'] : roll < 0.7 ? ['rat', 'rat', 'rat'] : roll < 0.85 ? ['bomber'] : ['charger'];
+    kinds.forEach((kind, k) => {
+      const e = createEnemy(this, { kind, x: at.x + (k - 1) * 0.7, z: at.z + (k % 2) * 0.6, y: 0, yaw: 0, state: 'patrol', patrol: [], perched: false, roomKey: 'E' });
+      e.state = 'patrol';
+      // 先往玩家所在的區域巡邏
+      let best = -1;
+      e.patrol.forEach((q, n) => {
+        if (best < 0 || Math.hypot(q.x - this.player.x, q.z - this.player.z) < Math.hypot(e.patrol[best]!.x - this.player.x, e.patrol[best]!.z - this.player.z)) best = n;
+      });
+      if (best >= 0) e.patrolIdx = best;
+      this.enemies.push(e);
+    });
+    this.emit({ type: 'reinforce', x: at.x, y: 1, z: at.z, amount: kinds.length, text: '樓梯那邊傳來腳步聲：有東西下來了' });
+  }
+
   /** 玩家站在冰霜裡。 */
   inFrost(): boolean {
     return inArea(this, 'frost', this.player.x, this.player.z);
@@ -478,6 +515,7 @@ export class World {
       updateDoors(this, dt);
       updateTraps(this, dt);
       updateDungeon(this, dt);
+      this.updateReinforcements();
       if (this.outcome !== 'none') break;
       updateSmokes(this, dt);
       updateAreas(this, dt, (e, dmg, src) => damageEnemy(this, e, dmg, { source: src, sneak: false, head: false, x: e.x, y: 0.5, z: e.z }));

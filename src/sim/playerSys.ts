@@ -9,7 +9,7 @@ import { hasTalent, maxStones, maxTipped } from './progress';
 import { angleDiff, dirFromYawPitch, forwardFromYaw, yawFromDir, type V3 } from '../core/math';
 import { AIM_EYE_Y, crosshairPoint } from './aim';
 import { applyCounter, counterThreat, deflectBolts, shieldPush } from './classSys';
-import { damageEnemy, staggerEnemy } from './enemySys';
+import { damageEnemy, staggerEnemy, wakeHidden } from './enemySys';
 import { STOCK_NAMES, stockFor } from './inventory';
 import { setDoor } from './propSys';
 import type { World } from './world';
@@ -388,7 +388,8 @@ function meleeHits(w: World): void {
     // 奇襲：睡眠不限方向；未目擊玩家的閒置／巡邏敵人須從背後。調查／搜索不算。
     const fromBehind = Math.abs(angleDiff(yawFromDir(p.x - e.x, p.z - e.z), e.yaw)) >= Math.PI - backHalf;
     const unaware = e.state === 'idle' || e.state === 'patrol' || (e.state === 'search' && STEALTH.searchBackstab);
-    const sneak = e.state === 'sleep' || (unaware && !e.seesPlayer && fromBehind);
+    // 石像守衛不吃奇襲
+    const sneak = e.kind !== 'statue' && (e.state === 'sleep' || (unaware && !e.seesPlayer && fromBehind));
     let dmg = weaponDamage(a.weapon, p.weapon.level);
     if (sneak) dmg *= e.veteran ? Math.min(spec.sneakMultiplier, RUN.veteranSneakMul) : spec.sneakMultiplier;
     if (e.kind === 'charger' && e.phase === 'stun') dmg *= 2;
@@ -562,7 +563,18 @@ function performUse(w: World, it: Interactable): void {
         w.addPickup('item', 1, it.x + f.x * 0.9, 0.15, it.z + f.z * 0.9, null, pd.item, pd.level);
         w.emit({ type: 'fullInventory', text: '背包滿了，寶物放在台座前' });
       }
-      w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你選了「${trueItemName(pd.item, pd.level)}」，其他寶物沉了下去`, source: it.roomKey });
+      const statue = w.enemies.find((e) => e.dormant && e.roomKey === it.roomKey);
+      if (statue) {
+        w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你拿走了「${trueItemName(pd.item, pd.level)}」`, source: it.roomKey });
+        wakeHidden(w, statue);
+      } else w.emit({ type: 'pedestal', id: it.id, x: it.x, z: it.z, text: `你選了「${trueItemName(pd.item, pd.level)}」，其他寶物沉了下去`, source: it.roomKey });
+      return;
+    }
+    case 'mimic': {
+      // 「寶箱」張開嘴咬過來
+      it.used = true;
+      const e = w.enemies.find((o) => o.id === it.ref);
+      if (e) wakeHidden(w, e);
       return;
     }
     case 'resupply':
@@ -664,7 +676,14 @@ export function findInteractTarget(w: World): InteractTarget | null {
       case 'pedestal': {
         const pd = w.level.pedestals?.[it.ref];
         if (!pd) continue;
-        label = `E 取走「${trueItemName(pd.item, pd.level)}」（三選一）`;
+        const guarded = w.enemies.some((e) => e.dormant && e.roomKey === it.roomKey);
+        label = guarded ? `E 取走「${trueItemName(pd.item, pd.level)}」` : `E 取走「${trueItemName(pd.item, pd.level)}」（三選一）`;
+        break;
+      }
+      case 'mimic': {
+        const e = w.enemies.find((o) => o.id === it.ref);
+        if (!e?.alive || !e.disguised) continue;
+        label = 'E 打開寶箱';
         break;
       }
       case 'stairs':

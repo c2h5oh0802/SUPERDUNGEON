@@ -5,7 +5,7 @@ import type { Template, TemplateEdge, TemplateRoom } from './templates';
 // 只產生既有的 Template 結構（格位、角色、層級、邊），房間的蓋印與通道沿用 generator 的做法。
 
 /** 特殊房：都放在分岔死路，不在往下的主線上。 */
-export type SpecialKind = 'embers' | 'sentries' | 'vault' | 'gauntlet' | 'stash' | 'guarded';
+export type SpecialKind = 'embers' | 'sentries' | 'vault' | 'gauntlet' | 'stash' | 'guarded' | 'statue';
 
 export interface TopologyConfig {
   cols: number;
@@ -160,7 +160,7 @@ export function buildTopology(rng: Rng, cfg: TopologyConfig): GenTemplate {
     }));
     for (const s of specialNodes) {
       const parentTier = tierOf(byKey.get(s.parent)!);
-      rooms.push({ key: s.key, col: s.col, row: s.row, role: s.kind === 'guarded' || s.kind === 'sentries' || s.kind === 'vault' ? 'treasure' : 'combat', tier: Math.min(4, parentTier + 1), optional: true });
+      rooms.push({ key: s.key, col: s.col, row: s.row, role: s.kind === 'guarded' || s.kind === 'sentries' || s.kind === 'vault' || s.kind === 'statue' ? 'treasure' : 'combat', tier: Math.min(4, parentTier + 1), optional: true });
     }
     const depth = new Map<string, number>([...nodes, ...specialNodes].map((n) => [n.key, n.depth]));
     return { id: 'gen', name: '地城深處', cols: cfg.cols, rows: cfg.rows, rooms, edges: tEdges, specials, depth };

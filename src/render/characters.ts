@@ -11,7 +11,7 @@ import { createCharMaterial, createLightRig, createOutlineMaterial, paint, type 
 // 為了效能，每個關節上的零件合併成一個網格（頂點色＋發光遮罩），同種敵人共用合併後的幾何。
 
 type JointName = 'hips' | 'torso' | 'head' | 'armL' | 'elbowL' | 'armR' | 'elbowR' | 'legL' | 'kneeL' | 'legR' | 'kneeR';
-type GroupKey = JointName | 'crossbow' | 'cloak' | 'shield' | 'crownL' | 'crownR';
+type GroupKey = JointName | 'crossbow' | 'cloak' | 'shield' | 'crownL' | 'crownR' | 'lid' | 'horn' | 'bomb';
 
 interface Pose {
   hipsY: number;
@@ -79,6 +79,8 @@ interface PartSpec {
 }
 
 /** 以種類快取合併後的關節幾何（本體＋描邊），跨局重用。 */
+const HIPS_Y: Partial<Record<Enemy['kind'], number>> = { warden: 1.05, charger: 0.92, archer: 0.95, rat: 0.2, mimic: 0, statue: 1.2, bomber: 0.95, sentry: 0.96 };
+
 const mergedCache = new Map<string, { body: THREE.BufferGeometry; outline: THREE.BufferGeometry | null }>();
 
 export function geometryCacheSize(): number {
@@ -133,6 +135,11 @@ export class EnemyVisual {
   crown: THREE.Group[] = [];
   bolt: THREE.Mesh | null = null;
   cloak: THREE.Group | null = null;
+  /** 寶箱怪的蓋子（嘴）。 */
+  lid: THREE.Group | null = null;
+  /** 號角哨兵的號角、投彈手手上的火瓶。 */
+  horn: THREE.Group | null = null;
+  bomb: THREE.Group | null = null;
   private parts = new Map<GroupKey, PartSpec[]>();
   private groups = new Map<GroupKey, THREE.Group>();
   private pose: Pose;
@@ -147,7 +154,7 @@ export class EnemyVisual {
     this.kind = enemy.kind;
     this.mat = createCharMaterial(shared, this.rig, 0xffffff, { glow: 0xff6a1a });
     this.outlineMat = createOutlineMaterial(shared, enemy.kind === 'charger' || enemy.kind === 'warden' ? 1.3 : 1.0);
-    const hipsY = enemy.kind === 'warden' ? 1.05 : enemy.kind === 'charger' ? 0.92 : enemy.kind === 'archer' ? 0.95 : 0.98;
+    const hipsY = HIPS_Y[enemy.kind] ?? 0.98;
     this.pose = zeroPose(hipsY);
     this.target = zeroPose(hipsY);
     this.base = zeroPose(hipsY);
@@ -166,6 +173,11 @@ export class EnemyVisual {
     if (enemy.kind === 'guard') this.buildGuard(J, hips, torso);
     else if (enemy.kind === 'archer') this.buildArcher(J, hips, torso);
     else if (enemy.kind === 'warden') this.buildWarden(J, hips, torso);
+    else if (enemy.kind === 'rat') this.buildRat(J, torso);
+    else if (enemy.kind === 'bomber') this.buildBomber(J, hips, torso);
+    else if (enemy.kind === 'sentry') this.buildSentry(J, hips, torso);
+    else if (enemy.kind === 'mimic') this.buildMimic(J, torso);
+    else if (enemy.kind === 'statue') this.buildStatue(J, hips, torso);
     else this.buildCharger(J, hips, torso);
     for (const [key, list] of this.parts) {
       const cacheKey = `${enemy.kind}:${key}`;
@@ -265,6 +277,158 @@ export class EnemyVisual {
     J('elbowL', armL, 0, -0.34, 0);
     this.part(cyl(0.08, 0.07, 0.3, 7), dark, 'elbowL', 0, -0.15, 0);
     this.legs(J, hips, 0.15, 0.1, 0.45, 0x3c3f4a, 0x2b2a30);
+    this.base.j.armR = [0.35, 0, 0.12];
+    this.base.j.elbowR = [1.05, 0, 0];
+    this.base.j.armL = [0.6, 0, 0.15];
+    this.base.j.elbowL = [0.9, 0, 0];
+  }
+
+  /** 溝鼠：矮小的四足獸，紅眼、長尾巴。 */
+  private buildRat(J: JointFn, torso: THREE.Group): void {
+    const fur = 0x5a4a44;
+    const belly = 0x7a6458;
+    const pink = 0xc98a86;
+    this.part(sph(0.2, 1), fur, 'torso', 0, 0.02, 0.04, 0, 0, 0, { scale: [0.85, 0.72, 1.45] });
+    this.part(sph(0.12, 1), belly, 'torso', 0, -0.06, -0.02, 0, 0, 0, { scale: [0.8, 0.5, 1.3], outline: false });
+    this.part(cyl(0.025, 0.012, 0.55, 5), pink, 'torso', 0, -0.02, 0.5, Math.PI / 2 - 0.25, 0, 0);
+    for (const sx of [-1, 1]) for (const z of [-0.14, 0.18]) this.part(cyl(0.03, 0.025, 0.2, 5), fur, 'torso', sx * 0.11, -0.13, z, 0, 0, 0, { outline: false });
+    const head = J('head', torso, 0, 0.06, -0.26);
+    this.part(cone(0.12, 0.3, 7), fur, 'head', 0, 0, -0.1, -Math.PI / 2, 0, 0);
+    this.part(sph(0.03, 0), pink, 'head', 0, 0, -0.26, 0, 0, 0, { outline: false });
+    for (const sx of [-1, 1]) this.part(cyl(0.06, 0.06, 0.02, 7), pink, 'head', sx * 0.08, 0.1, 0.02, Math.PI / 2, 0, sx * 0.4, { outline: false });
+    this.eyes = new THREE.Mesh(box(0.14, 0.025, 0.02), this.eyeMat);
+    this.eyes.position.set(0, 0.05, -0.12);
+    head.add(this.eyes);
+  }
+
+  /** 投彈手：兜帽、皮圍裙、腰間一排火瓶；出手前把點燃的瓶子舉到肩後。 */
+  private buildBomber(J: JointFn, hips: THREE.Group, torso: THREE.Group): void {
+    const robe = 0x5a3a2e;
+    const apron = 0x7a5a3a;
+    const dark = 0x2c2a2e;
+    this.part(cyl(0.22, 0.3, 0.36, 8), robe, 'hips', 0, -0.08, 0);
+    this.part(box(0.46, 0.58, 0.3), robe, 'torso', 0, 0.3, 0);
+    this.part(box(0.38, 0.62, 0.04), apron, 'torso', 0, 0.12, -0.17);
+    for (let k = 0; k < 4; k++) this.part(cyl(0.05, 0.05, 0.14, 6), 0xd06a3a, 'torso', -0.18 + k * 0.12, 0.02, -0.2, 0, 0, 0, { glow: 0.6, outline: false });
+    const head = J('head', torso, 0, 0.64, 0);
+    this.part(sph(0.16, 1), dark, 'head', 0, 0.1, -0.02);
+    this.part(cone(0.25, 0.48, 7), robe, 'head', 0, 0.22, 0.04);
+    this.eyes = new THREE.Mesh(box(0.16, 0.025, 0.02), this.eyeMat);
+    this.eyes.position.set(0, 0.1, -0.17);
+    head.add(this.eyes);
+    const armR = J('armR', torso, 0.28, 0.5, 0);
+    this.part(cyl(0.07, 0.06, 0.32, 6), robe, 'armR', 0, -0.16, 0);
+    J('elbowR', armR, 0, -0.32, 0);
+    this.part(cyl(0.06, 0.055, 0.3, 6), apron, 'elbowR', 0, -0.15, 0);
+    const bomb = new THREE.Group();
+    this.joints.elbowR.add(bomb);
+    this.groups.set('bomb', bomb);
+    this.bomb = bomb;
+    bomb.position.set(0, -0.36, 0);
+    this.part(sph(0.1, 1), 0xff6a2a, 'bomb', 0, 0, 0, 0, 0, 0, { glow: 1 });
+    this.part(cyl(0.03, 0.03, 0.12, 6), 0x6a4a30, 'bomb', 0, 0.12, 0, 0, 0, 0, { outline: false });
+    const armL = J('armL', torso, -0.28, 0.5, 0);
+    this.part(cyl(0.07, 0.06, 0.32, 6), robe, 'armL', 0, -0.16, 0);
+    J('elbowL', armL, 0, -0.32, 0);
+    this.part(cyl(0.06, 0.055, 0.3, 6), apron, 'elbowL', 0, -0.15, 0);
+    this.legs(J, hips, 0.12, 0.085, 0.46, 0x3a3030, 0x2b2622);
+    this.base.j.armR = [0.3, 0, -0.15];
+    this.base.j.elbowR = [0.6, 0, 0];
+    this.base.j.armL = [0.3, 0, 0.15];
+    this.base.j.elbowL = [0.5, 0, 0];
+  }
+
+  /** 號角哨兵：輕甲、披風，腰上掛著一支彎號角；發現你就把號角舉到嘴邊。 */
+  private buildSentry(J: JointFn, hips: THREE.Group, torso: THREE.Group): void {
+    const cloth = 0x2f4a5a;
+    const leather = 0x6a5038;
+    const brass = 0xd9a94a;
+    this.part(cyl(0.22, 0.28, 0.32, 8), leather, 'hips', 0, -0.06, 0);
+    this.part(box(0.48, 0.58, 0.3), cloth, 'torso', 0, 0.3, 0);
+    this.part(box(0.5, 0.12, 0.32), leather, 'torso', 0, 0.06, 0);
+    const head = J('head', torso, 0, 0.64, 0);
+    this.part(cyl(0.16, 0.18, 0.3, 8), 0x7a8088, 'head', 0, 0.12, 0);
+    this.part(cone(0.18, 0.14, 8), 0x7a8088, 'head', 0, 0.33, 0);
+    this.eyes = new THREE.Mesh(box(0.18, 0.025, 0.02), this.eyeMat);
+    this.eyes.position.set(0, 0.1, -0.18);
+    head.add(this.eyes);
+    const armR = J('armR', torso, 0.3, 0.5, 0);
+    this.part(cyl(0.07, 0.06, 0.32, 6), cloth, 'armR', 0, -0.16, 0);
+    J('elbowR', armR, 0, -0.32, 0);
+    this.part(cyl(0.06, 0.055, 0.3, 6), leather, 'elbowR', 0, -0.15, 0);
+    const horn = new THREE.Group();
+    this.joints.elbowR.add(horn);
+    this.groups.set('horn', horn);
+    this.horn = horn;
+    horn.position.set(0, -0.34, -0.05);
+    this.part(cone(0.1, 0.45, 8), brass, 'horn', 0, 0.12, -0.08, -1.1, 0, 0, { glow: 0.4 });
+    this.part(cyl(0.11, 0.11, 0.04, 8), brass, 'horn', 0, 0.3, -0.25, -1.1, 0, 0, { glow: 0.8, outline: false });
+    const armL = J('armL', torso, -0.3, 0.5, 0);
+    this.part(cyl(0.07, 0.06, 0.32, 6), cloth, 'armL', 0, -0.16, 0);
+    J('elbowL', armL, 0, -0.32, 0);
+    this.part(cyl(0.06, 0.055, 0.3, 6), leather, 'elbowL', 0, -0.15, 0);
+    this.legs(J, hips, 0.12, 0.085, 0.46, 0x2c3238, 0x2b2622);
+    this.base.j.armR = [0.2, 0, -0.1];
+    this.base.j.elbowR = [0.3, 0, 0];
+  }
+
+  /** 寶箱怪：外觀和寶箱一樣；醒來後蓋子變成一張滿是牙齒的嘴。 */
+  private buildMimic(J: JointFn, torso: THREE.Group): void {
+    const wood = 0x7a5233;
+    const iron = 0x3f3c46;
+    this.part(box(0.95, 0.5, 0.62), wood, 'torso', 0, 0.25, 0);
+    this.part(box(0.99, 0.08, 0.66), iron, 'torso', 0, 0.42, 0);
+    for (let k = 0; k < 6; k++) this.part(cone(0.035, 0.1, 4), 0xeee2cc, 'torso', -0.38 + k * 0.15, 0.5, -0.27, 0, 0, 0, { outline: false });
+    this.part(box(0.8, 0.04, 0.4), 0xa83a3a, 'torso', 0, 0.47, 0, 0, 0, 0, { outline: false });
+    const lid = new THREE.Group();
+    torso.add(lid);
+    this.groups.set('lid', lid);
+    this.lid = lid;
+    lid.position.set(0, 0.5, 0.31);
+    const lidG = base('mimicLid', () => {
+      const g = new THREE.CylinderGeometry(0.31, 0.31, 0.95, 8, 1, false, 0, Math.PI);
+      g.rotateZ(Math.PI / 2);
+      return g;
+    });
+    this.part(lidG, wood, 'lid', 0, 0, -0.31);
+    this.part(box(0.14, 0.16, 0.06), 0xd9a94a, 'lid', 0, 0.02, -0.63, 0, 0, 0, { glow: 1 });
+    for (let k = 0; k < 6; k++) this.part(cone(0.035, 0.1, 4), 0xeee2cc, 'lid', -0.38 + k * 0.15, -0.05, -0.58, Math.PI, 0, 0, { outline: false });
+    this.eyes = new THREE.Mesh(box(0.3, 0.03, 0.02), this.eyeMat);
+    this.eyes.position.set(0, -0.02, -0.4);
+    lid.add(this.eyes);
+    J('head', torso, 0, 0.5, 0);
+  }
+
+  /** 石像守衛：灰白的石頭巨人，雙手按著插在地上的巨劍；醒來後眼睛亮起。 */
+  private buildStatue(J: JointFn, hips: THREE.Group, torso: THREE.Group): void {
+    const stone = 0x8e8a84;
+    const dark = 0x6a6660;
+    const moss = 0x5a6a4a;
+    this.part(box(0.9, 0.24, 0.6), dark, 'hips', 0, -1.08, 0, 0, 0, 0, { scale: [1, 1, 1] });
+    this.part(cyl(0.36, 0.42, 0.4, 8), stone, 'hips', 0, -0.1, 0);
+    this.part(box(0.8, 0.7, 0.46), stone, 'torso', 0, 0.38, 0);
+    this.part(box(0.3, 0.5, 0.05), moss, 'torso', 0.1, 0.25, -0.24, 0, 0, 0, { outline: false });
+    this.part(sph(0.24, 1), stone, 'torso', -0.5, 0.68, 0, 0, 0, 0, { scale: [1.2, 0.85, 1.1] });
+    this.part(sph(0.24, 1), stone, 'torso', 0.5, 0.68, 0, 0, 0, 0, { scale: [1.2, 0.85, 1.1] });
+    const head = J('head', torso, 0, 0.8, 0);
+    this.part(box(0.36, 0.4, 0.36), stone, 'head', 0, 0.18, 0);
+    this.part(box(0.4, 0.08, 0.4), dark, 'head', 0, 0.4, 0);
+    this.eyes = new THREE.Mesh(box(0.24, 0.035, 0.02), this.eyeMat);
+    this.eyes.position.set(0, 0.2, -0.19);
+    head.add(this.eyes);
+    const armR = J('armR', torso, 0.52, 0.6, 0);
+    this.part(cyl(0.12, 0.1, 0.44, 7), stone, 'armR', 0, -0.22, 0);
+    J('elbowR', armR, 0, -0.44, 0);
+    this.part(cyl(0.11, 0.1, 0.4, 7), stone, 'elbowR', 0, -0.2, 0);
+    const sword = this.at('elbowR', 0, -0.44, 0, 1.3, 0, 0);
+    this.part(box(0.08, 0.2, 0.08), dark, sword, 0, -0.06, 0);
+    this.part(box(0.44, 0.06, 0.1), dark, sword, 0, -0.17, 0);
+    this.part(box(0.14, 1.5, 0.04), 0xa8acb0, sword, 0, -0.95, 0, 0, 0, 0, { glow: 1 });
+    const armL = J('armL', torso, -0.52, 0.6, 0);
+    this.part(cyl(0.12, 0.1, 0.44, 7), stone, 'armL', 0, -0.22, 0);
+    J('elbowL', armL, 0, -0.44, 0);
+    this.part(cyl(0.11, 0.1, 0.4, 7), stone, 'elbowL', 0, -0.2, 0);
+    this.legs(J, hips, 0.2, 0.14, 0.55, stone, dark);
     this.base.j.armR = [0.35, 0, 0.12];
     this.base.j.elbowR = [1.05, 0, 0];
     this.base.j.armL = [0.6, 0, 0.15];
@@ -437,6 +601,7 @@ export class EnemyVisual {
         t.j.armR[0] += s * 0.15;
       }
     }
+    if (e.kind === 'rat' || e.kind === 'mimic' || e.kind === 'statue') return this.creatureTarget(e, t, walk);
     if (e.state === 'sleep') {
       t.hipsY = 0.42;
       t.j.legL = [1.45, 0.15, 0];
@@ -605,6 +770,41 @@ export class EnemyVisual {
         t.j.kneeL[0] -= 0.12;
         t.j.kneeR[0] -= 0.12;
       }
+    } else if (e.kind === 'bomber') {
+      const b = ENEMIES.bomber;
+      const bomb = this.bomb!;
+      bomb.visible = e.phase !== 'reload';
+      if (e.phase === 'aim') {
+        // 把點燃的瓶子舉到肩後：越接近出手越亮
+        snap = true;
+        const k = smoothstep(0, b.windup, p);
+        t.j.armR = [lerp(0.3, -2.4, k), 0, lerp(-0.15, -0.4, k)];
+        t.j.elbowR = [lerp(0.6, 1.2, k), 0, 0];
+        t.j.torso = [0, lerp(0, 0.35, k), 0];
+        glow = e.locked ? 1.1 : 0.3 + 0.6 * k;
+      } else if (e.phase === 'reload') {
+        snap = true;
+        t.j.armR = [1.2, 0, -0.2];
+        t.j.elbowR = [0.2, 0, 0];
+      } else if (e.phase === 'stagger') {
+        snap = true;
+        t.j.torso = [0.35, 0.3, 0];
+      }
+    } else if (e.kind === 'sentry') {
+      const sp = ENEMIES.sentry;
+      if (e.phase === 'windup' && !e.hornUsed) {
+        // 號角舉到嘴邊：越來越亮，吹完之前打中它就能打斷
+        snap = true;
+        const k = smoothstep(0, 0.4, p);
+        t.j.armR = [lerp(0.2, 2.2, k), 0, lerp(-0.1, 0.5, k)];
+        t.j.elbowR = [lerp(0.3, 1.7, k), 0, 0];
+        t.j.head = [-0.15 * k, 0, 0];
+        glow = 0.3 + 0.9 * smoothstep(0, sp.hornWindup, p);
+      } else if (e.phase === 'stagger') {
+        snap = true;
+        t.j.torso = [0.35, 0.3, 0];
+        t.j.head = [0.3, 0, 0.2];
+      }
     } else {
       const c = ENEMIES.charger;
       if (e.phase === 'windup') {
@@ -643,6 +843,75 @@ export class EnemyVisual {
         t.j.head = [0.45, 0, 0];
         t.j.torso = [-0.35, 0, 0];
       }
+    }
+    return { snap, glow };
+  }
+
+  /** 非人形與石像的姿勢：溝鼠、寶箱怪、石像守衛（沿用近戰時間軸）。 */
+  private creatureTarget(e: Enemy, t: Pose, walk: number): { snap: boolean; glow: number } {
+    const spec = e.kind === 'rat' ? ENEMIES.rat : e.kind === 'mimic' ? ENEMIES.mimic : ENEMIES.statue;
+    const p = e.phaseT;
+    let glow = 0;
+    let snap = false;
+    if (e.kind === 'mimic') {
+      const lid = this.lid!;
+      if (e.disguised) {
+        // 偽裝：蓋子幾乎看不出來地起伏（仔細看才發現它在呼吸）
+        lid.rotation.x = -0.035 * (0.5 + 0.5 * Math.sin(performance.now() / 700 + e.id));
+        this.eyes.visible = false;
+        return { snap: false, glow: 0 };
+      }
+      this.eyes.visible = true;
+      let open = 0.5;
+      if (e.phase === 'windup') { open = lerp(0.5, 1.3, smoothstep(0, spec.windup, p)); glow = 0.3 + 0.9 * smoothstep(0, spec.windup, p); snap = true; }
+      else if (e.phase === 'active') { open = lerp(1.3, 0.05, clamp(p / spec.active, 0, 1)); glow = 1.2; snap = true; }
+      else if (e.phase === 'recovery') open = lerp(0.05, 0.5, smoothstep(0, spec.recovery, p));
+      else if (e.phase === 'stagger') open = 0.9 + Math.sin(p * 12) * 0.2;
+      lid.rotation.x = -open;
+      // 跳著移動
+      t.hipsY = walk ? Math.abs(Math.sin(e.walkPhase * 1.4)) * 0.18 : 0;
+      return { snap, glow };
+    }
+    if (e.kind === 'statue' && e.dormant) {
+      // 沒醒：雙手按著劍，一動也不動
+      t.j.armR = [0.2, 0, 0.5];
+      t.j.armL = [0.2, 0, -0.5];
+      t.j.elbowR = [0.9, 0, 0];
+      t.j.elbowL = [0.9, 0, 0];
+      return { snap: true, glow: 0 };
+    }
+    if (e.kind === 'rat') {
+      if (e.state === 'sleep') { t.hipsY = 0.13; t.j.head = [0.4, 0, 0]; return { snap: false, glow: 0 }; }
+      t.hipsY += walk ? Math.abs(Math.sin(e.walkPhase * 2.4)) * 0.06 : 0;
+      if (e.phase === 'windup') { snap = true; const k = smoothstep(0, spec.windup, p); t.j.head = [lerp(0, -0.5, k), 0, 0]; t.hipsY -= 0.05 * k; glow = 0.3 + 0.9 * k; }
+      else if (e.phase === 'active') { snap = true; t.j.head = [0.3, 0, 0]; t.j.torso = [0.2, 0, 0]; glow = 1.2; }
+      else if (e.phase === 'stagger') { snap = true; t.j.torso = [0, Math.sin(p * 14) * 0.3, 0]; }
+      return { snap, glow };
+    }
+    // 石像（醒來後）：比照盾衛的揮劍，但更慢、更大
+    if (e.phase === 'windup') {
+      snap = true;
+      const k = smoothstep(0, spec.windup, p);
+      t.j.armR = [lerp(0.35, 3.2, k), 0, lerp(0.12, 0.35, k)];
+      t.j.armL = [lerp(0.6, 2.6, k), 0, lerp(0.15, -0.3, k)];
+      t.j.torso = [0, lerp(0, -0.45, k), 0];
+      glow = 0.25 + 0.75 * k;
+    } else if (e.phase === 'active') {
+      snap = true;
+      const k = clamp(p / spec.active, 0, 1);
+      t.j.armR = [lerp(3.2, 0.3, k), 0, lerp(0.35, -0.45, k)];
+      t.j.armL = [lerp(2.6, 0.4, k), 0, lerp(-0.3, 0.3, k)];
+      t.j.torso = [lerp(0, -0.3, k), lerp(-0.45, 0.5, k), 0];
+      glow = 1.2;
+    } else if (e.phase === 'recovery') {
+      snap = true;
+      const k = smoothstep(0, spec.recovery, p);
+      t.j.armR = [lerp(0.3, 0.35, k), 0, lerp(-0.45, 0.12, k)];
+      t.j.torso = [lerp(-0.3, 0, k), lerp(0.5, 0, k), 0];
+    } else if (e.phase === 'stagger') {
+      snap = true;
+      t.j.torso = [0.3, Math.sin(p * 7) * 0.1, 0];
+      t.j.head = [0.25, 0, 0.1];
     }
     return { snap, glow };
   }

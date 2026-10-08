@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSES, RUN, XP } from '../src/config';
+import { CLASSES, ENCOUNTERS, RUN, XP } from '../src/config';
 import { gainXp } from '../src/sim/progress';
 import { levelSignature } from '../src/gen/generator';
 import { generateLevel } from '../src/gen/validate';
@@ -36,7 +36,14 @@ describe('樓層生成', () => {
       }
       return sum / 20;
     };
-    const counts = [1, 2, 3, 4].map((f) => avg(f, (n) => n));
+    // 一群溝鼠算一個威脅
+    const threats = (l: ReturnType<typeof generateLevel>) =>
+      l.enemies.filter((e) => e.kind !== 'rat').length + l.enemies.filter((e) => e.kind === 'rat').length / ENCOUNTERS.ratPack;
+    const counts = [1, 2, 3, 4].map((f) => {
+      let sum = 0;
+      for (let k = 1; k <= 20; k++) sum += threats(generateLevel(`D${k}`, { floor: f }));
+      return sum / 20;
+    });
     const awake = [1, 2, 3, 4].map((f) => avg(f, (n, a) => a / n));
     for (let f = 1; f < RUN.explorationFloors; f++) expect(counts[f]!).toBeGreaterThan(counts[f - 1]!);
     expect(awake[3]!).toBeGreaterThan(awake[0]!);

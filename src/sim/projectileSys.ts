@@ -4,7 +4,7 @@ import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS } 
 import { movingSpheresTOI, type V3 } from '../core/math';
 import { segmentCylinder, segmentEnemy } from './characterHit';
 import { shieldBlocks } from './classSys';
-import { shatterPotion } from './items';
+import { shatterPotion, spawnArea } from './items';
 import { triggerTrapAt } from './dungeon';
 import { T } from './grid';
 import { hasTalent } from './progress';
@@ -28,7 +28,8 @@ const lerp3 = (a: V3, b: V3, t: number): V3 => ({ x: a.x + (b.x - a.x) * t, y: a
 /** Earliest physical contact, independent of enemy array order or frame length. */
 function charHit(w: World, p: Projectile, a: V3, b: V3): Hit | null {
   let best: Hit | null = null;
-  if (p.owner === 'player' || p.kind === 'bolt') {
+  const hostile = p.owner !== 'player' && (p.kind === 'bolt' || p.kind === 'bottle');
+  if (p.owner === 'player' || hostile) {
     for (const e of w.enemies) {
       if (!e.alive || e.id === p.owner || p.hitSet.has(e.id)) continue;
       const hit = segmentEnemy(a, b, e, p.radius);
@@ -36,7 +37,7 @@ function charHit(w: World, p: Projectile, a: V3, b: V3): Hit | null {
         best = { ...hit, type: 'enemy', enemy: e };
     }
   }
-  if (p.owner !== 'player' && p.kind === 'bolt' && !w.player.dead) {
+  if (hostile && !w.player.dead) {
     const pl = w.player;
     const t = segmentCylinder(a, b, pl.x, pl.z, PLAYER.radius + p.radius, 0, PLAYER.height + 0.1);
     if (t >= 0 && (!best || t < best.t)) best = { t, type: 'player' };
@@ -69,6 +70,13 @@ export function breakBottle(w: World, b: Projectile, pos: V3, air: boolean): voi
   if (!b.alive) return;
   b.alive = false;
   if (air) w.stats.airbursts++;
+  // 投彈手的火瓶：碎開處起火（不是藥水，不會讓你認得任何藥水）
+  if (b.payload === 'firebomb') {
+    w.emit({ type: 'bottleBreak', x: pos.x, y: pos.y, z: pos.z, air, kind: 'firebomb' });
+    w.emitNoise(pos.x, pos.y, pos.z, 6, 'bottle');
+    spawnArea(w, 'fire', pos.x, pos.z);
+    return;
+  }
   // 丟出的藥水：碎開的地方產生效果
   if (b.payload !== 'smoke') {
     w.emit({ type: 'bottleBreak', x: pos.x, y: pos.y, z: pos.z, air, kind: b.payload });
@@ -151,6 +159,11 @@ export function updateProjectiles(w: World, dt: number): void {
         tStart = tAbs;
         a = at;
         continue;
+      }
+      if (hit.type === 'player' && p.kind === 'bottle') {
+        // 火瓶砸在身上：腳下起火
+        breakBottle(w, p, { x: w.player.x, y: 0.3, z: w.player.z }, false);
+        break;
       }
       if (hit.type === 'player') {
         p.alive = false;

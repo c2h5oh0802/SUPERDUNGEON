@@ -1,5 +1,5 @@
 import { combatRoomCells } from './combatSound';
-import { ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { ENCOUNTERS, ENEMIES, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
@@ -27,9 +27,11 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
   // Appending a tutorial room must not add a new patrol destination to Core.
   const roam = connection ? w.roamPoints.filter(p =>
     (p.z < connection.coreEntryZ) === (s.roomKey === connection.coreRoomKey)) : w.roamPoints;
-  const patrol = s.perched || s.boss ? [] : [...roam, ...s.patrol].map((p) => ({ ...p }));
+  const patrol = s.perched || s.boss || s.kind === 'mimic' || s.kind === 'statue' ? [] : [...roam, ...s.patrol].map((p) => ({ ...p }));
   // 越深越硬；老兵再 ×1.5
   const hp = s.kind === 'warden' ? ENEMIES.warden.hp : Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
+  // 偽裝的寶箱怪與沒醒的石像不巡邏
+  const still = s.kind === 'mimic' || s.kind === 'statue';
   return {
     id: w.nextId++,
     kind: s.kind,
@@ -43,7 +45,7 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     maxHp: hp,
     alive: true,
     deathT: 0,
-    state: s.state === 'idle' && patrol.length > 0 ? 'patrol' : s.state,
+    state: still ? 'sleep' : s.state === 'idle' && patrol.length > 0 ? 'patrol' : s.state,
     awareness: 0,
     suspicious: false,
     awakened: false,
@@ -93,6 +95,11 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     corpseFound: false,
     pendingSleep: false,
     boss: !!s.boss,
+    carriesKey: s.carriesKey || undefined,
+    elite: s.elite,
+    disguised: s.kind === 'mimic' || undefined,
+    dormant: s.kind === 'statue' || undefined,
+    loot: s.loot,
     warden: s.kind === 'warden' ? { attack: null, phaseTwo: false, rangedCount: 0,
       braced: false, followup: false, cleavesLeft: 0, sequenceResolved: false } : null,
   };
@@ -197,6 +204,9 @@ const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive || w.isDormantPublicEnemy(e)) return;
   if (e.boss) w.startEncounter();
+  // 厚甲精英：每次少受 1（至少 1）
+  if (e.elite === 'armored') dmg = Math.max(1, dmg - 1);
+  if (e.disguised || e.dormant) wakeHidden(w, e);
   // A hit wakes a sleeper and cancels a not-yet-applied lull.
   e.pendingSleep = false;
   e.hp -= dmg;
@@ -217,10 +227,14 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     if (e.lodged > 0) w.addPickup('arrows', e.lodged, e.x, 0.05, e.z, null);
     e.lodged = 0;
     w.emit({ type: 'enemyDeath', id: e.id, x: e.x, y: e.y, z: e.z, kind: e.kind });
+    dropCarried(w, e);
     w.onKill(e);
     w.updateEncounter();
     return;
   }
+  // 號角哨兵：吹完之前被打中就吹不成
+  if (e.kind === 'sentry' && e.phase === 'windup') staggerEnemy(e, ENEMIES.sentry.stagger);
+  if (e.kind === 'bomber' && e.phase === 'aim') staggerEnemy(e, ENEMIES.bomber.stagger);
   if (PLAYER_WEAPONS.has(info.source)) {
     // 近戰接觸可確認攻擊者；遠程受擊只有實際可見才知道玩家在哪。
     const p = w.player;
@@ -230,6 +244,46 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     else if (e.state !== 'alert') investigate(w, e, { x: e.x, z: e.z });
   } else if (e.state !== 'alert') investigate(w, e, { x: e.x, z: e.z });
   if (e.kind === 'archer' && e.phase === 'aim') staggerEnemy(e, ENEMIES.archer.stagger);
+}
+
+/** 敵人倒下時掉出身上的東西：寶庫鑰匙、寶箱怪肚子裡的寶物。 */
+function dropCarried(w: World, e: Enemy): void {
+  if (e.carriesKey) {
+    e.carriesKey = false;
+    w.addPickup('key', 1, e.x, 0.15, e.z, null);
+  }
+  if (e.loot) {
+    const c = e.loot;
+    e.loot = undefined;
+    if (c.ammo) w.addPickup('ammo', c.ammo, e.x + 0.4, 0.15, e.z, null);
+    if (c.bottles) w.addPickup('bottle', c.bottles, e.x - 0.4, 0.15, e.z, null);
+    c.items.forEach((it, k) => w.addPickup('item', 1, e.x + Math.cos(k * 2.1) * 0.6, 0.15, e.z + Math.sin(k * 2.1) * 0.6, null, it.id, it.level));
+  }
+}
+
+/** 寶箱怪現形、石像醒來：直接進入戰鬥。 */
+export function wakeHidden(w: World, e: Enemy): void {
+  if (!e.alive || (!e.disguised && !e.dormant)) return;
+  const statue = !!e.dormant;
+  e.disguised = undefined;
+  e.dormant = undefined;
+  w.emit({ type: statue ? 'statueWake' : 'mimicWake', id: e.id, x: e.x, y: e.y + 1, z: e.z, kind: e.kind });
+  becomeAlert(w, e);
+  e.seesPlayer = true;
+}
+
+/** 吹號角：整層戒備，附近的敵人（含睡著的）朝你過來。 */
+export function blowHorn(w: World, e: Enemy, radius: number): void {
+  e.hornUsed = true;
+  w.emit({ type: 'horn', id: e.id, x: e.x, y: e.y + 1.6, z: e.z, radius });
+  raiseAlarm(w);
+  const p = w.player;
+  for (const o of w.enemies) {
+    if (!o.alive || o === e || o.state === 'alert' || o.boss || o.disguised || o.dormant || w.isDormantPublicEnemy(o)) continue;
+    if (Math.hypot(o.x - e.x, o.z - e.z) > radius) continue;
+    investigate(w, o, { x: p.x, z: p.z });
+    o.awareness = Math.max(o.awareness, 0.6);
+  }
 }
 
 export function becomeAlert(w: World, e: Enemy): void {
@@ -247,6 +301,8 @@ export function becomeAlert(w: World, e: Enemy): void {
     w.emit({ type: 'alert', id: e.id, x: e.x, y: e.y, z: e.z });
     // 呼喊：驚動附近尚未察覺的同伴
     w.emitNoise(e.x, e.y + 1.6, e.z, NOISE.shout, 'shout', e.id);
+    // 號角精英：一發現你就吹號角（沒有準備時間，但只有一次）
+    if (e.elite === 'horn' && !e.hornUsed) blowHorn(w, e, 20);
   }
 }
 
@@ -292,7 +348,7 @@ function resumeWandering(e: Enemy): void {
 export function onNoise(w: World, x: number, y: number, z: number, radius: number, emitterId?: number, source = ''): void {
   const roomCells = combatRoomCells(w, x, z, radius, source);
   for (const e of w.enemies) {
-    if (!e.alive || w.isDormantPublicEnemy(e) || e.state === 'alert' || e.id === emitterId) continue;
+    if (!e.alive || w.isDormantPublicEnemy(e) || e.state === 'alert' || e.id === emitterId || e.disguised || e.dormant) continue;
     const cell = Math.floor(e.z) * w.grid.w + Math.floor(e.x);
     if (roomCells.has(cell)) { investigate(w, e, { x, z }); continue; }
     const d = Math.hypot(e.x - x, e.z - z);
@@ -367,16 +423,30 @@ export function raiseAlarm(w: World): void {
   w.emit({ type: 'alarm' });
 }
 
+/** 眼睛高度：溝鼠很矮，矮牆就擋得住牠的視線。 */
+export function enemyEyeY(e: Enemy): number {
+  return e.kind === 'rat' ? ENEMIES.rat.eyeY : PERCEPTION.eyeHeight;
+}
+
 function perceive(w: World, e: Enemy, interval: number): void {
   const p = w.player;
   e.seesPlayer = false;
-  if (p.dead) return;
+  if (p.dead || e.dormant) return;
+  if (e.disguised) {
+    // 寶箱怪：貼近一下就醒（不看視線）
+    const d = Math.hypot(p.x - e.x, p.z - e.z);
+    if (d < ENEMIES.mimic.wakeDist + e.radius) {
+      e.sleepProxT += interval;
+      if (e.sleepProxT >= ENEMIES.mimic.wakeTime) wakeHidden(w, e);
+    } else e.sleepProxT = 0;
+    return;
+  }
   const dx = p.x - e.x;
   const dz = p.z - e.z;
   const d = Math.hypot(dx, dz);
   if (e.state === 'sleep') {
     if (d < PERCEPTION.sleepWakeDist && p.invisT <= 0 &&
-        w.canSee({ x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z }, { x: p.x, y: 1.25, z: p.z })) {
+        w.canSee({ x: e.x, y: e.y + enemyEyeY(e), z: e.z }, { x: p.x, y: 1.25, z: p.z })) {
       e.sleepProxT += interval;
       if (e.sleepProxT >= PERCEPTION.sleepWakeTime) {
         investigate(w, e, { x: p.x, z: p.z });
@@ -397,7 +467,7 @@ function perceive(w: World, e: Enemy, interval: number): void {
   }
   // 隱形：看不到（聲音照樣聽得到）
   if (p.invisT > 0) return;
-  const eye = { x: e.x, y: e.y + PERCEPTION.eyeHeight, z: e.z };
+  const eye = { x: e.x, y: e.y + enemyEyeY(e), z: e.z };
   const chest = { x: p.x, y: 1.25, z: p.z };
   const head = { x: p.x, y: PLAYER.eyeHeight, z: p.z };
   if (!w.canSee(eye, chest) && !w.canSee(eye, head)) return;
@@ -512,7 +582,7 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
   if (doorId >= 0) {
     const door = w.grid.doors[doorId]!;
     e.moving = false;
-    if (door.barred || fixedPath) {
+    if (door.barred || door.locked || door.hidden || fixedPath) {
       e.path = null;
       return false;
     }
@@ -558,14 +628,22 @@ function facePlayer(w: World, e: Enemy, rate: number, dt: number): void {
 // ---------- 行為 ----------
 
 /** 盾衛實際踏步：鎖定後不再轉向；牆、門、角色仍擋住身體。 */
-function guardStep(w: World, e: Enemy, dt: number): void {
+/** 近戰型敵人的出手參數（盾衛、溝鼠、寶箱怪、石像守衛共用同一套時間軸）。 */
+type MeleeSpec = { speed: number; attackRange: number; attackStepSpeed: number; attackStopDist: number; windup: number; trackUntil: number; active: number; recovery: number; damage: number; reach: number; arcDeg: number };
+const MELEE_SOURCE: Record<string, string> = { guard: '盾衛的劍', rat: '溝鼠的咬擊', mimic: '寶箱怪的咬擊', statue: '石像守衛的巨劍' };
+
+export function meleeSpec(e: Enemy): MeleeSpec {
+  return e.kind === 'rat' ? ENEMIES.rat : e.kind === 'mimic' ? ENEMIES.mimic : e.kind === 'statue' ? ENEMIES.statue : ENEMIES.guard;
+}
+
+function guardStep(w: World, e: Enemy, dt: number, s: MeleeSpec = ENEMIES.guard): void {
   // 已在劍的內側就不繼續擠進身體；近距離原有反擊／盾推窗口保持穩定。
-  if (e.push || e.perched || Math.hypot(w.player.x - e.x, w.player.z - e.z) <= ENEMIES.guard.attackStopDist) {
+  if (e.push || e.perched || Math.hypot(w.player.x - e.x, w.player.z - e.z) <= s.attackStopDist) {
     e.moving = false;
     return;
   }
   const f = forwardFromYaw(e.locked ? e.lockedYaw : e.yaw);
-  const step = ENEMIES.guard.attackStepSpeed * dt;
+  const step = s.attackStepSpeed * dt;
   const nx = e.x + f.x * step, nz = e.z + f.z * step;
   if (w.grid.circleBlocked(nx, nz, e.radius)) { e.moving = false; return; }
   const r = separate(w, e, nx, nz);
@@ -579,7 +657,7 @@ function guardStep(w: World, e: Enemy, dt: number): void {
 }
 
 function guardAlert(w: World, e: Enemy, dt: number): void {
-  const s = ENEMIES.guard;
+  const s = meleeSpec(e);
   const p = w.player;
   const d = Math.hypot(p.x - e.x, p.z - e.z);
   switch (e.phase) {
@@ -593,7 +671,7 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
         w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
         return;
       }
-      chase(w, e, dt, s.speed, s.attackRange * 0.75);
+      chase(w, e, dt, s.speed * (e.elite === 'swift' ? ENCOUNTERS.swiftMul : 1), s.attackRange * 0.75);
       return;
     case 'windup':
       e.phaseT += dt;
@@ -614,7 +692,7 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
     case 'active': {
       e.phaseT += dt;
       // 只支付作用期剩餘時間，避免跨 phase 的最後子步多踏一段。
-      guardStep(w, e, Math.min(dt, Math.max(0, s.active - (e.phaseT - dt))));
+      guardStep(w, e, Math.min(dt, Math.max(0, s.active - (e.phaseT - dt))), s);
       if (!e.hitDone && !p.dead) {
         const dx = p.x - e.x;
         const dz = p.z - e.z;
@@ -628,7 +706,7 @@ function guardAlert(w: World, e: Enemy, dt: number): void {
             if (shieldBlocks(w, e.x, e.z)) {
               w.stats.blocks++;
               w.emit({ type: 'block', id: e.id, kind: 'guard', x: (e.x + p.x) / 2, y: 1.2, z: (e.z + p.z) / 2 });
-            } else w.damagePlayer(s.damage, '盾衛的劍', e.x, e.z);
+            } else w.damagePlayer(s.damage, MELEE_SOURCE[e.kind] ?? '盾衛的劍', e.x, e.z);
           }
         }
       }
@@ -1168,6 +1246,129 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
   }
 }
 
+// ---------- 投彈手 ----------
+
+/** 拋出火瓶：鎖定落點後以固定的飛行時間算出拋物線；瓶子看得見、可以被射爆或打回去。 */
+function throwFirebomb(w: World, e: Enemy, target: V2): void {
+  const spec = PROJECTILES.bottle;
+  const f = forwardFromYaw(e.yaw);
+  const from: V3 = { x: e.x + f.x * 0.5, y: e.y + 1.7, z: e.z + f.z * 0.5 };
+  const dx = target.x - from.x;
+  const dz = target.z - from.z;
+  const d = Math.hypot(dx, dz);
+  const t = clamp(d / 8, 0.6, 1.4);
+  const vel = { x: dx / t, y: (0.1 - from.y + 0.5 * spec.gravity * t * t) / t, z: dz / t };
+  w.projectiles.push({
+    id: w.nextId++, kind: 'bottle', owner: e.id, pos: from, vel, radius: spec.radius, gravity: spec.gravity,
+    age: 0, alive: true, hitSet: new Set(), next: { ...from }, avgVel: { ...vel }, deflected: false, tip: null, payload: 'firebomb',
+  });
+  w.emit({ type: 'enemyFire', id: e.id, kind: 'bomber', x: from.x, y: from.y, z: from.z });
+}
+
+function bomberAlert(w: World, e: Enemy, dt: number): void {
+  const s = ENEMIES.bomber;
+  const p = w.player;
+  const d = Math.hypot(p.x - e.x, p.z - e.z);
+  switch (e.phase) {
+    case 'none': {
+      if (!e.seesPlayer) {
+        chase(w, e, dt, s.speed, 1);
+        return;
+      }
+      facePlayer(w, e, 6, dt);
+      if (d < s.minDist && !e.perched) {
+        // 太近：往遠離玩家的方向退
+        const away = { x: e.x + ((e.x - p.x) / Math.max(d, 0.1)) * 3, z: e.z + ((e.z - p.z) / Math.max(d, 0.1)) * 3 };
+        const c = w.enav.nearestPassable(away.x, away.z, 3);
+        if (c >= 0) moveTo(w, e, w.enav.center(c), s.speed, dt, 0.3, false);
+        if (d > s.minDist * 0.6) return;
+      }
+      if (d > s.throwRange) {
+        chase(w, e, dt, s.speed, s.maxDist);
+        return;
+      }
+      e.phase = 'aim';
+      e.phaseT = 0;
+      e.locked = false;
+      e.moving = false;
+      w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
+      return;
+    }
+    case 'aim':
+      e.phaseT += dt;
+      e.moving = false;
+      if (!e.locked) {
+        if (e.seesPlayer) facePlayer(w, e, 6, dt);
+        if (e.phaseT >= s.windup - s.lockBefore) {
+          e.locked = true;
+          e.lockedYaw = e.yaw;
+          e.aimPoint = { x: p.x, y: 0, z: p.z };
+          w.emit({ type: 'enemyLock', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
+        }
+      }
+      if (e.phaseT >= s.windup) {
+        const at = e.aimPoint ?? { x: p.x, y: 0, z: p.z };
+        throwFirebomb(w, e, at);
+        e.phase = 'reload';
+        e.phaseT = 0;
+        e.locked = false;
+        e.aimPoint = null;
+      }
+      return;
+    case 'reload':
+      e.phaseT += dt;
+      if (e.seesPlayer) facePlayer(w, e, 4, dt);
+      if (e.phaseT >= s.reload) e.phase = 'none';
+      return;
+    default:
+      e.phaseT += dt;
+      if (e.phaseT >= 0.5) e.phase = 'none';
+  }
+}
+
+// ---------- 號角哨兵 ----------
+
+function sentryAlert(w: World, e: Enemy, dt: number): void {
+  const s = ENEMIES.sentry;
+  const p = w.player;
+  if (e.hornUsed) {
+    // 吹完號角就躲開，不正面作戰
+    e.phase = 'none';
+    const d = Math.hypot(p.x - e.x, p.z - e.z);
+    if (d < s.fleeDist && !e.perched) {
+      const away = { x: e.x + ((e.x - p.x) / Math.max(d, 0.1)) * 4, z: e.z + ((e.z - p.z) / Math.max(d, 0.1)) * 4 };
+      const c = w.enav.nearestPassable(away.x, away.z, 4);
+      if (c >= 0) moveTo(w, e, w.enav.center(c), s.speed, dt, 0.3);
+    } else e.moving = false;
+    return;
+  }
+  switch (e.phase) {
+    case 'none':
+      if (!e.seesPlayer) {
+        chase(w, e, dt, s.speed, 2);
+        return;
+      }
+      e.phase = 'windup';
+      e.phaseT = 0;
+      e.moving = false;
+      w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
+      return;
+    case 'windup':
+      e.phaseT += dt;
+      e.moving = false;
+      if (e.seesPlayer) facePlayer(w, e, 4, dt);
+      if (e.phaseT >= s.hornWindup) {
+        blowHorn(w, e, s.hornRadius);
+        e.phase = 'none';
+        e.phaseT = 0;
+      }
+      return;
+    default:
+      e.phaseT += dt;
+      if (e.phaseT >= 0.5) e.phase = 'none';
+  }
+}
+
 function unawareBehavior(w: World, e: Enemy, dt: number): void {
   switch (e.state) {
     case 'sleep':
@@ -1275,7 +1476,7 @@ function enterSleep(e: Enemy): void {
 }
 
 export function lullEnemy(e: Enemy): void {
-  if (!e.alive || e.boss) return;
+  if (!e.alive || e.boss || e.kind === 'statue' || e.disguised) return;
   if (sleepCommitted(e)) e.pendingSleep = true;
   else enterSleep(e);
 }
@@ -1288,6 +1489,8 @@ export function updateEnemies(w: World, dt: number): void {
       continue;
     }
     if (e.boss && w.encounterState === 'dormant') continue;
+    // 沒醒的石像：完全靜止
+    if (e.dormant) { e.moving = false; continue; }
     if (e.pendingSleep && !sleepCommitted(e)) enterSleep(e);
     if (e.hurtT > 0) e.hurtT = Math.max(0, e.hurtT - dt);
     // 被盾推是外力：麻痺中也照樣滑出去
@@ -1340,9 +1543,11 @@ export function updateEnemies(w: World, dt: number): void {
         e.moving = false;
         continue;
       }
-      if (e.kind === 'guard') guardAlert(w, e, edt);
+      if (e.kind === 'guard' || e.kind === 'rat' || e.kind === 'mimic' || e.kind === 'statue') guardAlert(w, e, edt);
       else if (e.kind === 'archer') archerAlert(w, e, edt);
       else if (e.kind === 'warden') wardenAlert(w, e, edt);
+      else if (e.kind === 'bomber') bomberAlert(w, e, edt);
+      else if (e.kind === 'sentry') sentryAlert(w, e, edt);
       else chargerAlert(w, e, edt);
     } else {
       stopArcherMove(e);

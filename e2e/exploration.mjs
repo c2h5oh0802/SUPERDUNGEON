@@ -16,8 +16,8 @@ const bot = new Bot(page);
 await page.goto(`${BASE}?dev=1&gfx=low`);
 await page.mouse.move(480, 270);
 await page.evaluate(() => localStorage.removeItem('superdungeon.run.v1'));
-// S8：第 2 層同時有上鎖寶庫與秘密藏室
-await startRun(page, 'S8');
+// S1：第 2 層同時有上鎖寶庫、秘密藏室與深坑
+await startRun(page, 'S1');
 await page.waitForTimeout(400);
 const st = () => bot.st();
 const dungeon = () => page.evaluate(() => window.__sd.dungeon());
@@ -87,6 +87,15 @@ const lSpot = await doorSide(locked, 1.5);
 await inject('寶庫門前', lSpot.x, lSpot.z, yawTo(lSpot.x, lSpot.z, locked.cx, locked.cz));
 s = await st();
 check('沒有鑰匙時寶庫門顯示需要鑰匙', s.interactTarget?.kind === 'door' && !s.interactTarget.enabled, s.interactTarget?.label);
+// 鑰匙由這一層的精英持鑰者攜帶：擊倒它（狀態注入），鑰匙掉在地上
+if (!d.keyPickups.length) {
+  const carrier = (await st()).enemies.find((e) => e.carriesKey && e.alive);
+  console.log('INFO 狀態注入：擊倒精英持鑰者（debug.defeatEnemy）');
+  await page.evaluate((id) => window.__sd.debug.defeatEnemy(id), carrier?.id);
+  await page.waitForTimeout(300);
+  d = await dungeon();
+  check('擊倒持鑰者，鑰匙掉在地上', d.keyPickups.length === 1, JSON.stringify(d.keyPickups));
+}
 const key = d.keyPickups[0];
 await inject('鑰匙旁', key.x, key.z + 1.2, 0);
 await bot.down('KeyW');
@@ -101,7 +110,9 @@ d = await dungeon();
 check('用鑰匙打開寶庫（鑰匙用掉）', !d.doors.find((x) => x.id === locked.id).locked && d.keys === 0);
 
 // ---- 寶庫三選一 ----
-const ped = d.pedestals[1];
+// 寶庫的三座台座（同層的石像大廳另有一座，不算）
+const vaultPeds = d.pedestals.filter((p) => d.pedestals.filter((q) => q.roomKey === p.roomKey).length === 3);
+const ped = vaultPeds[1];
 await inject('台座前', ped.x, ped.z + 1.2, 0);
 s = await st();
 check('台座標明寶物種類（三選一）', s.interactTarget?.kind === 'pedestal' && /三選一|choose one of three/i.test(await page.textContent('#prompt').catch(() => '') || s.interactTarget.label), s.interactTarget?.label);
@@ -110,7 +121,7 @@ await bot.tap('KeyE');
 await page.waitForTimeout(1200);
 d = await dungeon();
 s = await st();
-check('選了一件，三座台座都用掉', d.pedestals.every((p) => p.used));
+check('選了一件，三座台座都用掉', d.pedestals.filter((p) => p.roomKey === ped.roomKey).every((p) => p.used));
 check('寶物進了背包', (s.player.items?.length ?? 0) > bagBefore, `${bagBefore} → ${s.player.items?.length}`);
 await page.waitForTimeout(1500);
 await page.screenshot({ path: `${OUT}exploration-vault.png` });

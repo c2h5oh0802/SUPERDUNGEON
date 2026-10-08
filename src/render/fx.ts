@@ -279,6 +279,12 @@ export class FxVisual {
         if (p.payload === 'smoke') {
           obj.add(new THREE.Mesh(this.bottleGeo, this.matBottle));
           color = new THREE.Color(0xb8a8ff);
+        } else if (p.payload === 'firebomb') {
+          // 投彈手的火瓶：橘紅色、會發光的引信
+          const m = new THREE.MeshBasicMaterial({ color: 0xff6a2a });
+          this.mats.push(m);
+          obj.add(new THREE.Mesh(this.bottleGeo, m));
+          color = new THREE.Color(0xff8a3a);
         } else {
           // 丟出的藥水：這一局的外觀顏色
           const c = itemColor(this.world.level.seed, `potion:${p.payload}`, this.world.level.potionLooksVersion);

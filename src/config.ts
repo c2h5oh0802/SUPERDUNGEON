@@ -337,6 +337,40 @@ export const ENEMIES = {
     rushTriggerDist: 8, rushWindup: 1, rushLockBefore: 0.45, rushSpeed: 8, rushDist: 6, rushRecovery: 1.2,
     wallStagger: 1.5, damage: 4, stagger: 1.1, phaseThreshold: 0.5,
   },
+  /** 溝鼠：3 隻一群，快、脆、咬得輕。多個小威脅同時逼近。 */
+  rat: {
+    hp: 3, radius: 0.28, height: 0.6, headY: 0.42, headR: 0.13, speed: 4.0, eyeY: 0.45,
+    attackRange: 1.0, attackStepSpeed: 3.0, attackStopDist: 0.8,
+    windup: 0.3, trackUntil: 0.15, active: 0.1, recovery: 0.55,
+    damage: 1, reach: 0.95, arcDeg: 80, stagger: 0.6,
+  },
+  /** 投彈手：保持距離，拋出看得見的火瓶；瓶子在空中可以射爆、揮劍可以打回去。 */
+  bomber: {
+    hp: 5, radius: 0.4, height: 1.8, headY: 1.62, headR: 0.18, speed: 2.8,
+    minDist: 6, maxDist: 11, throwRange: 13,
+    windup: 1.0, lockBefore: 0.35, reload: 2.6, stagger: 0.5,
+  },
+  /** 號角哨兵：發現你不攻擊，而是舉起號角；吹完整層戒備，附近敵人朝你過來。 */
+  sentry: {
+    hp: 4, radius: 0.4, height: 1.85, headY: 1.66, headR: 0.18, speed: 2.6,
+    hornWindup: 1.8, hornRadius: 30, stagger: 0.8, fleeDist: 9,
+  },
+  /** 寶箱怪：外觀像寶箱；打開、碰到或打它就醒來咬人。 */
+  mimic: {
+    hp: 14, radius: 0.48, height: 0.95, headY: 0.7, headR: 0.3, speed: 2.2,
+    attackRange: 1.5, attackStepSpeed: 3.5, attackStopDist: 1.0,
+    windup: 0.45, trackUntil: 0.25, active: 0.12, recovery: 0.8,
+    damage: 4, reach: 1.45, arcDeg: 90, stagger: 0.8,
+    /** 玩家貼近這個距離、累積這麼多世界秒就會醒來。 */
+    wakeDist: 0.95, wakeTime: 0.4,
+  },
+  /** 石像守衛：拿走台座上的武器或攻擊它才會醒來；重而慢、可以反擊。 */
+  statue: {
+    hp: 24, radius: 0.5, height: 2.3, headY: 2.0, headR: 0.24, speed: 2.2,
+    attackRange: 2.4, attackStepSpeed: 4.0, attackStopDist: 2.1,
+    windup: 1.0, trackUntil: 0.6, active: 0.2, recovery: 1.1,
+    damage: 5, reach: 2.5, arcDeg: 120, stagger: 1.2,
+  },
   patrolSpeed: 1.4,
   roamWait: 1.5,
   roamLegTime: 60,
@@ -396,6 +430,38 @@ export const DUNGEON = {
   patchChance: 0.3,
   /** 樓層變化「淹水」「荒蕪」時，戰鬥房出現大片水或草的機率。 */
   feelingPatchChance: 0.75,
+} as const;
+
+/** 遭遇（生成版本 2）：依樓層把版型裡的敵人換成新的種類；精英持鑰者；增援。索引＝樓層 − 1。 */
+export const ENCOUNTERS = {
+  /** 盾衛位換成鼠群／號角哨兵、弩手位換成投彈手的機率。 */
+  rats: [0.35, 0.25, 0.15, 0.1],
+  sentry: [0, 0.15, 0.2, 0.2],
+  bomber: [0, 0.3, 0.35, 0.4],
+  maxSentries: 2,
+  ratPack: 3,
+  /** 特殊房的寶箱變成寶箱怪的機率（每層最多 1 隻）。 */
+  mimic: [0, 0, 0.5, 0.6],
+  /** 精英持鑰者的特性。 */
+  eliteTraits: ['swift', 'armored', 'horn'] as const,
+  swiftMul: 1.3,
+  /** 在同一層待超過 after 世界秒後，每 every 世界秒有一個巡邏者從樓梯走進來，每層最多 max 次。 */
+  reinforce: { after: 150, every: 75, max: 3, clearance: 7 },
+} as const;
+
+export type EliteTrait = (typeof ENCOUNTERS.eliteTraits)[number];
+
+/** 敵人名稱（介面與死因）。 */
+export const ENEMY_NAMES = {
+  guard: '盾衛',
+  archer: '弩手',
+  charger: '突進者',
+  warden: '守心者',
+  rat: '溝鼠',
+  bomber: '投彈手',
+  sentry: '號角哨兵',
+  mimic: '寶箱怪',
+  statue: '石像守衛',
 } as const;
 
 /** 地形：長草、淺水、深坑。 */
@@ -708,7 +774,7 @@ export const ITEM_FX = {
 // ---------- 經驗、等級、天賦 ----------
 
 export const XP = {
-  kill: { guard: 4, archer: 3, charger: 5, warden: 9 } as Record<'guard' | 'archer' | 'charger' | 'warden', number>,
+  kill: { guard: 4, archer: 3, charger: 5, warden: 9, rat: 1, bomber: 4, sentry: 3, mimic: 6, statue: 10 } as Record<'guard' | 'archer' | 'charger' | 'warden' | 'rat' | 'bomber' | 'sentry' | 'mimic' | 'statue', number>,
   veteranMul: 2,
   /** 升到第 n 級所需的累積經驗（索引 0 ＝第 1 級）。 */
   levels: [0, 10, 25, 45, 70, 100, 135, 175, 220, 270],

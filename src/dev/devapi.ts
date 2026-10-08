@@ -142,6 +142,11 @@ export function installDevApi(app: App): void {
           paralyzeT: e.paralyzeT,
           slowT: e.slowT,
           pushing: !!e.push,
+          carriesKey: !!e.carriesKey,
+          elite: e.elite ?? null,
+          disguised: !!e.disguised,
+          dormant: !!e.dormant,
+          hornUsed: !!e.hornUsed,
         })),
         projectiles: w.projectiles.map((q) => ({
           id: q.id,
@@ -208,12 +213,14 @@ export function installDevApi(app: App): void {
         gen: w.level.gen ?? 1,
         feeling: w.level.feeling ?? null,
         keys: w.keys,
+        reinforcements: w.reinforcements,
+        alarm: w.alarm,
         fell: w.fell,
         cells,
         doors: g.doors.filter((d) => d.hidden !== undefined || d.locked !== undefined)
           .map((d) => ({ id: d.id, cx: d.cx, cz: d.cz, axis: d.axis, hidden: !!d.hidden, locked: !!d.locked, progress: d.progress })),
         traps: w.traps.map((t) => ({ id: t.id, i: t.i, j: t.j, kind: t.kind, hidden: t.hidden, spent: t.spent, state: t.state })),
-        pedestals: w.interactables.filter((it) => it.kind === 'pedestal').map((it) => ({ id: it.id, x: it.x, z: it.z, used: it.used, item: w.level.pedestals?.[it.ref]?.item })),
+        pedestals: w.interactables.filter((it) => it.kind === 'pedestal').map((it) => ({ id: it.id, x: it.x, z: it.z, used: it.used, roomKey: it.roomKey, item: w.level.pedestals?.[it.ref]?.item })),
         specialRooms: w.level.specialRooms ?? [],
         keyPickups: w.pickups.filter((k) => k.kind === 'key' && !k.taken).map((k) => ({ x: k.x, z: k.z })),
       };
@@ -253,6 +260,14 @@ export function installDevApi(app: App): void {
         if (!w?.level.encounter) return;
         for (const e of w.enemies) if (e.boss && e.alive)
           damageEnemy(w, e, e.hp, { source: 'debug', sneak: false, head: false, x: e.x, y: e.y, z: e.z });
+      },
+      /** 狀態注入：直接擊倒一名敵人（照常掉落鑰匙、寶物與經驗）。 */
+      defeatEnemy(id: number) {
+        const w = app.world;
+        const e = w?.enemies.find((x) => x.id === id && x.alive);
+        if (!w || !e) return false;
+        damageEnemy(w, e, e.hp + 99, { source: 'debug', sneak: false, head: false, x: e.x, y: e.y, z: e.z });
+        return !e.alive;
       },
       setInvisible(seconds: number) {
         if (app.world) app.world.player.invisT = Math.max(0, seconds);

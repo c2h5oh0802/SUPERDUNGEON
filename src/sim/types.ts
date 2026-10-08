@@ -1,7 +1,7 @@
-import type { ArmorId, ItemId, PlayerClass, PotionId, TalentId, TipKind, Tool, WeaponId } from '../config';
+import type { ArmorId, EliteTrait, ItemId, PlayerClass, PotionId, TalentId, TipKind, Tool, WeaponId } from '../config';
 import type { V2, V3 } from '../core/math';
 import type { EnemyKind } from '../gen/rooms';
-import type { PickupKind, TrapKind } from '../gen/generator';
+import type { ChestSpawn, PickupKind, TrapKind } from '../gen/generator';
 
 export type { Tool, TipKind };
 export type ActionKind = 'melee' | 'bow' | 'stone' | 'shield' | 'bottle' | 'potion' | 'eat' | 'door' | 'use' | 'read' | 'equip' | 'convert' | 'drop' | 'stunned';
@@ -123,6 +123,16 @@ export interface Enemy {
   fell?: boolean;
   /** 帶著寶庫鑰匙，倒下時掉落。 */
   carriesKey?: boolean;
+  /** 精英持鑰者的特性。 */
+  elite?: EliteTrait;
+  /** 寶箱怪偽裝成寶箱（醒來前）。 */
+  disguised?: boolean;
+  /** 石像守衛還沒醒（拿走台座上的武器或攻擊它才會醒）。 */
+  dormant?: boolean;
+  /** 號角已經吹過（號角哨兵、號角精英）。 */
+  hornUsed?: boolean;
+  /** 寶箱怪肚子裡的東西（倒下時掉出來）。 */
+  loot?: ChestSpawn['contents'];
   id: number;
   kind: EnemyKind;
   x: number;
@@ -234,8 +244,8 @@ export interface Projectile {
   deflected: boolean;
   /** 藥劑箭的藥劑（碰到東西就用掉）。 */
   tip: TipKind | null;
-  /** 瓶子裡裝的東西：煙霧或藥水。 */
-  payload: 'smoke' | PotionId;
+  /** 瓶子裡裝的東西：煙霧、藥水，或投彈手的火瓶。 */
+  payload: 'smoke' | PotionId | 'firebomb';
 }
 
 export interface Smoke {
@@ -285,7 +295,7 @@ export interface Trap {
   noticeT: number;
 }
 
-export type InteractKind = 'door' | 'chest' | 'heart' | 'stairs' | 'resupply' | 'pedestal';
+export type InteractKind = 'door' | 'chest' | 'heart' | 'stairs' | 'resupply' | 'pedestal' | 'mimic';
 
 export interface Interactable {
   id: number;
@@ -374,7 +384,11 @@ export type GameEventType =
   | 'unlock'
   | 'pedestal'
   | 'terrain'
-  | 'steam';
+  | 'steam'
+  | 'horn'
+  | 'reinforce'
+  | 'mimicWake'
+  | 'statueWake';
 
 export interface GameEvent {
   type: GameEventType;

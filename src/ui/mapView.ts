@@ -114,6 +114,8 @@ export function drawMap(canvas: HTMLCanvasElement, w: World): void {
     else if (it.kind === 'stairs') mark(it.x, it.z, '#8ccaff', 'tri', 0.6);
     else if (it.kind === 'resupply') mark(it.x, it.z, '#3fe0c0', 'sq', 0.4);
     else if (it.kind === 'pedestal') mark(it.x, it.z, it.used ? '#6b6275' : '#f2c14e', 'dia', 0.35);
+    // 寶箱怪在地圖上也像一個寶箱
+    else if (it.kind === 'mimic' && w.enemies.some((e) => e.id === it.ref && e.alive && e.disguised)) mark(it.x, it.z, '#f2c14e', 'sq', 0.4);
   }
   for (const k of w.pickups) if (k.kind === 'key' && !k.taken && w.isExplored(Math.floor(k.x), Math.floor(k.z))) mark(k.x, k.z, '#ffe08a', 'dia', 0.45);
   // 房間名稱

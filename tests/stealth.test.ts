@@ -151,7 +151,8 @@ describe('越深越硬', () => {
     let vets = 0;
     let patrols2 = 0;
     for (let k = 1; k <= 10; k++) {
-      vets += generateOnce(`V${k}`, 4).filter((e) => e.veteran).length;
+      // 帶寶庫鑰匙的精英另外算（見 enemiesV2.test.ts）
+      vets += generateOnce(`V${k}`, 4).filter((e) => e.veteran && !e.carriesKey).length;
       patrols2 += generateOnce(`V${k}`, 2).filter((e) => e.state === 'patrol').length - generateOnce(`V${k}`, 1).filter((e) => e.state === 'patrol').length;
     }
     expect(vets).toBe(10 * RUN.veterans[3]!);

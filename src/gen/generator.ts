@@ -1,7 +1,7 @@
 import type { PracticeTrialId } from './practiceTrials';
 import { buildLevelV2 } from './generatorV2';
 import type { SpecialKind } from './topology';
-import { ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type ItemId } from '../config';
+import { ENEMIES, HUNGER, IDENTIFY, PLAYER, RUN, WORLD, type EliteTrait, type ItemId } from '../config';
 import { rollConsumable, rollEquipment, rollItem, rollPotion, rollScroll } from './loot';
 import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
@@ -26,6 +26,10 @@ export interface EnemySpawn {
   boss?: boolean;
   /** 帶著這一層上鎖寶庫的鑰匙（倒下時掉落）。 */
   carriesKey?: boolean;
+  /** 精英持鑰者的特性。 */
+  elite?: EliteTrait;
+  /** 寶箱怪：原本寶箱裡的東西。 */
+  loot?: ChestSpawn['contents'];
 }
 
 /**

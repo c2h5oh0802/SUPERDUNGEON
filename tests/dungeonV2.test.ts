@@ -5,6 +5,7 @@ import { floorFeeling } from '../src/gen/generatorV2';
 import { LAYOUTS, layoutsByRoleV2 } from '../src/gen/rooms';
 import { generateLevel, validateLevel } from '../src/gen/validate';
 import { landFromFall, revealAround, triggerTrapAt } from '../src/sim/dungeon';
+import { damageEnemy } from '../src/sim/enemySys';
 import { T, TER } from '../src/sim/grid';
 import { spawnArea } from '../src/sim/items';
 import { Nav } from '../src/sim/nav';
@@ -50,9 +51,11 @@ describe('dungeon v2 generation', () => {
         expect(l.traps.every((t) => (t.kind ?? 'spikes') === 'spikes' && !t.hidden)).toBe(true);
       } else {
         expect(kinds).toContain('vault');
-        expect(l.pedestals).toHaveLength(3);
+        // 寶庫三座台座；石像大廳另有一座
+        expect(l.pedestals).toHaveLength(3 + kinds.filter((k) => k === 'statue').length);
         expect(l.grid.doors.filter((d) => d.locked)).toHaveLength(1);
-        expect(l.pickups.filter((p) => p.kind === 'key')).toHaveLength(1);
+        // 鑰匙在地上，或由精英敵人攜帶
+        expect(l.pickups.filter((p) => p.kind === 'key').length + l.enemies.filter((e) => e.carriesKey).length).toBe(1);
       }
       expect(l.rooms.filter((r) => !r.optional)).toHaveLength(DUNGEON.mainRooms[floor - 1]!);
       // 秘密門只通往可選的秘密藏室
@@ -100,7 +103,7 @@ describe('dungeon v2 generation', () => {
       const l = generateLevel(seed, { floor: 3 });
       const nav = new Nav(l.grid, PLAYER.radius);
       const seen = nav.flood(l.spawn.x, l.spawn.z, false);
-      const key = l.pickups.find((p) => p.kind === 'key')!;
+      const key = l.pickups.find((p) => p.kind === 'key') ?? l.enemies.find((e) => e.carriesKey)!;
       expect(seen[nav.nearestPassable(key.x, key.z, 2)]).toBe(1);
       const vault = l.rooms.find((r) => r.layoutId === 'locked-vault')!;
       expect(seen[nav.nearestPassable(vault.x0 + vault.w / 2, vault.z0 + vault.h / 2, 2)]).toBe(0);
@@ -414,6 +417,9 @@ describe('vault, key and pedestals', () => {
 
   it('picking up the key adds it for this floor only', () => {
     const { w } = vaultWorld();
+    // 帶鑰匙的精英倒下時把鑰匙掉在地上
+    const carrier = w.enemies.find((e) => e.carriesKey);
+    if (carrier) damageEnemy(w, carrier, 999, { source: 'melee', sneak: false, head: false, x: carrier.x, y: 1, z: carrier.z });
     const key = w.pickups.find((p) => p.kind === 'key')!;
     w.player.x = key.x;
     w.player.z = key.z;
@@ -424,7 +430,8 @@ describe('vault, key and pedestals', () => {
 
   it('taking one pedestal treasure sinks the other two and identifies it', () => {
     const { w, level } = vaultWorld();
-    const pedestals = w.interactables.filter((i) => i.kind === 'pedestal');
+    const vault = level.rooms.find((r) => r.layoutId === 'locked-vault')!;
+    const pedestals = w.interactables.filter((i) => i.kind === 'pedestal' && i.roomKey === vault.key);
     expect(pedestals).toHaveLength(3);
     const pick = pedestals.find((p) => level.pedestals![p.ref]!.item === 'potion:healing')!;
     w.enemies.splice(0);

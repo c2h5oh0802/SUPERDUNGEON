@@ -187,6 +187,13 @@ export class GameRenderer {
     this.lightT -= realDt;
     const relight = this.lightT <= 0;
     if (relight) this.lightT = 0.25;
+    // 增援：新出現的敵人補上外觀
+    for (let k = r.enemies.length; k < w.enemies.length; k++) {
+      const v = new EnemyVisual(w.enemies[k]!, this.shared);
+      r.sampler.apply(v.rig, v.enemy.x, 1.2, v.enemy.z);
+      r.enemies.push(v);
+      this.scene.add(v.root);
+    }
     // 只畫看得到的敵人（牆與關閉的門後方的不畫）
     this.visT -= realDt;
     const recheck = this.visT <= 0;
