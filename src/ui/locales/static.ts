@@ -321,5 +321,11 @@ export const staticEnglish: Record<string, string> = {
   "上鎖寶庫的門": "Locked vault door",
   "已發現的陷阱": "Discovered trap",
   "心眼看到的敵人　按": "Enemy seen with Mind Vision · Press",
-  "寶庫鑰匙": "Vault Key"
+  "寶庫鑰匙": "Vault Key",
+  "溝鼠群：快、脆、咬得輕，矮牆就能擋住牠們的視線。投彈手：拋出看得到的火瓶，可以射爆或打回去。號角哨兵：發現你就舉起號角，吹完前打斷它。寶箱怪：外表像寶箱。石像守衛：拿走台座上的武器才會醒。": "Sewer rats: fast, fragile, light bites; a low wall blocks their sight. Bombers: lob visible firebombs you can shoot down or bat back. Horn sentries: raise a horn when they spot you; interrupt them before they finish. Mimics look like chests. Statue guardians wake only when you take the weapon from their pedestal.",
+  "地城": "Dungeon",
+  "長草擋住視線，躲進深處外面就看不見你；正常走路會踩倒，潛行穿過不會。淺水讓腳步聲更大。走進深坑會掉到下一層（會受傷）。": "Tall grass blocks sight: hide deep inside and enemies outside cannot see you. Walking normally tramples it; sneaking through does not. Shallow water makes footsteps louder. Stepping into a chasm drops you to the next floor, with damage.",
+  "按住空白鍵等待＝搜索：揭開附近的秘密門與隱藏陷阱。陷阱有尖刺、警報、火焰、冰霜、麻痺氣體、飛鏢與傳送，丟出的石頭也能觸發。": "Holding Space to wait also searches, revealing nearby secret doors and hidden traps. Traps include spikes, alarms, fire, frost, paralysis gas, darts and teleporters; a thrown stone can set them off.",
+  "第 2–4 層有上鎖的寶庫：鑰匙在頭上有金色★的精英身上，裡面三件寶物只能拿一件。在同一層待太久，敵人會從入口陸續走進來。": "Floors 2–4 have a locked vault: the key is carried by the elite marked with a gold ★, and you may take only one of the three treasures inside. Linger too long on a floor and enemies start arriving from the entrance.",
+  "撿到的武器與護甲是未知的，穿上才知道等級、附魔或詛咒；被詛咒的裝備卸不下來，用強化卷軸或除咒卷軸解除。": "Weapons and armor you find are unknown: equip one to learn its level, enchantment or curse. Cursed equipment cannot be removed until you read an Upgrade Scroll or a Remove Curse Scroll."
 };
