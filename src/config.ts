@@ -12,6 +12,9 @@ export const TIME = {
 } as const;
 
 /** 試作規則 smartFire 的火瓶：碎開時炸傷、炸到的敵人著火（每 tick 秒 1 傷害）。 */
+/** 試作規則 syncVolley：弩手最多等這麼久，等隊友一起齊射或近戰出手。 */
+export const VOLLEY = { maxWait: 1.2, meleeRange: 4 } as const;
+
 export const FIREBOMB = { burst: 4, burstRadius: 1.8, burn: 2, burnTick: 0.5, allyClear: 0.6, fleeSpeed: 2.6 } as const;
 
 /** Shared by the corpse pose and the public victory presentation delay. */

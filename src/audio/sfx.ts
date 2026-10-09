@@ -476,6 +476,11 @@ export class Sfx {
             this.tone('square', 220, 160, 0.5, 0.08);
           } else if (e.kind === 'removecurse') this.tone('triangle', 660, 990, 0.5, 0.12);
           break;
+        case 'wave':
+          // 新一波：一聲短促的號角
+          this.tone('sawtooth', 220, 208, 0.5, 0.16);
+          this.tone('triangle', 440, 416, 0.5, 0.09);
+          break;
         case 'horn':
           // 號角：兩聲長鳴
           for (let k = 0; k < 2; k++) {

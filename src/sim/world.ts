@@ -11,7 +11,7 @@ import type { LevelData } from '../gen/generator';
 import { Grid } from './grid';
 import { counterThreat, hunterEye, pushTarget, type CounterThreat, type HunterEye } from './classSys';
 import { Nav } from './nav';
-import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy, updateBurningEnemies } from './enemySys';
+import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy, updateBurningEnemies, becomeAlert } from './enemySys';
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
 import { updateProjectiles } from './projectileSys';
 import { updateDoors, updatePickups, updateSmokes, updateTraps } from './propSys';
@@ -439,6 +439,29 @@ export class World {
 
   private stepAcc = 0;
 
+  /** Prototype waves already sent in, and when the last one came. */
+  wavesSpawned = 0;
+  private lastWaveAt = 0;
+  get wavesLeft(): number {
+    return (this.level.waves?.length ?? 0) - this.wavesSpawned;
+  }
+
+  /** The next wave enters once few enemies remain, or its time after the last wave has come. */
+  private updateWaves(): void {
+    const wave = this.level.waves?.[this.wavesSpawned];
+    if (!wave) return;
+    const alive = this.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0);
+    if (alive > wave.alive && this.time - this.lastWaveAt < wave.time) return;
+    this.wavesSpawned++;
+    this.lastWaveAt = this.time;
+    for (const s of wave.spawns) {
+      const e = createEnemy(this, s);
+      this.enemies.push(e);
+      becomeAlert(this, e);
+    }
+    this.emit({ type: 'wave', amount: this.wavesSpawned + 1, text: wave.label, x: this.player.x, y: 1, z: this.player.z });
+  }
+
   private measureTimeUse(realDt: number, worldDt: number): void {
     if (realDt <= 0) return;
     const still = worldDt <= realDt * TIME.idleRate * 1.05;
@@ -549,6 +572,7 @@ export class World {
       updatePlayerAction(this, dt);
       updateProjectiles(this, dt);
       updateEnemies(this, dt);
+      this.updateWaves();
       this.updateEncounter();
       updateDoors(this, dt);
       updateTraps(this, dt);

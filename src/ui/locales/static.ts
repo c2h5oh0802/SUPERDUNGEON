@@ -117,6 +117,8 @@ export const staticEnglish: Record<string, string> = {
   "6 · 四面來襲": "6 · Crossfire",
   "五名敵人一起出手，被打中更痛（×1.5）。把投彈手的火瓶打回去或射爆，才燒得到敵人。清場後播放戰鬥精華。": "Five enemies attack together, and hits hurt more (×1.5). Only a firebomb you bat back or shoot down burns the enemies. Once the room is clear, the highlights replay.",
   "重播・精華": "Replay · highlights",
+  "7 · 四面來襲 v2": "7 · Crossfire v2",
+  "三波敵人從三個門進來，弩手會等隊友一起齊射；每個敵人一下就倒，你被打中 ×1.5。用來和第 6 間比較。": "Three waves come through three gates, and Crossbowmen wait to fire together. Every enemy falls to one hit, and hits on you hurt ×1.5. For comparison with room 6.",
   "任意鍵跳過": "Press any key to skip",
   "正式首領場地與招式。沿用職業基礎工具包，不額外給藥瓶或天賦；擊倒守心者後解封沉眠之心。": "The actual boss arena and moveset. Uses your class's base toolkit, with no extra potions or talents. Defeat the Heart Warden to unseal the Slumbering Heart.",
   "前三場試玩工具包：基礎裝備與彈藥、已鑑定冰霜／氣體各一瓶。獵手試用現有狩獵標記＋藥劑師，兩種藥劑箭各一支；可保留瓶子或在背包付費調製。": "The first three trials provide basic gear and ammunition, plus one identified frost potion and one identified gas potion. The Huntress can try Hunting Mark and Apothecary, with one of each potion arrow; keep the bottles or spend resources in your inventory to brew more.",

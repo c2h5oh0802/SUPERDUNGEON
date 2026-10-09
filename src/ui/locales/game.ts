@@ -170,7 +170,6 @@ export const gameEnglish: Record<string, string> = {
   "停下來看：{0}%（{1} / {2} 秒）": "Stopped to read: {0}% ({1} / {2} s)",
   "點一下跳過": "Tap to skip",
   "借刀！{0}被火燒倒": "Turned their fire! The {0} burned down",
-  "借刀！{0}被突進者撞倒": "Turned their charge! The Charger ran down the {0}",
   "任意鍵跳過": "Press any key to skip",
   "Esc 可重置。": "Esc to restart.",
   "操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。": "Practice freely. The supply station refills resources; pause to restart.",

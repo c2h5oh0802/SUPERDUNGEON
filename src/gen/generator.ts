@@ -27,6 +27,8 @@ export interface EnemySpawn {
   boss?: boolean;
   /** 帶著這一層上鎖寶庫的鑰匙（倒下時掉落）。 */
   carriesKey?: boolean;
+  /** Authored fixtures only: exact hit points instead of the floor's scaling. */
+  hp?: number;
   /** 精英持鑰者的特性。 */
   elite?: EliteTrait;
   /** 寶箱怪：原本寶箱裡的東西。 */
@@ -174,7 +176,12 @@ export interface LevelData {
    * 試作規則（只在試作房間開啟）。smartFire：敵人會繞開燃燒的火、投彈手不往
    * 隊友身邊丟；火瓶碎開時炸傷範圍內的人，炸到的敵人會著火。
    */
-  rules?: { smartFire?: boolean };
+  rules?: { smartFire?: boolean; syncVolley?: boolean };
+  /**
+   * 試作：後續的敵人波次。場上活著的敵人不超過 alive 個，或世界時間到 time 秒，
+   * 就從指定入口進來（直接追你）。
+   */
+  waves?: Array<{ alive: number; time: number; label: string; spawns: EnemySpawn[] }>;
 }
 
 export const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };

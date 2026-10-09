@@ -27,7 +27,10 @@ export const PRACTICE_TRIALS = [
     hint: '機關只隨世界時間運轉：你不動，箭和火焰幾乎停住。先停下來看清節奏（箭孔與噴火口亮起就是要發動了），再抓空檔走過去。' },
   { id: 'crossfire-arena', seed: 'TRIAL-CROSSFIRE', name: '四面來襲', goal: 'clear', kit: true, prototype: true, replay: true,
     objective: '清除五名敵人。這裡被打中比平常痛（×1.5）。',
-    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。投彈手的火只燒你；把火瓶打回去或在空中射爆，它就燒敵人。也能讓突進者撞上自己人。打完會播放戰鬥精華。' },
+    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。敵人不會傷到自己人：投彈手的火只燒你；把火瓶打回去或在空中射爆，它就燒敵人。打完會播放戰鬥精華。' },
+  { id: 'crossfire-waves', seed: 'TRIAL-WAVES', name: '四面來襲 v2', goal: 'clear', kit: true, prototype: true, replay: true,
+    objective: '撐過三波、清除所有敵人。敵人一下就倒，你被打中 ×1.5。',
+    hint: '三波敵人從北、西、東三個門進來。弩手會等隊友或近戰一起出手，從兩側交叉齊射。每個敵人一下就倒：先停下來看誰最危險，再一個個解決。投彈手的火只燒你，打回去或射爆就燒敵人。打完會播放戰鬥精華。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);
@@ -42,6 +45,7 @@ export function createTrialLevel(id: PracticeTrialId): LevelData {
   }
   if (id === 'clockwork-corridor') return clockworkCorridor();
   if (id === 'crossfire-arena') return crossfireArena();
+  if (id === 'crossfire-waves') return crossfireWaves();
   const grid = new Grid(26, 24);
   grid.tiles.fill(T.Wall);
   const rect = (x0: number, z0: number, x1: number, z1: number, tile: TileId = T.Floor) => {
@@ -193,5 +197,51 @@ function crossfireArena(): LevelData {
     rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 2, z0: 2, w: 20, h: 18 }],
     enemies, pickups: [], chests: [], heart: null, stairs: null, resupply: null, traps: [], torches: torches(),
     practice: true, practiceTrial: info.id, damageMul: 1.5, rules: { smartFire: true },
+  };
+}
+
+/** An authored spawn with exact hit points (prototypes only). */
+const spawnAt = (kind: EnemySpawn['kind'], x: number, z: number, hp: number, perched = false): EnemySpawn =>
+  ({ kind, x, z, y: perched ? WORLD.platformHeight : 0, yaw: Math.PI, state: 'idle', patrol: [], perched, roomKey: 'T', hp });
+
+/**
+ * Crossfire v2: threats that arrive together. Everyone falls to one hit (shield
+ * guard and charger to two arrows), the player to two or three. Three waves come
+ * through the north, west and east gates, the next one as soon as at most one
+ * enemy is left or 20 world seconds after the last. Crossbowmen on both flanks
+ * hold their shot for a partner or a melee strike, then fire together.
+ */
+function crossfireWaves(): LevelData {
+  const info = trialInfo('crossfire-waves');
+  const { grid, rect, enemies, torches } = prototypeBuilder(26, 22);
+  rect(3, 3, 22, 15);   // arena
+  rect(12, 1, 13, 2);   // north gate
+  rect(1, 8, 2, 9);     // west gate
+  rect(23, 8, 24, 9);   // east gate
+  rect(12, 16, 13, 17); // connector
+  rect(5, 18, 13, 20);  // start corridor
+  rect(12, 12, 13, 12, T.Wall);
+  grid.addPillar({ x: 9.5, z: 9.5, r: .6, h: WORLD.wallHeight, kind: 'pillar' });
+  grid.addPillar({ x: 15.5, z: 9.5, r: .6, h: WORLD.wallHeight, kind: 'pillar' });
+  for (const [x, z] of [[4, 6], [20, 6], [8, 3]] as const) rect(x, z, x, z, T.Platform);
+  enemies.push(
+    spawnAt('archer', 4.5, 6.5, 2, true), spawnAt('archer', 20.5, 6.5, 2, true),
+    spawnAt('rat', 11.8, 4.2, 2), spawnAt('rat', 12.6, 3.6, 2), spawnAt('rat', 13.4, 4.2, 2),
+  );
+  const waves: NonNullable<LevelData['waves']> = [
+    { alive: 1, time: 20, label: '第二波：西門、北門、東門', spawns: [
+      spawnAt('charger', 1.6, 8.9, 3), spawnAt('bomber', 12.9, 1.6, 2), spawnAt('rat', 24.0, 8.6, 2), spawnAt('rat', 24.0, 9.4, 2),
+    ] },
+    { alive: 1, time: 20, label: '第三波：四面八方', spawns: [
+      spawnAt('guard', 12.6, 1.5, 3), spawnAt('charger', 24.0, 9.0, 3), spawnAt('rat', 1.6, 8.6, 2), spawnAt('rat', 1.6, 9.4, 2),
+      spawnAt('archer', 8.5, 3.5, 2, true),
+    ] },
+  ];
+  return {
+    seed: info.seed, floor: 1, goal: 'heart', templateId: 'practice', templateName: info.name,
+    mirrored: false, attempt: 0, grid, spawn: { x: 6.5, z: 19.5, yaw: -Math.PI / 2 },
+    rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 1, z0: 1, w: 24, h: 20 }],
+    enemies, pickups: [], chests: [], heart: null, stairs: null, resupply: null, traps: [], torches: torches(),
+    practice: true, practiceTrial: info.id, damageMul: 1.5, rules: { smartFire: true, syncVolley: true }, waves,
   };
 }

@@ -1,5 +1,5 @@
 import { combatRoomCells } from './combatSound';
-import { ENCOUNTERS, ENEMIES, FIREBOMB, GEAR, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { ENCOUNTERS, ENEMIES, FIREBOMB, GEAR, VOLLEY, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
@@ -29,7 +29,7 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     (p.z < connection.coreEntryZ) === (s.roomKey === connection.coreRoomKey)) : w.roamPoints;
   const patrol = s.perched || s.boss || s.kind === 'mimic' || s.kind === 'statue' ? [] : [...roam, ...s.patrol].map((p) => ({ ...p }));
   // 越深越硬；老兵再 ×1.5
-  const hp = s.kind === 'warden' ? ENEMIES.warden.hp : Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1));
+  const hp = s.hp ?? (s.kind === 'warden' ? ENEMIES.warden.hp : Math.round(spec.hp * (1 + RUN.hpPerFloor * (w.level.floor - 1)) * (s.veteran ? RUN.veteranHpMul : 1)));
   // 偽裝的寶箱怪與沒醒的石像不巡邏
   const still = s.kind === 'mimic' || s.kind === 'statue';
   return {
@@ -898,8 +898,14 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
         e.archerMovePause = s.repositionPause;
         if (started) { updateArcherMove(w, e, dt); return; }
       }
-      if (e.phase === 'none' && d <= s.fireRange) startAim(w, e);
-      else if (!e.perched && d > s.maxDist) moveTo(w, e, { x: p.x, z: p.z }, s.speed, dt, s.maxDist * 0.9, false);
+      if (e.phase === 'none' && d <= s.fireRange) {
+        // syncVolley: hold the shot until a partner fires too or a melee attack lands
+        // on the player, so threats arrive together and from more than one side.
+        if (w.level.rules?.syncVolley && !volleyReady(w, e, dt)) { e.moving = false; return; }
+        startAim(w, e);
+        // startAim may decline (no clear line); read the phase again.
+        if (w.level.rules?.syncVolley && (e.phase as Enemy['phase']) === 'aim') joinVolley(w, e);
+      } else if (!e.perched && d > s.maxDist) moveTo(w, e, { x: p.x, z: p.z }, s.speed, dt, s.maxDist * 0.9, false);
       else e.moving = false;
       return;
     }
@@ -929,6 +935,28 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
     default:
       stopArcherMove(e);
       e.phase = 'none';
+  }
+}
+
+/** syncVolley: a ready crossbowman waits for a melee threat near the player, up to a limit. */
+function volleyReady(w: World, e: Enemy, dt: number): boolean {
+  e.volleyWait = (e.volleyWait ?? 0) + dt;
+  const p = w.player;
+  const melee = w.enemies.some((o) => o.alive && o.kind !== 'archer' && (o.phase === 'windup' || o.phase === 'charge')
+    && Math.hypot(o.x - p.x, o.z - p.z) <= VOLLEY.meleeRange);
+  if (!melee && e.volleyWait < VOLLEY.maxWait) return false;
+  e.volleyWait = 0;
+  return true;
+}
+
+/** syncVolley: every other ready crossbowman with a clear line shoots in the same moment. */
+function joinVolley(w: World, e: Enemy): void {
+  for (const o of w.enemies) {
+    if (o === e || o.kind !== 'archer' || !o.alive || o.state !== 'alert' || o.phase !== 'none' || !archerSeesNow(w, o)) continue;
+    if (Math.hypot(w.player.x - o.x, w.player.z - o.z) > ENEMIES.archer.fireRange) continue;
+    o.yaw = yawFromDir(w.player.x - o.x, w.player.z - o.z);
+    startAim(w, o);
+    o.volleyWait = 0;
   }
 }
 
@@ -1224,8 +1252,9 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
           w.emitNoise(nx, 1, nz, NOISE.combatHit, 'impact', e.id);
           // 衝撞也會撞傷擋在路上的同伴
           w.emit({ type: 'bump', id: o.id, kind: 'charge', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
-          // smartFire: luring a charge into an ally is the player's doing.
-          damageEnemy(w, o, s.allyDamage, { source: 'charge', sneak: false, head: false, x: o.x, y: 1.0, z: o.z, redirect: !!w.level.rules?.smartFire });
+          // smartFire: enemies never hurt their own side (only fire the player sends does);
+          // the ally is only knocked off balance.
+          if (!w.level.rules?.smartFire) damageEnemy(w, o, s.allyDamage, { source: 'charge', sneak: false, head: false, x: o.x, y: 1.0, z: o.z });
           if (o.alive) staggerEnemy(o, s.allyStumble);
           e.phase = 'recovery';
           e.phaseT = 0;

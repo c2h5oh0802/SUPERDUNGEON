@@ -57,6 +57,7 @@ export function installDevApi(app: App): void {
         locked: app.input.locked,
         touchMode: app.touchMode,
         timeUse: { ...w.timeUse },
+        waves: { spawned: w.wavesSpawned, left: w.wavesLeft },
         machines: w.machines.map((m) => ({ id: m.id, kind: m.kind, x: m.x, z: m.z, phase: m.phase, charge: m.charge, cycle: m.cycle })),
         recording: app.replayRec ? { frames: app.replayRec.frames.length, combatStart: app.replayRec.combatStart, tainted: app.replayRec.tainted } : null,
         replay: app.replay ? { from: app.replay.player.from, to: app.replay.player.to, time: app.replay.player.world.time, done: app.replay.player.done, diverged: app.replay.player.diverged } : null,

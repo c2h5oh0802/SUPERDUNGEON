@@ -121,7 +121,7 @@ export class ReplayRecorder {
 
 /** The fight is over and its record is trustworthy: time to show the replay. */
 export function fightCleared(w: World, rec: ReplayRecorder | null): boolean {
-  return !!rec && !rec.tainted && w.outcome === 'none' && w.enemies.length > 0 && w.enemies.every((e) => !e.alive);
+  return !!rec && !rec.tainted && w.outcome === 'none' && w.enemies.length > 0 && w.wavesLeft === 0 && w.enemies.every((e) => !e.alive);
 }
 
 /**

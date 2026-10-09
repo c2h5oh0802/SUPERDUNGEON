@@ -277,11 +277,9 @@ export class Hud {
         case 'deflect':
           this.toast('擊開！', 'good', 1.2);
           break;
-        case 'redirectKill': {
-          const name = ENEMY_NAMES[e.kind as keyof typeof ENEMY_NAMES] ?? '';
-          this.toast(e.source === 'charge' ? `借刀！${name}被突進者撞倒` : `借刀！${name}被火燒倒`, 'good', 1.8);
+        case 'redirectKill':
+          this.toast(`借刀！${ENEMY_NAMES[e.kind as keyof typeof ENEMY_NAMES] ?? ''}被火燒倒`, 'good', 1.8);
           break;
-        }
         case 'block':
           this.toast(e.kind === 'charger' ? '擋下衝撞！' : e.kind === 'bolt' ? '盾擋下弩矢' : '盾擋下攻擊', 'good', 1.3);
           break;
@@ -368,6 +366,9 @@ export class Hud {
         case 'horn':
           this.toast('號角響起！附近的敵人朝你過來', 'bad', 2.6);
           break;
+        case 'wave':
+          if (e.text) this.toast(e.text, 'big', 2.6);
+          break;
         case 'reinforce':
           if (e.text) this.toast(e.text, 'bad', 2.6);
           this.hint('reinforce', '在同一層待太久，敵人會從來時的樓梯陸續走進來。拖延要付代價。', 8);
@@ -435,7 +436,7 @@ export class Hud {
     });
     // 目標
     const trial = w.level.practiceTrial ? trialInfo(w.level.practiceTrial) : null;
-    const trialDone = trial && (trial.goal === 'heart' ? p.hasHeart : trial.goal === 'chest' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
+    const trialDone = trial && (trial.goal === 'heart' ? p.hasHeart : trial.goal === 'chest' ? w.stats.chests > 0 : w.wavesLeft === 0 && w.enemies.every(e => !e.alive));
     const trialGoal = trial?.id === 'heart-warden' && w.encounterState === 'resolved' && !p.hasHeart
       ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
     // Prototypes report how much the player stopped to read, frozen at completion.

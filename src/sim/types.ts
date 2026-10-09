@@ -174,6 +174,8 @@ export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'investigate' | 'search' 
 export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger' | 'pushed';
 
 export interface Enemy {
+  /** syncVolley: how long a ready crossbowman has held its shot for a partner. */
+  volleyWait?: number;
   /** smartFire: seconds left burning after a firebomb burst; who lit it. */
   burnT?: number;
   burnTick?: number;
@@ -456,7 +458,8 @@ export type GameEventType =
   | 'statueWake'
   | 'machineWarn'
   | 'machineFire'
-  | 'redirectKill';
+  | 'redirectKill'
+  | 'wave';
 
 export interface GameEvent {
   type: GameEventType;
