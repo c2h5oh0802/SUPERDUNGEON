@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMIES, PLAYER, VOLLEY } from '../src/config';
+import { Rng } from '../src/core/rng';
 import { createTrialLevel } from '../src/gen/practiceTrials';
 import { validateLevel } from '../src/gen/validate';
 import { becomeAlert } from '../src/sim/enemySys';
 import { createTrialWorld } from '../src/sim/practiceTrials';
-import { fightCleared, ReplayRecorder } from '../src/sim/replay';
+import { fightCleared, ReplayPlayer, ReplayRecorder } from '../src/sim/replay';
+import { emptyInput, type FrameInput } from '../src/sim/types';
 import { run } from './helpers';
 
 const v2 = () => createTrialWorld('crossfire-waves', 'huntress');
@@ -56,6 +58,34 @@ describe('prototype: crossfire v2 (waves, fragile enemies, volleys)', () => {
     for (const e of w.enemies) e.alive = false;
     expect(w.wavesLeft).toBe(0);
     expect(fightCleared(w, rec)).toBe(true);
+  });
+
+  it('a fight through a wave replays in full from the record to the same end', () => {
+    const make = () => { const x = v2(); x.player.yaw = x.level.spawn.yaw; return x; };
+    const w = make();
+    const rec = new ReplayRecorder();
+    const rng = new Rng('waves-fight');
+    let yaw = w.level.spawn.yaw;
+    // Hold wait in the start corridor until the second wave comes in hunting, then strafe and shoot.
+    for (let f = 0; f < 6000 && w.outcome === 'none' && w.time < 32; f++) {
+      const dt = [1 / 60, 1 / 30, 1 / 144][f % 3]!;
+      if (f % 20 === 0) yaw += (rng.next() - 0.5) * 0.6;
+      const fight = w.wavesSpawned > 0;
+      const input: FrameInput = { ...emptyInput(yaw, 0), wait: !fight, moveX: fight ? (f % 90 < 45 ? 0.5 : -0.5) : 0, fire: fight && f % 40 < 20, firePressed: fight && f % 40 === 0 };
+      w.frame(dt, input);
+      rec.frame(w, dt, input);
+      w.drainEvents();
+    }
+    expect(w.wavesSpawned).toBeGreaterThanOrEqual(1);
+    expect(w.enemies.length).toBeGreaterThan(5);
+    const r = new ReplayPlayer(make, rec, 0, rec.endTime);
+    while (!r.prepare(1000));
+    for (let n = 0; n < 200000 && !r.done; n++) { r.advance(1 / 60); r.world.drainEvents(); }
+    expect(r.diverged).toBe(false);
+    expect(r.world.time).toBe(w.time);
+    expect(r.world.wavesSpawned).toBe(w.wavesSpawned);
+    expect([r.world.player.x, r.world.player.z, r.world.player.hp]).toEqual([w.player.x, w.player.z, w.player.hp]);
+    expect(r.world.enemies.map((e) => [e.kind, e.alive, e.hp, e.x, e.z])).toEqual(w.enemies.map((e) => [e.kind, e.alive, e.hp, e.x, e.z]));
   });
 
   it('crossbowmen hold a ready shot for a partner, then both loose together', () => {

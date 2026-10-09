@@ -17,22 +17,16 @@ interface RecordedFrame {
   time: number;
   /** Periodic state check: a replay that drifts stops instead of showing a different fight. */
   print: string | null;
-  /** Something threatening or decisive is going on (otherwise the highlight skims it). */
-  active: boolean;
 }
 
 const PRINT_EVERY = 30;
 
 /**
- * Highlight pacing, in world seconds per real second: twice normal speed; slow
- * motion around decisive moments (kills, deflects, counters, air bursts, hits,
- * near misses); quick through stretches where nothing threatens. The window is
- * trimmed so the whole replay takes about `cap` real seconds.
+ * Playback pacing: the whole record, from entering the room to the last enemy
+ * falling, at a steady `speed` world seconds per real second. Nothing is cut
+ * and nothing slows down.
  */
-export const REPLAY = { base: 2, slow: 0.3, fast: 4, before: 0.3, after: 0.25, nearMiss: 0.8, cap: 12 } as const;
-
-const MOMENTS = new Set(['enemyDeath', 'redirectKill', 'deflect', 'counter', 'playerHurt']);
-const CALM = new Set(['none', 'reload', 'recovery']);
+export const REPLAY = { speed: 3 } as const;
 
 function fingerprint(w: World): string {
   const p = w.player;
@@ -59,9 +53,6 @@ export class ReplayRecorder {
   combatStart: number | null = null;
   /** Something outside recorded input changed the world (developer tools): no replay. */
   tainted = false;
-  /** World times of decisive moments, in order. */
-  readonly moments: number[] = [];
-  private nearMissed = new Set<number>();
 
   op(op: ReplayOp): void {
     this.pending.push(op);
@@ -70,52 +61,13 @@ export class ReplayRecorder {
   /** Call right after w.frame(dt, input), before its events are drained. */
   frame(w: World, dt: number, input: FrameInput): void {
     const n = this.frames.length;
-    const p = w.player;
-    let moment = w.events.some((e) => MOMENTS.has(e.type) || (e.type === 'bottleBreak' && e.air));
-    let hostile = false;
-    for (const q of w.projectiles) {
-      if (!q.alive || q.owner === 'player') continue;
-      hostile = true;
-      if (!this.nearMissed.has(q.id) && Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < REPLAY.nearMiss) {
-        this.nearMissed.add(q.id);
-        moment = true;
-      }
-    }
-    const active = hostile || p.action !== null || w.enemies.some((e) => e.alive && !CALM.has(e.phase));
-    if (moment && this.moments.at(-1) !== w.time) this.moments.push(w.time);
-    this.frames.push({ dt, input: { ...input }, ops: this.pending, time: w.time, print: n % PRINT_EVERY === 0 ? fingerprint(w) : null, active });
+    this.frames.push({ dt, input: { ...input }, ops: this.pending, time: w.time, print: n % PRINT_EVERY === 0 ? fingerprint(w) : null });
     this.pending = [];
     if (this.combatStart === null && w.enemies.some((e) => e.alive && e.state === 'alert')) this.combatStart = w.time;
   }
 
   get endTime(): number {
     return this.frames.at(-1)?.time ?? 0;
-  }
-
-  /** Playback speed (world seconds per real second) at world time t, given that frame's activity. */
-  speedAt(t: number, active: boolean): number {
-    for (const m of this.moments) if (t >= m - REPLAY.before && t <= m + REPLAY.after) return REPLAY.slow;
-    return active ? REPLAY.base : REPLAY.fast;
-  }
-
-  /**
-   * The stretch worth watching: from just before the fight to the end, trimmed
-   * from the start so it plays in about `cap` real seconds at highlight pacing.
-   */
-  window(cap: number = REPLAY.cap): { from: number; to: number } {
-    const to = this.endTime;
-    let from = Math.max(0, (this.combatStart ?? 0) - 1);
-    let real = 0;
-    for (let k = this.frames.length - 1; k > 0; k--) {
-      const f = this.frames[k]!, prev = this.frames[k - 1]!;
-      if (prev.time < from) break;
-      real += (f.time - prev.time) / this.speedAt(f.time, f.active);
-      if (real > cap) {
-        from = f.time;
-        break;
-      }
-    }
-    return { from, to };
   }
 }
 
@@ -126,8 +78,8 @@ export function fightCleared(w: World, rec: ReplayRecorder | null): boolean {
 
 /**
  * Plays a recorded stretch back by re-simulating a fresh world. Playback follows
- * world time at highlight pacing, so the time the player spent stopped to think
- * disappears, the action runs quick and the decisive moments slow down.
+ * world time at a steady REPLAY.speed, so the time the player spent stopped to
+ * think disappears and the whole fight runs quick.
  */
 export class ReplayPlayer {
   readonly world: World;
@@ -150,16 +102,8 @@ export class ReplayPlayer {
   /** Advance by real seconds; returns the world seconds simulated. */
   advance(realDt: number, maxSteps = 600): number {
     const before = this.world.time;
-    let left = realDt;
-    let n = 0;
-    // Small slices so a change of pace takes effect where it belongs.
-    while (left > 1e-9 && !this.done && n < maxSteps) {
-      const slice = Math.min(left, 1 / 240);
-      left -= slice;
-      const f = this.rec.frames[this.next]!;
-      this.clock += slice * this.rec.speedAt(this.clock, f.active);
-      for (; n < maxSteps && !this.done && this.rec.frames[this.next]!.time <= this.clock; n++) this.step();
-    }
+    this.clock += realDt * REPLAY.speed;
+    for (let n = 0; n < maxSteps && !this.done && this.rec.frames[this.next]!.time <= this.clock; n++) this.step();
     return this.world.time - before;
   }
 

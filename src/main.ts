@@ -669,7 +669,7 @@ export class App {
     return (this.mode as Mode) === 'replay';
   }
 
-  /** Re-simulate the cleared fight from a fresh copy and play it at normal world speed. */
+  /** Re-simulate the whole cleared fight from a fresh copy and play it sped up. */
   private startReplay(): void {
     const w = this.world, rec = this.replayRec;
     this.replayRec = null;
@@ -677,12 +677,11 @@ export class App {
     const id = w?.level.practiceTrial;
     if (!w || !rec || rec.tainted || this.mode !== 'playing' || !id) return;
     const cls = w.player.cls;
-    const { from, to } = rec.window();
     const player = new ReplayPlayer(() => {
       const r = createTrialWorld(id, cls);
       r.player.yaw = r.level.spawn.yaw;
       return r;
-    }, rec, from, to);
+    }, rec, 0, rec.endTime);
     while (!player.prepare(4000)) { /* bounded by the record length */ }
     if (player.diverged) return;
     this.clearInput();
@@ -1110,7 +1109,7 @@ export class App {
           if (transition !== this.worldTransition) return;
         }
         if (canPresentChoice(w)) this.openChoice();
-        // Prototype fight cleared: a moment later, replay it at normal world speed.
+        // Prototype fight cleared: a moment later, replay all of it, sped up.
         if (this.replayCountdown < 0 && fightCleared(w, this.replayRec)) this.replayCountdown = 1.5;
         if (this.replayCountdown > 0 && this.mode === 'playing') {
           this.replayCountdown -= realDt;

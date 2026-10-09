@@ -27,10 +27,10 @@ export const PRACTICE_TRIALS = [
     hint: '機關只隨世界時間運轉：你不動，箭和火焰幾乎停住。先停下來看清節奏（箭孔與噴火口亮起就是要發動了），再抓空檔走過去。' },
   { id: 'crossfire-arena', seed: 'TRIAL-CROSSFIRE', name: '四面來襲', goal: 'clear', kit: true, prototype: true, replay: true,
     objective: '清除五名敵人。這裡被打中比平常痛（×1.5）。',
-    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。敵人不會傷到自己人：投彈手的火只燒你；把火瓶打回去或在空中射爆，它就燒敵人。打完會播放戰鬥精華。' },
+    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。敵人不會傷到自己人：投彈手的火只燒你；把火瓶打回去或在空中射爆，它就燒敵人。打完會快轉重播整場戰鬥。' },
   { id: 'crossfire-waves', seed: 'TRIAL-WAVES', name: '四面來襲 v2', goal: 'clear', kit: true, prototype: true, replay: true,
     objective: '撐過三波、清除所有敵人。敵人一下就倒，你被打中 ×1.5。',
-    hint: '三波敵人從北、西、東三個門進來。弩手會等隊友或近戰一起出手，從兩側交叉齊射。每個敵人一下就倒：先停下來看誰最危險，再一個個解決。投彈手的火只燒你，打回去或射爆就燒敵人。打完會播放戰鬥精華。' },
+    hint: '三波敵人從北、西、東三個門進來。弩手會等隊友或近戰一起出手，從兩側交叉齊射。每個敵人一下就倒：先停下來看誰最危險，再一個個解決。投彈手的火只燒你，打回去或射爆就燒敵人。打完會快轉重播整場戰鬥。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);

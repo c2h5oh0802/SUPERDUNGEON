@@ -232,7 +232,7 @@ describe('replay re-simulates the fight from the record', () => {
     expect(r.diverged).toBe(true);
   });
 
-  it('skims calm stretches: thinking time disappears and quiet walking plays at 4x', () => {
+  it('thinking time disappears: standing still and walking both play at the steady speed', () => {
     const rec = new ReplayRecorder();
     const w = createTrialWorld('crossfire-arena', 'huntress');
     w.player.yaw = w.level.spawn.yaw;
@@ -240,30 +240,11 @@ describe('replay re-simulates the fight from the record', () => {
     for (let f = 0; f < 180; f++) step(emptyInput(w.player.yaw, 0)); // 3 real seconds standing still
     for (let f = 0; f < 60; f++) step({ ...emptyInput(w.player.yaw, 0), moveZ: 1 }); // 1 real second walking
     expect(w.time).toBeLessThan(1.4);
-    expect(rec.frames.every((f) => !f.active)).toBe(true);
     const r = new ReplayPlayer(() => { const x = createTrialWorld('crossfire-arena', 'huntress'); x.player.yaw = x.level.spawn.yaw; return x; }, rec, 0, rec.endTime);
     while (!r.prepare(1000));
     let real = 0;
     while (!r.done && real < 10) { r.advance(DT); real += DT; }
-    expect(real).toBeCloseTo(w.time / REPLAY.fast, 1);
-  });
-
-  it('decisive moments play in slow motion, the rest of the action at 2x', () => {
-    const rec = new ReplayRecorder();
-    rec.moments.push(5);
-    expect(rec.speedAt(5 - REPLAY.before + 0.01, true)).toBe(REPLAY.slow);
-    expect(rec.speedAt(5 + REPLAY.after - 0.01, false)).toBe(REPLAY.slow);
-    expect(rec.speedAt(6, true)).toBe(REPLAY.base);
-    expect(rec.speedAt(6, false)).toBe(REPLAY.fast);
-  });
-
-  it('records kills, hits and near misses as moments while fighting', () => {
-    const rec = new ReplayRecorder();
-    const w = scriptedFight('warrior', rec);
-    expect(w.player.dead || w.enemies.some((e) => !e.alive)).toBe(true);
-    expect(rec.moments.length).toBeGreaterThan(0);
-    expect([...rec.moments].sort((a, b) => a - b)).toEqual(rec.moments);
-    expect(rec.frames.some((f) => f.active)).toBe(true);
+    expect(real).toBeCloseTo(w.time / REPLAY.speed, 1);
   });
 
   it('the replay is due only once every enemy is down, the record is clean and the run goes on', () => {
@@ -283,21 +264,24 @@ describe('replay re-simulates the fight from the record', () => {
     expect(fightCleared(corridor(), new ReplayRecorder())).toBe(false);
   });
 
-  it('the window starts no earlier than just before the fight and plays in about the cap', () => {
+  it('the whole fight plays from entering the room, uncut, at a steady speed', () => {
     for (const cls of ['huntress', 'warrior'] as const) {
       const rec = new ReplayRecorder();
       scriptedFight(cls, rec);
-      const { from, to } = rec.window();
-      expect(from).toBeGreaterThanOrEqual(Math.max(0, rec.combatStart! - 1) - 1e-9);
-      expect(to).toBe(rec.endTime);
-      const r = new ReplayPlayer(() => { const x = createTrialWorld('crossfire-arena', cls); x.player.yaw = x.level.spawn.yaw; return x; }, rec, from, to);
-      while (!r.prepare(1000));
-      let real = 0;
-      while (!r.done && real < 60) { r.advance(DT); real += DT; }
+      const r = new ReplayPlayer(() => { const x = createTrialWorld('crossfire-arena', cls); x.player.yaw = x.level.spawn.yaw; return x; }, rec, 0, rec.endTime);
+      expect(r.prepare(1000)).toBe(true); // nothing to skip ahead to
+      expect(r.world.time).toBe(0);
+      let real = 0, slowest = Infinity;
+      while (!r.done && real < 120) {
+        let world = 0;
+        for (let k = 0; k < 30 && !r.done; k++) { world += r.advance(DT); real += DT; }
+        if (!r.done) slowest = Math.min(slowest, world / (30 * DT));
+      }
       expect(r.diverged).toBe(false);
-      expect(real).toBeLessThanOrEqual(REPLAY.cap + 0.1);
-      const short = rec.window(1);
-      expect(short.from).toBeGreaterThan(from - 1e-9);
+      expect(r.world.time).toBe(rec.endTime);
+      expect(real).toBeCloseTo(rec.endTime / REPLAY.speed, 0);
+      // No slow motion anywhere: every half second of playback covers about speed × half a second.
+      expect(slowest).toBeGreaterThan(REPLAY.speed * 0.9);
     }
   });
 });

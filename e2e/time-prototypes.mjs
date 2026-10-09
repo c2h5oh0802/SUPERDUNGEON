@@ -93,7 +93,7 @@ try {
   const rp0 = (await st()).replay;
   await page.waitForTimeout(700);
   const rp1 = (await st()).replay;
-  check('重播以精華節奏推進世界時間，沒有偏差', rp1 && rp1.time > rp0.time && !rp1.diverged, `from ${rp0.from.toFixed(2)} → ${rp1.time.toFixed(2)} / ${rp1.to.toFixed(2)}`);
+  check('重播從頭快轉推進世界時間，沒有偏差', rp1 && rp0.from === 0 && rp1.time > rp0.time && !rp1.diverged, `from ${rp0.from.toFixed(2)} → ${rp1.time.toFixed(2)} / ${rp1.to.toFixed(2)}`);
   await page.screenshot({ path: `${OUT}time-replay.png` });
   await bot.tap('KeyF');
   await mode('playing');
