@@ -74,7 +74,7 @@ vi.mock('../src/input/input', () => ({ Input: class {
     inventory: false, bottle: false, interact: false, potion: false, wait: false,
     map: false, escape: false, digit: null, ...captured.raw,
   });
-  attach = vi.fn(); clear = vi.fn(() => { captured.raw = {}; });
+  attach = vi.fn(); clear = vi.fn(() => { captured.raw = {}; }); clearPointer = vi.fn();
   exitLock = captured.exitLock; requestLock = captured.requestLock;
   locked = false; fallback = false; lockEverWorked = false;
 } }));

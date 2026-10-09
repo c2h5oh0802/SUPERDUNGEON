@@ -324,4 +324,25 @@ describe('pointer lock across real App restart/resume input events', () => {
     expect(h.shown('screen-inventory')).toBe(true);
     expect(h.shown('screen-pause')).toBe(false);
   });
+
+  it('keeps keys pressed after closing the bag when the relock lands afterwards', async () => {
+    const h = await setup();
+    await start(h);
+    h.key('KeyI'); h.frame(); h.key('KeyI', 'keyup');
+    expect(h.shown('screen-inventory')).toBe(true);
+    h.key('KeyI'); h.frame(); h.key('KeyI', 'keyup');
+    expect(h.shown('screen-inventory')).toBe(false);
+    expect(h.doc.pointerLockElement).toBeNull();
+    // Movement starts before the asynchronous relock resolves.
+    h.key('KeyW');
+    h.mouse(h.canvas, 'mousedown');
+    await Promise.resolve();
+    expectLocked(h);
+    expect(h.input.heldKeys()).toContain('KeyW');
+    expect(h.input.consume()).toMatchObject({ fire: false, firePressed: false });
+    const before = { x: h.world().player.x, z: h.world().player.z };
+    for (let i = 0; i < 10; i++) h.frame();
+    expect(Math.hypot(h.world().player.x - before.x, h.world().player.z - before.z)).toBeGreaterThan(0.05);
+    expect(h.world().player.action).toBeNull();
+  });
 });

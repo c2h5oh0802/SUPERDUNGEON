@@ -21,7 +21,7 @@ vi.mock('../src/audio/sfx', () => ({ Sfx: class {
 vi.mock('../src/core/loop', () => ({ Loop: class { start = vi.fn(); stop = vi.fn(); resetClock = vi.fn(); } }));
 vi.mock('../src/input/input', () => ({ Input: class {
   consume = () => ({ moveX: 0, moveZ: 0, lookDX: 0, lookDY: 0, keyYaw: 0, keyPitch: 0, fire: false, firePressed: false, selectSlot: null, shield: false, sneak: false, inventory: false, bottle: false, interact: false, potion: false, wait: false, map: false, escape: false, digit: null });
-  attach = vi.fn(); clear = vi.fn(); exitLock = vi.fn(); requestLock = vi.fn(async () => true);
+  attach = vi.fn(); clear = vi.fn(); clearPointer = vi.fn(); exitLock = vi.fn(); requestLock = vi.fn(async () => true);
   locked = false; fallback = false;
 } }));
 vi.mock('../src/input/touch', () => ({ TouchInput: class { attach = vi.fn(); clear = vi.fn(); consume = () => ({ moveX: 0, moveZ: 0, lookDX: 0, lookDY: 0, keyYaw: 0, keyPitch: 0, fire: false, firePressed: false, selectSlot: null, shield: false, sneak: false, inventory: false, bottle: false, interact: false, potion: false, wait: false, map: false, escape: false, digit: null }); } }));

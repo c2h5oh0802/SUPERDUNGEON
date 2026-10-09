@@ -774,7 +774,11 @@ export class App {
   }
 
   private onLockChange(locked: boolean): void {
-    this.clearInput();
+    // Gaining the lock drops only mouse input (the click that asked for it, the
+    // first movement spike). It lands asynchronously after returning to play, and
+    // a key already held by then sends no new keydown, so held keys must survive.
+    if (locked) this.input.clearPointer();
+    else this.clearInput();
     if (locked) {
       this.intentionalUnlock = false;
       this.hud.setLockBanner(false);

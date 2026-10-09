@@ -222,6 +222,11 @@ export class Input {
   clear(): void {
     this.held.clear();
     this.pressed.clear();
+    this.clearPointer();
+  }
+
+  /** Mouse buttons and look movement only; held keys stay held. */
+  clearPointer(): void {
     this.fireHeld = false;
     this.firePressed = false;
     this.shieldPressed = false;
