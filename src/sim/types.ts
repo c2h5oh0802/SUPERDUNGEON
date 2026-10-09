@@ -79,6 +79,41 @@ export interface Area {
   life: number;
   tickT: number;
   hitPlayer: boolean;
+  /** Flame drawn for a machine that deals its own damage; burns nobody by itself. */
+  harmless?: boolean;
+}
+
+/** 機關：只隨世界時間運轉。你不動，它就幾乎不動；看清節奏再走過去。 */
+export interface MachineSpawn {
+  kind: 'dart' | 'vent';
+  x: number;
+  z: number;
+  /** 箭孔射出的方向（單位向量）；噴火口不用。 */
+  dx: number;
+  dz: number;
+  /** 第一次發動的世界時間，之後每 period 秒一次。 */
+  start: number;
+  period: number;
+  /** 發動前的預警（發光、喀噠聲）。 */
+  warn: number;
+  /** 噴火口：火焰持續多久。 */
+  burn: number;
+  /** 噴火口：火焰半徑。 */
+  radius: number;
+  damage: number;
+  /** 箭孔：箭速。 */
+  speed: number;
+}
+
+export interface Machine extends MachineSpawn {
+  id: number;
+  phase: 'idle' | 'warn' | 'fire';
+  /** 已發動幾次（偵測新的一輪）。 */
+  cycle: number;
+  /** 0–1：預警進度，畫面與音效用。 */
+  charge: number;
+  hitPlayer: boolean;
+  hitIds: number[];
 }
 
 export interface Player {
@@ -412,7 +447,9 @@ export type GameEventType =
   | 'horn'
   | 'reinforce'
   | 'mimicWake'
-  | 'statueWake';
+  | 'statueWake'
+  | 'machineWarn'
+  | 'machineFire';
 
 export interface GameEvent {
   type: GameEventType;

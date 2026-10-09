@@ -56,6 +56,10 @@ export function installDevApi(app: App): void {
         fallback: app.input.fallback,
         locked: app.input.locked,
         touchMode: app.touchMode,
+        timeUse: { ...w.timeUse },
+        machines: w.machines.map((m) => ({ id: m.id, kind: m.kind, x: m.x, z: m.z, phase: m.phase, charge: m.charge, cycle: m.cycle })),
+        recording: app.replayRec ? { frames: app.replayRec.frames.length, combatStart: app.replayRec.combatStart, tainted: app.replayRec.tainted } : null,
+        replay: app.replay ? { from: app.replay.player.from, to: app.replay.player.to, time: app.replay.player.world.time, done: app.replay.player.done, diverged: app.replay.player.diverged } : null,
         player: {
           cls: p.cls,
           x: p.x,
@@ -327,7 +331,21 @@ export function installDevApi(app: App): void {
         const w = app.world;
         if (w) gainXp(w, n);
       },
+      /** Start the prototype replay now with what has been recorded (not a world change). */
+      replayNow() {
+        return app.replayNow();
+      },
     },
   };
+  // Any other debug call changes the world outside recorded input: a replay
+  // would then show a different fight, so it is switched off for this world.
+  const debug = api.debug as Record<string, unknown>;
+  for (const [name, fn] of Object.entries(debug)) {
+    if (typeof fn !== 'function' || ['setView', 'hide', 'replayNow'].includes(name)) continue;
+    debug[name] = (...args: unknown[]) => {
+      if (app.replayRec) app.replayRec.tainted = true;
+      return (fn as (...a: unknown[]) => unknown)(...args);
+    };
+  }
   (window as unknown as { __sd: typeof api }).__sd = api;
 }

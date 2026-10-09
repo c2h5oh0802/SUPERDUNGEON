@@ -4,7 +4,8 @@ import type { TrapKind } from '../gen/generator';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { WORLD } from '../config';
 import { smoothstep } from '../core/math';
-import type { Pickup, Trap } from '../sim/types';
+import type { Machine, Pickup, Trap } from '../sim/types';
+import { MACHINE } from '../sim/machines';
 import type { World } from '../sim/world';
 import type { DoorState } from '../sim/grid';
 import { sharedFlameTexture } from './levelMesh';
@@ -66,6 +67,11 @@ interface TrapVis {
   ringMat: THREE.ShaderMaterial;
 }
 
+interface MachineVis {
+  machine: Machine;
+  mat: THREE.ShaderMaterial;
+}
+
 interface PedestalVis {
   id: number;
   roomKey: string;
@@ -89,6 +95,7 @@ export class PropsVisual {
   readonly group = new THREE.Group();
   private doors: DoorVis[] = [];
   private traps: TrapVis[] = [];
+  private machines: MachineVis[] = [];
   private chests: Array<{ id: number; lid: THREE.Group }> = [];
   private pedestals: PedestalVis[] = [];
   private heart: { group: THREE.Group; gem: THREE.Mesh; glow: THREE.Sprite } | null = null;
@@ -107,6 +114,7 @@ export class PropsVisual {
     this.mats.push(this.outline);
     for (const d of world.grid.doors) if (!d.arch) this.doors.push(this.buildDoor(d));
     for (const t of world.traps) this.traps.push(this.buildTrap(t));
+    for (const m of world.machines) this.machines.push(this.buildMachine(m));
     for (const it of world.interactables) {
       if (it.kind === 'chest') this.buildChest(it.id, it.x, it.z, it.yaw);
       else if (it.kind === 'heart' && world.level.goal === 'descend') this.buildDescent(it.x, it.z);
@@ -195,6 +203,32 @@ export class PropsVisual {
     g.visible = !t.hidden;
     this.group.add(g);
     return { trap: t, root: g, spikes, ringMat };
+  }
+
+  /** 機關：牆上的箭孔（圓環會亮）、地上的噴火口（格柵縫會亮）。 */
+  private buildMachine(m: Machine): MachineVis {
+    const g = new THREE.Group();
+    const color = m.kind === 'dart' ? 0xffc04a : 0xff6a1a;
+    const pieces: Piece[] = [];
+    let mat: THREE.ShaderMaterial;
+    if (m.kind === 'dart') {
+      g.position.set(m.x, MACHINE.dartY, m.z);
+      // Local +z faces the firing direction.
+      g.rotation.y = Math.atan2(m.dx, m.dz);
+      mat = this.mat(this.rigAt(m.x, MACHINE.dartY, m.z), color, 0);
+      pieces.push({ geo: T(new THREE.BoxGeometry(0.46, 0.46, 0.1), 0, 0, 0.02), color: 0x34313a });
+      pieces.push({ geo: T(new THREE.CylinderGeometry(0.075, 0.095, 0.1, 10), 0, 0, 0.1, Math.PI / 2), color: 0x141218 });
+      pieces.push({ geo: T(new THREE.TorusGeometry(0.15, 0.03, 6, 16), 0, 0, 0.08), color, glow: 1 });
+    } else {
+      g.position.set(m.x, 0, m.z);
+      mat = this.mat(this.rigAt(m.x, 0.3, m.z), color, 0);
+      const size = Math.min(0.9, m.radius * 1.6);
+      pieces.push({ geo: T(new THREE.BoxGeometry(size, 0.05, size), 0, 0.025, 0), color: 0x2e2b33 });
+      for (const k of [-1, 0, 1]) pieces.push({ geo: T(new THREE.BoxGeometry(size * 0.75, 0.012, 0.06), 0, 0.052, k * size * 0.26), color, glow: 1 });
+    }
+    this.add(merge(pieces), mat, g);
+    this.group.add(g);
+    return { machine: m, mat };
   }
 
   /** 寶庫台座：石柱上浮著寶物；選了一件，其他的台座沉下去。 */
@@ -425,6 +459,13 @@ export class PropsVisual {
         pv.group.position.y = -1.2 * pv.sink;
         if (pv.sink >= 1) pv.group.visible = false;
       }
+    }
+    // 機關：平常微亮；預警越接近發動越亮、會閃；發動的瞬間最亮。
+    for (const v of this.machines) {
+      const m = v.machine;
+      v.mat.uniforms.uGlowAmt!.value = m.phase === 'fire' ? 1.6
+        : m.phase === 'warn' ? 0.3 + 1.1 * m.charge + 0.2 * Math.sin(realTime * 30)
+        : 0.12;
     }
     for (const t of this.traps) {
       const tr = t.trap;

@@ -363,7 +363,7 @@ export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: n
   spawnArea(w, id, x, z);
 }
 
-export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, size?: { radius: number; life: number }): void {
+export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, size?: { radius: number; life: number }, harmless = false): void {
   const spec = size ?? ITEM_FX.area[kind];
   // 火落在水上只冒出蒸氣
   if (kind === 'fire' && w.grid.terrainAt(Math.floor(x), Math.floor(z)) === TER.Water) {
@@ -377,7 +377,7 @@ export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, si
       if (a.kind === 'fire' && Math.hypot(a.x - x, a.z - z) <= a.radius + spec.radius) w.areas.splice(k, 1);
     }
   }
-  w.areas.push({ id: w.nextId++, kind, x, z, radius: spec.radius, age: 0, life: spec.life, tickT: 0, hitPlayer: false });
+  w.areas.push({ id: w.nextId++, kind, x, z, radius: spec.radius, age: 0, life: spec.life, tickT: 0, hitPlayer: false, ...(harmless ? { harmless } : {}) });
   w.emit({ type: 'area', kind, x, y: 0.1, z, radius: spec.radius });
 }
 
@@ -391,6 +391,7 @@ export function updateAreas(w: World, dt: number, damageEnemy: (e: Enemy, dmg: n
   for (const a of w.areas) {
     a.age += dt;
     const inside = (x: number, z: number, r: number) => Math.hypot(a.x - x, a.z - z) <= a.radius + r * 0.5;
+    if (a.kind === 'fire' && a.harmless) continue;
     if (a.kind === 'fire') {
       a.tickT += dt;
       if (a.tickT >= ITEM_FX.area.fire.tick) {

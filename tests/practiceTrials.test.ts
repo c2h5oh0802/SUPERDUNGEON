@@ -12,8 +12,9 @@ import { Nav } from '../src/sim/nav';
 import { emptyInput } from '../src/sim/types';
 import { finishAction, run } from './helpers';
 
-// The Warden uses the actual campaign arena and starting kit, tested separately.
-for (const trial of PRACTICE_TRIALS.filter(t => t.id !== 'heart-warden')) describe(trial.id, () => {
+// The Warden uses the actual campaign arena and starting kit, tested separately;
+// the time-play prototypes have their own tests (tests/timePrototypes.test.ts).
+for (const trial of PRACTICE_TRIALS.filter(t => t.id !== 'heart-warden' && !t.prototype)) describe(trial.id, () => {
   it('validates, has safe spawn and connected flanking space, uses base enemies', () => {
     const l = createTrialLevel(trial.id), w = createTrialWorld(trial.id, 'huntress');
     expect(validateLevel(l)).toEqual({ ok: true, errors: [] });

@@ -1,22 +1,33 @@
 import { WORLD } from '../config';
 import { Grid, T, type TileId } from '../sim/grid';
+import type { MachineSpawn } from '../sim/types';
 import type { EnemySpawn, LevelData } from './generator';
 import { generateLevel } from './validate';
 
-/** Authored practice fixtures only. Never selected by campaign generation. */
+/**
+ * Authored practice fixtures only. Never selected by campaign generation.
+ * goal: what completes it; kit: the control-item demonstration loadout;
+ * prototype: the time-play prototypes (machines, damage multiplier, replay).
+ */
 export const PRACTICE_TRIALS = [
-  { id: 'shield-crossfire', seed: 'TRIAL-SHIELD', name: '盾衛與弩手',
+  { id: 'shield-crossfire', seed: 'TRIAL-SHIELD', name: '盾衛與弩手', goal: 'clear', kit: true, prototype: false, replay: false,
     objective: '清除兩名敵人；比較側路、前排控制與後排射擊空檔。',
     hint: '中央石牆兩側都能通過。正面退射、繞到側面、先處理弩手都可嘗試；留意拉弓時暴露在哪條射線。' },
-  { id: 'charger-window', seed: 'TRIAL-CHARGER', name: '撞暈後的空檔',
+  { id: 'charger-window', seed: 'TRIAL-CHARGER', name: '撞暈後的空檔', goal: 'clear', kit: true, prototype: false, replay: false,
     objective: '清除兩名敵人；先看第二條射線，再決定是否靠近撞暈者。',
     hint: '突進者與右側弩手同場。牆角可誘發撞暈，也可遮住弩手；撞暈後拔刀、射箭或先換位置由你決定。' },
-  { id: 'cluster-bypass', seed: 'TRIAL-CLUSTER', name: '窄道與繞路',
+  { id: 'cluster-bypass', seed: 'TRIAL-CLUSTER', name: '窄道與繞路', goal: 'chest', kit: true, prototype: false, replay: false,
     objective: '到北端開啟空寶箱（E）；左側長路可避開敵群，不必清場。',
     hint: '正前方是短窄道，左側是遮蔽長路。比較普通箭逐個處理、冰霜／氣體或藥劑箭控制，以及完全繞行的時間與受傷。' },
-  { id: 'heart-warden', seed: 'TRIAL-WARDEN', name: '守心者試煉',
+  { id: 'heart-warden', seed: 'TRIAL-WARDEN', name: '守心者試煉', goal: 'heart', kit: false, prototype: false, replay: false,
     objective: '擊倒守心者，再按 E 取走沉眠之心。',
     hint: '近身看扇形橫斬、遠距看紅線槍矢；半血裂冠後留意直線衝撞。觀察鎖定方向，閃開後利用收招空檔反擊。' },
+  { id: 'clockwork-corridor', seed: 'TRIAL-CLOCKWORK', name: '機關走廊', goal: 'chest', kit: false, prototype: true, replay: false,
+    objective: '穿過三段機關，到盡頭打開寶箱（E）。',
+    hint: '機關只隨世界時間運轉：你不動，箭和火焰幾乎停住。先停下來看清節奏（箭孔與噴火口亮起就是要發動了），再抓空檔走過去。' },
+  { id: 'crossfire-arena', seed: 'TRIAL-CROSSFIRE', name: '四面來襲', goal: 'clear', kit: true, prototype: true, replay: true,
+    objective: '清除五名敵人。這裡被打中比平常痛（×1.5）。',
+    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。停下來看清楚誰正在準備；空中的弩矢與火瓶都能閃開或打掉。打完會用正常速度重播這場戰鬥。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);
@@ -29,6 +40,8 @@ export function createTrialLevel(id: PracticeTrialId): LevelData {
     // Practice is marked only after campaign generation and validation finish.
     return { ...generateLevel(info.seed, { floor: 5 }), practice: true, practiceTrial: id, templateName: info.name };
   }
+  if (id === 'clockwork-corridor') return clockworkCorridor();
+  if (id === 'crossfire-arena') return crossfireArena();
   const grid = new Grid(26, 24);
   grid.tiles.fill(T.Wall);
   const rect = (x0: number, z0: number, x1: number, z1: number, tile: TileId = T.Floor) => {
@@ -86,5 +99,99 @@ export function createTrialLevel(id: PracticeTrialId): LevelData {
       name: info.name, x0: 2, z0: 2, w: 22, h: 16 }],
     enemies, pickups: [], chests, heart: null, stairs: null, resupply: null, traps: [], torches,
     practice: true, practiceTrial: id,
+  };
+}
+
+/** Shared authoring helpers for the time-play prototypes. */
+function prototypeBuilder(w: number, h: number) {
+  const grid = new Grid(w, h);
+  grid.tiles.fill(T.Wall);
+  const rect = (x0: number, z0: number, x1: number, z1: number, tile: TileId = T.Floor) => {
+    for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) grid.set(x, z, tile);
+  };
+  const enemies: EnemySpawn[] = [];
+  const enemy = (kind: EnemySpawn['kind'], x: number, z: number, perched = false) => {
+    if (perched) rect(Math.floor(x), Math.floor(z), Math.floor(x), Math.floor(z), T.Platform);
+    enemies.push({ kind, x, z, y: perched ? WORLD.platformHeight : 0, yaw: Math.PI, state: 'idle', patrol: [], perched, roomKey: 'T' });
+  };
+  const torches = (): LevelData['torches'] => {
+    const out: LevelData['torches'] = [];
+    for (let z = 3; z < grid.h - 2; z += 4) for (let x = 2; x < grid.w - 2; x++) {
+      if (grid.get(x, z) === T.Floor && grid.get(x - 1, z) === T.Wall) out.push({ x: x + .1, y: 2.5, z: z + .5, nx: 1, nz: 0 });
+    }
+    return out;
+  };
+  return { grid, rect, enemies, enemy, torches };
+}
+
+const dart = (x: number, z: number, dx: number, start: number, period: number): MachineSpawn =>
+  ({ kind: 'dart', x, z, dx, dz: 0, start, period, warn: 0.45, burn: 0, radius: 0, damage: 2, speed: 7 });
+const vent = (x: number, z: number, start: number, period: number, burn: number, radius: number): MachineSpawn =>
+  ({ kind: 'vent', x, z, dx: 0, dz: 0, start, period, warn: 0.6, burn, radius, damage: 2, speed: 0 });
+
+/**
+ * Three sections that only move with world time:
+ * A) a northbound hall crossed by three rows of darts (alternating walls);
+ * B) an eastbound two-wide hall whose fire vents erupt in a wave, slightly
+ *    slower than a walk, with narrow safe pockets between columns;
+ * C) a northbound hall mixing two dart rows with a vent row between them.
+ */
+function clockworkCorridor(): LevelData {
+  const info = trialInfo('clockwork-corridor');
+  const { grid, rect, torches } = prototypeBuilder(25, 27);
+  rect(2, 21, 6, 24);   // start room
+  rect(3, 9, 5, 20);    // A
+  rect(6, 9, 18, 10);   // B
+  rect(19, 2, 21, 10);  // C
+  const machines: MachineSpawn[] = [
+    dart(3.02, 18.5, 1, 0.6, 1.0), dart(5.98, 15.5, -1, 0.93, 1.0), dart(3.02, 12.5, 1, 1.26, 1.0),
+  ];
+  // Column k erupts 0.5 s after column k−1: a wave moving east at 4 m/s.
+  [8, 10, 12, 14, 16].forEach((x, k) => {
+    for (const z of [9.5, 10.5]) machines.push(vent(x + 0.5, z, 1.0 + 0.5 * k, 3.0, 0.9, 0.55));
+  });
+  // The last row stays clear of the spot in front of the chest.
+  machines.push(dart(21.98, 8.0, -1, 0.3, 0.9), dart(19.02, 4.6, 1, 0.75, 0.9));
+  for (const x of [19.5, 20.5, 21.5]) machines.push(vent(x, 6.3, 1.6, 2.4, 0.8, 0.45));
+  const chest = { x: 20.5, z: 2.8 };
+  grid.addPillar({ x: chest.x, z: chest.z, r: .5, h: .9, kind: 'prop' });
+  return {
+    seed: info.seed, floor: 1, goal: 'heart', templateId: 'practice', templateName: info.name,
+    mirrored: false, attempt: 0, grid, spawn: { x: 4.5, z: 23.2, yaw: 0 },
+    rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 2, z0: 2, w: 21, h: 23 }],
+    enemies: [], pickups: [], chests: [{ ...chest, yaw: Math.PI, roomKey: 'T', contents: { ammo: 0, bottles: 0, items: [] } }],
+    heart: null, stairs: null, resupply: null, traps: [], torches: torches(), machines,
+    practice: true, practiceTrial: info.id,
+  };
+}
+
+/**
+ * Five threats that act together: two perched crossbowmen in the far corners,
+ * a bomber lobbing fire bottles over a low wall, and a shield guard plus a
+ * charger closing in. A dog-leg entrance keeps the spawn out of every sight
+ * line. Hits hurt 1.5× here, so reading the field matters more than trading.
+ */
+function crossfireArena(): LevelData {
+  const info = trialInfo('crossfire-arena');
+  const { grid, rect, enemies, enemy, torches } = prototypeBuilder(24, 22);
+  rect(2, 2, 21, 14);   // arena
+  rect(10, 15, 11, 16); // connector
+  rect(2, 17, 11, 19);  // start corridor
+  rect(10, 6, 13, 6, T.Wall);  // cover in front of the bomber
+  rect(5, 11, 6, 11, T.Wall);
+  rect(17, 11, 18, 11, T.Wall);
+  grid.addPillar({ x: 7.5, z: 8.5, r: .65, h: WORLD.wallHeight, kind: 'pillar' });
+  grid.addPillar({ x: 16.5, z: 8.5, r: .65, h: WORLD.wallHeight, kind: 'pillar' });
+  enemy('archer', 3.5, 3.5, true);
+  enemy('archer', 20.5, 3.5, true);
+  enemy('bomber', 11.5, 3.5);
+  enemy('guard', 8.5, 10.5);
+  enemy('charger', 14.5, 10.5);
+  return {
+    seed: info.seed, floor: 1, goal: 'heart', templateId: 'practice', templateName: info.name,
+    mirrored: false, attempt: 0, grid, spawn: { x: 3.5, z: 18.5, yaw: -Math.PI / 2 },
+    rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 2, z0: 2, w: 20, h: 18 }],
+    enemies, pickups: [], chests: [], heart: null, stairs: null, resupply: null, traps: [], torches: torches(),
+    practice: true, practiceTrial: info.id, damageMul: 1.5,
   };
 }

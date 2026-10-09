@@ -1744,3 +1744,48 @@ body.touch-mode #floor-banner p { font-size: 12px; }
 .c-key { color: #ffe08a; }
 .c-trap { color: #b8603a; }
 .c-mind { color: #b9a6ff; }
+
+/* ---------- 重播 ---------- */
+#replay-banner {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border: 1px solid rgba(236, 228, 212, 0.35);
+  background: rgba(14, 12, 18, 0.7);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+#replay-banner.hidden { display: none; }
+#replay-banner .replay-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e0483a;
+  animation: replay-blink 1s steps(2, start) infinite;
+}
+#replay-banner .replay-skip { color: #b8ad97; font-size: 12px; letter-spacing: 0.02em; }
+@keyframes replay-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { #replay-banner .replay-dot { animation: none; } }
+/* Letterbox: the replay reads as footage, not as play. */
+body.replaying::before,
+body.replaying::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 7vh;
+  background: #000;
+  z-index: 3;
+  pointer-events: none;
+}
+body.replaying::before { top: 0; }
+body.replaying::after { bottom: 0; }

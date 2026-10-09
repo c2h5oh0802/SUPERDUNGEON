@@ -15,6 +15,7 @@ import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy } from 
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
 import { updateProjectiles } from './projectileSys';
 import { updateDoors, updatePickups, updateSmokes, updateTraps } from './propSys';
+import { createMachines, updateMachines } from './machines';
 import { trample, updateDungeon } from './dungeon';
 import { TER } from './grid';
 import { inArea } from './items';
@@ -29,6 +30,7 @@ import type {
   GameEvent,
   Interactable,
   InteractTarget,
+  Machine,
   Pickup,
   Player,
   Projectile,
@@ -125,6 +127,13 @@ export class World {
   readonly smokes: Smoke[] = [];
   readonly pickups: Pickup[] = [];
   readonly traps: Trap[] = [];
+  readonly machines: Machine[];
+  /**
+   * How the player spends real time: total, and how much of it the world ran at
+   * the slow idle rate (stopped to read). The same split while any enemy is
+   * hunting the player. Measurement only; nothing reads it back into play.
+   */
+  readonly timeUse = { real: 0, still: 0, combatReal: 0, combatStill: 0 };
   readonly interactables: Interactable[] = [];
   /** 本幀事件（渲染、音效、介面讀取後清空）。 */
   events: GameEvent[] = [];
@@ -295,6 +304,7 @@ export class World {
     for (const p of level.pickups) this.addPickup(p.kind, p.amount, p.x, 0.15, p.z, null, p.item, p.level, p.gear);
     level.traps.forEach((t, k) => this.traps.push({ id: k, i: t.i, j: t.j, state: 'idle', t: 0, hitSet: new Set(),
       kind: t.kind ?? 'spikes', hidden: !!t.hidden, spent: false, noticeT: 0 }));
+    this.machines = createMachines(level.machines ?? []);
     for (const d of this.grid.doors) {
       if (d.arch) continue;
       this.interactables.push({ id: this.nextId++, kind: 'door', x: d.cx, z: d.cz, yaw: 0, used: false, ref: d.id, roomKey: '' });
@@ -416,6 +426,7 @@ export class World {
     });
     this.advance(worldDt);
     this.lastWorldDt = worldDt;
+    this.measureTimeUse(realDt, worldDt);
     this.revealT -= realDt;
     if (this.revealT <= 0) {
       this.revealT = 0.2;
@@ -427,6 +438,19 @@ export class World {
   }
 
   private stepAcc = 0;
+
+  private measureTimeUse(realDt: number, worldDt: number): void {
+    if (realDt <= 0) return;
+    const still = worldDt <= realDt * TIME.idleRate * 1.05;
+    const combat = this.enemies.some((e) => e.alive && e.state === 'alert');
+    const u = this.timeUse;
+    u.real += realDt;
+    if (still) u.still += realDt;
+    if (combat) {
+      u.combatReal += realDt;
+      if (still) u.combatStill += realDt;
+    }
+  }
 
   /** 在同一層待太久：每隔一段世界時間有巡邏者從來時的樓梯走進來（每層有上限）。 */
   private updateReinforcements(): void {
@@ -528,6 +552,7 @@ export class World {
       this.updateEncounter();
       updateDoors(this, dt);
       updateTraps(this, dt);
+      updateMachines(this);
       updateDungeon(this, dt);
       this.updateReinforcements();
       if (this.outcome !== 'none') break;
@@ -573,7 +598,8 @@ export class World {
     if (p.dead || this.outcome !== 'none') return;
     // 脆弱的詛咒：每次受傷多 1（飢餓不算受擊）
     const fragile = p.armor.curse === 'fragile' && source !== '飢餓' ? GEAR.fragileExtra : 0;
-    const attemptedAmount = Math.max(1, amount - this.armorReduce()) + fragile;
+    const scaled = this.level.damageMul ? Math.round(amount * this.level.damageMul) : amount;
+    const attemptedAmount = Math.max(1, scaled - this.armorReduce()) + fragile;
     // PublicCalibration is a disposable scenario rule, never a player/carry flag.
     // Apply it at the HP/death boundary so every damage source keeps normal hit
     // feedback, including another hit at 1 HP, without entering death first.

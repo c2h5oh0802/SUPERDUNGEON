@@ -7,7 +7,7 @@ import type { V2 } from '../core/math';
 import { Rng } from '../core/rng';
 import { Nav } from '../sim/nav';
 import { Grid, T, TER, type DoorState, type TileId } from '../sim/grid';
-import type { GearProps } from '../sim/types';
+import type { GearProps, MachineSpawn } from '../sim/types';
 import { layoutById, layoutsByRole, type EnemyKind, type Face, type RoomLayout } from './rooms';
 import { RUN_TEMPLATES, TEMPLATE_ARENA, TEMPLATE_PRACTICE, type Template, type TemplateRoom } from './templates';
 
@@ -166,6 +166,10 @@ export interface LevelData {
   practiceTrial?: PracticeTrialId;
   encounter?: { roomKey: string };
   specialRooms?: SpecialRoom[];
+  /** 機關（箭孔、噴火口）：目前只有試作練習用。 */
+  machines?: MachineSpawn[];
+  /** 受到的傷害倍率（四捨五入）；只有試作戰鬥用。 */
+  damageMul?: number;
 }
 
 export const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };

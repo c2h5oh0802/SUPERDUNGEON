@@ -360,6 +360,14 @@ export class Sfx {
           this.tone('sine', 90, 40, 0.5, 0.6, pos);
           this.noise(0.3, 0.4, 'lowpass', 800, 200, 1, pos);
           break;
+        case 'machineWarn':
+          // 機關上弦：短促的喀噠聲，先聽到再看到
+          this.tone('square', e.kind === 'dart' ? 1500 : 700, e.kind === 'dart' ? 1450 : 650, 0.035, 0.1, pos);
+          break;
+        case 'machineFire':
+          if (e.kind === 'dart') this.noise(0.07, 0.28, 'highpass', 3200, 2000, 1, pos);
+          else this.noise(0.6, 0.32, 'lowpass', 1600, 300, 1, pos);
+          break;
         case 'trapArm':
           this.tone('square', 1300, 1250, 0.04, 0.14, pos);
           break;

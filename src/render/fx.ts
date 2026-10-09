@@ -187,6 +187,10 @@ export class FxVisual {
         case 'tipHit':
           this.burst(x, y, z, 30, e.kind === 'paralysis' ? [0.85, 0.6, 1] : [0.55, 0.85, 1], 3, 0.6);
           break;
+        case 'machineFire':
+          if (e.kind === 'vent') for (let k = 0; k < 4; k++) this.burst(x, 0.25 + 0.45 * k, z, 10, [1, 0.55, 0.15], 1.6, 0.55);
+          else this.burst(x, y, z, 8, [1, 0.8, 0.4], 2, 0.25);
+          break;
         case 'area':
           this.burst(x, 0.4, z, 30, e.kind === 'fire' ? [1, 0.5, 0.15] : e.kind === 'frost' ? [0.6, 0.85, 1] : [0.7, 0.95, 0.4], 3.5, 0.6);
           break;

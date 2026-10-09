@@ -14,8 +14,10 @@ import { Loop } from './core/loop';
 import { normalizeSeed, randomSeed } from './core/rng';
 import { installDevApi } from './dev/devapi';
 import { BOSS_TEST_PRESETS, BOSS_TEST_SEED, bossTestLoadout, createBossTestWorld, type BossTestPreset } from './dev/bossTest';
-import { PRACTICE_TRIALS, trialForSeed } from './gen/practiceTrials';
+import { PRACTICE_TRIALS, trialForSeed, trialInfo } from './gen/practiceTrials';
 import { createTrialWorld } from './sim/practiceTrials';
+import { fightCleared, ReplayPlayer, ReplayRecorder } from './sim/replay';
+import { timeUseSummary } from './ui/timeUse';
 import { generateLevel } from './gen/validate';
 import { Input } from './input/input';
 import { TouchInput } from './input/touch';
@@ -30,7 +32,7 @@ import { SettingsStore } from './ui/settings';
 import { FullscreenControls } from './ui/fullscreen';
 import { gameViewport } from './ui/viewport';
 
-type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results' | 'error';
+type Mode = 'menu' | 'loading' | 'playing' | 'paused' | 'map' | 'choice' | 'inventory' | 'results' | 'error' | 'replay';
 
 // Finish the native fall, then leave the fallen battlefield visible for 1.5s.
 const PUBLIC_CORE_VICTORY_DELAY = ENEMY_DEATH_FALL_TIME + 1.5;
@@ -56,6 +58,10 @@ export class App {
   private lastTouchHud = '';
   world: World | null = null;
   mode: Mode = 'menu';
+  /** Prototype fight: everything since the trial started, for the replay at the end. */
+  replayRec: ReplayRecorder | null = null;
+  replay: { player: ReplayPlayer; original: World; t: number; doneT: number; off: () => void } | null = null;
+  private replayCountdown = -1;
   seed = '';
   practice = false;
   /** 目前這一局的職業。 */
@@ -580,6 +586,9 @@ export class App {
       const w = make();
       this.world = w;
       const level = w.level;
+      this.endReplay(false);
+      this.replayRec = level.practiceTrial && trialInfo(level.practiceTrial).replay ? new ReplayRecorder() : null;
+      this.replayCountdown = -1;
       if (this.extendedPlay && this.extendedPlayEnded && level.floor === 1) {
         this.extendedPlayEnded = false;
         this.telemetry?.engagement('extended_play_start');
@@ -652,6 +661,85 @@ export class App {
     window.setTimeout(() => el.classList.add('hidden'), 6000);
   }
 
+  /** Developer hook: replay what has been recorded so far. */
+  replayNow(): boolean {
+    if (this.mode !== 'playing' || !this.replayRec) return false;
+    this.startReplay();
+    // startReplay changes the mode; read it again.
+    return (this.mode as Mode) === 'replay';
+  }
+
+  /** Re-simulate the cleared fight from a fresh copy and play it at normal world speed. */
+  private startReplay(): void {
+    const w = this.world, rec = this.replayRec;
+    this.replayRec = null;
+    this.replayCountdown = -1;
+    const id = w?.level.practiceTrial;
+    if (!w || !rec || rec.tainted || this.mode !== 'playing' || !id) return;
+    const cls = w.player.cls;
+    const { from, to } = rec.window();
+    const player = new ReplayPlayer(() => {
+      const r = createTrialWorld(id, cls);
+      r.player.yaw = r.level.spawn.yaw;
+      return r;
+    }, rec, from, to);
+    while (!player.prepare(4000)) { /* bounded by the record length */ }
+    if (player.diverged) return;
+    this.clearInput();
+    this.mode = 'replay';
+    this.hud.show(false);
+    $('touch-controls').classList.add('hidden');
+    this.renderer.setWorld(player.world);
+    $('replay-banner').querySelector('.replay-skip')!.textContent = this.touchMode ? '點一下跳過' : '任意鍵跳過';
+    $('replay-banner').classList.remove('hidden');
+    document.body.classList.add('replaying');
+    const skip = (e: Event) => {
+      if (!this.replay || this.replay.t < 0.4 || (e instanceof KeyboardEvent && e.repeat)) return;
+      this.endReplay();
+    };
+    window.addEventListener('keydown', skip);
+    window.addEventListener('mousedown', skip);
+    window.addEventListener('touchstart', skip);
+    this.replay = { player, original: w, t: 0, doneT: 0, off: () => {
+      window.removeEventListener('keydown', skip);
+      window.removeEventListener('mousedown', skip);
+      window.removeEventListener('touchstart', skip);
+    } };
+  }
+
+  private stepReplay(realDt: number): void {
+    const r = this.replay;
+    if (!r) return;
+    r.t += realDt;
+    const rw = r.player.world;
+    if (!r.player.done) {
+      rw.lastWorldDt = r.player.advance(realDt);
+    } else {
+      // Hold the last frame a moment; the world stands still.
+      rw.lastWorldDt = 0;
+      r.doneT += realDt;
+    }
+    rw.lastRealDt = realDt;
+    const events = rw.drainEvents();
+    this.renderer.onEvents(events);
+    this.sfx.setListener(rw.player.x, rw.player.z, rw.player.yaw);
+    this.sfx.onEvents(events);
+    if (r.player.diverged || r.doneT >= 1.2) this.endReplay();
+  }
+
+  /** Back to the real world where the fight was won. */
+  private endReplay(resume = true): void {
+    const r = this.replay;
+    if (!r) return;
+    this.replay = null;
+    r.off();
+    $('replay-banner').classList.add('hidden');
+    document.body.classList.remove('replaying');
+    if (!resume || this.world !== r.original) return;
+    this.renderer.setWorld(r.original);
+    this.enterPlaying();
+  }
+
   private enterPlaying(): void {
     this.clearInput();
     this.mode = 'playing';
@@ -688,6 +776,7 @@ export class App {
       const w = this.world;
       const damage = Object.values(w.stats.damageTaken).reduce((sum, n) => sum + n, 0);
       $('pause-info').textContent += ` · 世界 ${w.time.toFixed(1)} 秒 · 承傷 ${damage} · 射擊 ${w.stats.shots} · 道具 ${w.stats.itemsUsed}`;
+      if (trialForSeed(this.seed)?.prototype) $('pause-info').textContent += ` · ${timeUseSummary(w)}`;
     }
     $('resume-msg').classList.add('hidden');
     $('btn-restart').textContent = this.bossTestActive ? '立即重打 Boss（同配裝）' : this.practice ? '重置練習' : '重新開始（同種子）';
@@ -796,12 +885,15 @@ export class App {
       this.intentionalUnlock = false;
       return;
     }
+    // Esc during a replay ends it and pauses like any other lost lock.
+    this.endReplay();
     if (this.mode === 'loading') this.pauseAfterLoading = true;
     if (!this.touchMode && (this.mode === 'playing' || this.mode === 'map')) this.pause('（滑鼠鎖定已解除）');
   }
 
   private onFocusLost(): void {
     this.clearInput();
+    this.endReplay();
     if (this.mode === 'loading') this.pauseAfterLoading = true;
     if (this.mode === 'playing' || this.mode === 'map') this.pause('（視窗失去焦點）');
   }
@@ -845,6 +937,7 @@ export class App {
   private cancelIdentify(): void {
     const w = this.world;
     if (this.mode !== 'choice' || !w || w.pendingChoice?.kind !== 'identify') return;
+    this.replayRec?.op({ kind: 'cancelIdentify' });
     w.cancelIdentifyChoice();
     const events = w.drainEvents();
     this.sfx.onEvents(events);
@@ -857,6 +950,7 @@ export class App {
     if (this.mode !== 'choice' || !this.world) return;
     const w = this.world;
     if (!w.pendingChoice || !Number.isInteger(idx) || idx < 0 || idx >= w.pendingChoice.options.length) return;
+    this.replayRec?.op({ kind: 'choose', index: idx });
     w.resolveChoice(idx);
     const ev = w.drainEvents();
     this.sfx.onEvents(ev);
@@ -882,6 +976,7 @@ export class App {
   private openInventory(): void {
     const w = this.world!;
     renderInventory(w, (index, mode) => {
+      this.replayRec?.op({ kind: 'use', index, mode });
       queueUse(w, index, mode);
       this.sfx.ui('click');
       this.closeInventory();
@@ -1001,6 +1096,7 @@ export class App {
         };
         const calibrationBefore = this.controlledPlaytest ? this.calibration.beforeFrame(w) : null;
         w.frame(realDt, fi);
+        this.replayRec?.frame(w, realDt, fi);
         this.updateTouchHud();
         const events = w.drainEvents();
         this.renderer.onEvents(events);
@@ -1014,6 +1110,12 @@ export class App {
           if (transition !== this.worldTransition) return;
         }
         if (canPresentChoice(w)) this.openChoice();
+        // Prototype fight cleared: a moment later, replay it at normal world speed.
+        if (this.replayCountdown < 0 && fightCleared(w, this.replayRec)) this.replayCountdown = 1.5;
+        if (this.replayCountdown > 0 && this.mode === 'playing') {
+          this.replayCountdown -= realDt;
+          if (this.replayCountdown <= 0) this.startReplay();
+        }
         if (w.outcome !== 'none') {
           const coreVictory = this.controlledPlaytest && this.playtestStage === 'core' && w.outcome === 'win';
           if (coreVictory && !this.playtestEnded) {
@@ -1030,6 +1132,8 @@ export class App {
           }
         }
       }
+    } else if (w && this.mode === 'replay') {
+      this.stepReplay(realDt);
     } else if (w && this.mode === 'map') {
       if (raw.map || raw.escape) this.backToPlay();
     } else if (w && this.mode === 'choice') {
@@ -1041,7 +1145,7 @@ export class App {
     const t1 = performance.now();
     if (w) {
       this.sfx.setSlow(this.mode === 'playing' ? (this.renderer.shared.uSlow.value as number) : 0);
-      this.renderer.render(realDt, this.mode !== 'playing');
+      this.renderer.render(realDt, this.mode !== 'playing' && this.mode !== 'replay');
       const t2 = performance.now();
       if (this.mode === 'playing') this.hud.update(w, this.renderer, realDt);
       this.perf.renderMs += t2 - t1;

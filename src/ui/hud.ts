@@ -1,4 +1,5 @@
 import { trialInfo } from '../gen/practiceTrials';
+import { timeUseSummary } from './timeUse';
 import { CURSE_NAMES, HUNGER, ITEM_FX, PLAYER, RUN, SEARCH, TALENT_FX, TRAP_NAMES, XP, TIP_NAMES, TOOL_NAMES, classInfo, type TipKind, type Tool } from '../config';
 import { T, TER } from '../sim/grid';
 import { gearName, knownHealingCount } from '../sim/items';
@@ -74,6 +75,8 @@ export class Hud {
   private crosshair = $('crosshair');
   private badge = $('class-badge');
   private tmarks = new Map<number, HTMLDivElement>();
+  /** Prototype trials: the stop-to-read summary captured when the goal was met. */
+  private doneSummary: string | null = null;
   private hurtArcs = $('hurt-arcs');
   private vignette = $('vignette');
   private lockBanner = $('lock-banner');
@@ -105,6 +108,7 @@ export class Hud {
   }
 
   reset(): void {
+    this.doneSummary = null;
     for (const el of this.iconEls.values()) el.remove();
     this.iconEls.clear();
     for (const { el } of this.soundEls.values()) el.remove();
@@ -426,16 +430,19 @@ export class Hud {
     });
     // 目標
     const trial = w.level.practiceTrial ? trialInfo(w.level.practiceTrial) : null;
-    const trialDone = trial && (trial.id === 'heart-warden' ? p.hasHeart : trial.id === 'cluster-bypass' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
+    const trialDone = trial && (trial.goal === 'heart' ? p.hasHeart : trial.goal === 'chest' ? w.stats.chests > 0 : w.enemies.every(e => !e.alive));
     const trialGoal = trial?.id === 'heart-warden' && w.encounterState === 'resolved' && !p.hasHeart
       ? '守心者已倒下：按 E 取走沉眠之心。' : trial?.objective;
+    // Prototypes report how much the player stopped to read, frozen at completion.
+    if (trialDone && trial.prototype && this.doneSummary === null) this.doneSummary = timeUseSummary(w);
     const vaultLocked = w.grid.doors.some((d) => d.locked);
-    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}|${w.publicPlaytestPhase}|${w.publicPlaytestDoorReady}|${w.keys}|${vaultLocked}`, () => {
+    this.set('obj', `${p.hasHeart}|${w.level.practice}|${w.level.floor}|${w.level.goal}|${w.encounterState}|${trial?.id}|${trialDone}|${this.doneSummary}|${w.publicPlaytestPhase}|${w.publicPlaytestDoorReady}|${w.keys}|${vaultLocked}`, () => {
       const f = `第 ${w.level.floor} / ${RUN.floors} 層`;
       this.objective.textContent = controlText(w.level.publicPlaytest
         ? (w.publicPlaytestPhase === 'core' ? '核心遭遇：清除兩名敵人' : w.publicPlaytestDoorReady ? '前方的門已解鎖：開門後走進去' : '開放練習：觀察時間與攻擊，擊倒盾衛')
         : trial
-        ? `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
+        ? trialDone && this.doneSummary ? `${trial.name}：目標完成。${this.doneSummary} · Esc 可重置再試一次。`
+          : `${trial.name}：${trialDone ? '目標完成；Esc 可重置比較另一種方法。' : trialGoal + ' Esc 可重置。'}`
         : w.level.practice
         ? '操作練習：隨意嘗試。補給台可補滿物資，暫停選單可重置。'
         : w.level.goal === 'descend'

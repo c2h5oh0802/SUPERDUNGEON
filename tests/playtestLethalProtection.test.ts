@@ -135,7 +135,8 @@ describe('lethal protection scenario isolation', () => {
     const world = create();
     world.player.hp = 2;
     world.drainEvents();
-    const attemptedAmount = Math.max(1, 99 - world.armorReduce());
+    // The crossfire prototype scales incoming damage; every other world uses 1.
+    const attemptedAmount = Math.max(1, Math.round(99 * (world.level.damageMul ?? 1)) - world.armorReduce());
     world.damagePlayer(99, 'lethal hit', 2, 3);
     expect(world.player.hp).toBe(0);
     expect(world.player.dead).toBe(true);
