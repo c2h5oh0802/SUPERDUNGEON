@@ -26,7 +26,7 @@ const PRINT_EVERY = 30;
  * falling, at a steady `speed` world seconds per real second. Nothing is cut
  * and nothing slows down.
  */
-export const REPLAY = { speed: 3 } as const;
+export const REPLAY = { speed: 2.5 } as const;
 
 function fingerprint(w: World): string {
   const p = w.player;
