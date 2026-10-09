@@ -19,9 +19,13 @@ try {
   await page.click('#btn-start');
   await page.waitForFunction(() => window.__sd?.state().mode === 'playing', null, { timeout: 90000 });
   check('uses normal four-floor adventure entry', !(await page.evaluate(() => window.__sd.state())).practice);
+  // The first frames after entry are slow (first draws); the starting knife is measured first.
+  await page.waitForTimeout(1500);
   const level = await page.evaluate(() => window.__sd.level());
   const room = level.rooms.find(r => r.key === 'E');
-  const start = { x: room.x0 + room.w / 2, z: room.z0 + room.h / 2 };
+  // Start by the west wall so the whole sampling window walks east on open floor;
+  // from the middle the walk reached the far wall and sampled a pinned player.
+  const start = { x: room.x0 + 1, z: room.z0 + room.h / 2 };
   const state = () => page.evaluate(() => window.__sd.state());
   for (const [id, caps] of [['knife', [0.85, 0.8, 0.95]], ['longsword', [0.65, 0.55, 0.8]], ['spear', [0.4, 0.25, 0.65]], ['axe', [0.35, 0.2, 0.45]]]) {
     if ((await state()).player.weapon.id !== id) {
@@ -40,32 +44,40 @@ try {
         return s.mode === 'playing' && s.player.weapon.id === id && !s.player.action && !s.player.pendingUse;
       }, id, { timeout: 20000 });
     }
-    await page.evaluate(({ x, z }) => { window.__sd.debug.teleport(x, z); window.__sd.debug.setView(0, 0); }, start);
-    await page.keyboard.press('Digit1');
-    const samples = page.evaluate(() => new Promise(resolve => {
-      const rows = [];
-      const begin = performance.now();
-      const sample = () => {
-        const s = window.__sd.state();
-        rows.push({ realTime: s.realTime, worldTime: s.time, x: s.player.x, z: s.player.z, action: s.player.action });
-        if (performance.now() - begin > 2400) resolve(rows);
-        else requestAnimationFrame(sample);
-      };
-      requestAnimationFrame(sample);
-    }));
-    await page.keyboard.down('KeyD');
-    await page.mouse.down();
-    const rows = await samples;
-    await page.mouse.up();
-    await page.keyboard.up('KeyD');
-    await page.waitForFunction(() => !window.__sd.state().player.action);
+    // Two walks from the same start; a pair of frames only counts inside one walk.
+    // Software GL frames are long enough that one walk can catch the knife's 0.08 s
+    // windup just twice, so a second walk keeps the sample count off the minimum.
     const phase = a => a.t < a.windup ? 0 : a.t < a.windup + a.active ? 1 : 2;
-    const speeds = rows.slice(1).flatMap((r, i) => {
-      const prev = rows[i];
-      const dt = r.realTime - prev.realTime;
-      if (dt <= 0 || !r.action || !prev.action || r.action.kind !== 'melee' || prev.action.kind !== 'melee' || r.action.t < prev.action.t || phase(r.action) !== phase(prev.action)) return [];
-      return [{ phase: phase(r.action), speed: Math.hypot(r.x - prev.x, r.z - prev.z) / dt }];
-    });
+    const rows = [];
+    const speeds = [];
+    for (let walk = 0; walk < 2; walk++) {
+      await page.evaluate(({ x, z }) => { window.__sd.debug.teleport(x, z); window.__sd.debug.setView(0, 0); }, start);
+      await page.keyboard.press('Digit1');
+      const samples = page.evaluate(() => new Promise(resolve => {
+        const rows = [];
+        const begin = performance.now();
+        const sample = () => {
+          const s = window.__sd.state();
+          rows.push({ realTime: s.realTime, worldTime: s.time, x: s.player.x, z: s.player.z, action: s.player.action });
+          if (performance.now() - begin > 2400) resolve(rows);
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }));
+      await page.keyboard.down('KeyD');
+      await page.mouse.down();
+      const walked = await samples;
+      await page.mouse.up();
+      await page.keyboard.up('KeyD');
+      await page.waitForFunction(() => !window.__sd.state().player.action);
+      rows.push(...walked);
+      speeds.push(...walked.slice(1).flatMap((r, i) => {
+        const prev = walked[i];
+        const dt = r.realTime - prev.realTime;
+        if (dt <= 0 || !r.action || !prev.action || r.action.kind !== 'melee' || prev.action.kind !== 'melee' || r.action.t < prev.action.t || phase(r.action) !== phase(prev.action)) return [];
+        return [{ phase: phase(r.action), speed: Math.hypot(r.x - prev.x, r.z - prev.z) / dt }];
+      }));
+    }
     for (let k = 0; k < 3; k++) {
       const samples = speeds.filter(s => s.phase === k);
       const top = Math.max(...samples.map(s => s.speed));
