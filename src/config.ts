@@ -11,6 +11,9 @@ export const TIME = {
   maxSubstep: 1 / 120,
 } as const;
 
+/** 試作規則 smartFire 的火瓶：碎開時炸傷、炸到的敵人著火（每 tick 秒 1 傷害）。 */
+export const FIREBOMB = { burst: 4, burstRadius: 1.8, burn: 2, burnTick: 0.5, allyClear: 0.6, fleeSpeed: 2.6 } as const;
+
 /** Shared by the corpse pose and the public victory presentation delay. */
 export const ENEMY_DEATH_FALL_TIME = 0.6;
 

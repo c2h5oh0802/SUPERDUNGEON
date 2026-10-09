@@ -6,7 +6,7 @@ import { validateLevel } from '../src/gen/validate';
 import { queueUse } from '../src/sim/items';
 import { Nav } from '../src/sim/nav';
 import { createTrialWorld } from '../src/sim/practiceTrials';
-import { fightCleared, ReplayPlayer, ReplayRecorder } from '../src/sim/replay';
+import { fightCleared, REPLAY, ReplayPlayer, ReplayRecorder } from '../src/sim/replay';
 import { emptyInput, type FrameInput, type MachineSpawn } from '../src/sim/types';
 import type { World } from '../src/sim/world';
 import { timeUseSummary } from '../src/ui/timeUse';
@@ -232,7 +232,7 @@ describe('replay re-simulates the fight from the record', () => {
     expect(r.diverged).toBe(true);
   });
 
-  it('plays at world-time speed: stopped-to-think stretches shrink to their world time', () => {
+  it('skims calm stretches: thinking time disappears and quiet walking plays at 4x', () => {
     const rec = new ReplayRecorder();
     const w = createTrialWorld('crossfire-arena', 'huntress');
     w.player.yaw = w.level.spawn.yaw;
@@ -240,12 +240,30 @@ describe('replay re-simulates the fight from the record', () => {
     for (let f = 0; f < 180; f++) step(emptyInput(w.player.yaw, 0)); // 3 real seconds standing still
     for (let f = 0; f < 60; f++) step({ ...emptyInput(w.player.yaw, 0), moveZ: 1 }); // 1 real second walking
     expect(w.time).toBeLessThan(1.4);
+    expect(rec.frames.every((f) => !f.active)).toBe(true);
     const r = new ReplayPlayer(() => { const x = createTrialWorld('crossfire-arena', 'huntress'); x.player.yaw = x.level.spawn.yaw; return x; }, rec, 0, rec.endTime);
     while (!r.prepare(1000));
     let real = 0;
     while (!r.done && real < 10) { r.advance(DT); real += DT; }
-    expect(real).toBeCloseTo(w.time, 1);
-    expect(real).toBeLessThan(2);
+    expect(real).toBeCloseTo(w.time / REPLAY.fast, 1);
+  });
+
+  it('decisive moments play in slow motion, the rest of the action at 2x', () => {
+    const rec = new ReplayRecorder();
+    rec.moments.push(5);
+    expect(rec.speedAt(5 - REPLAY.before + 0.01, true)).toBe(REPLAY.slow);
+    expect(rec.speedAt(5 + REPLAY.after - 0.01, false)).toBe(REPLAY.slow);
+    expect(rec.speedAt(6, true)).toBe(REPLAY.base);
+    expect(rec.speedAt(6, false)).toBe(REPLAY.fast);
+  });
+
+  it('records kills, hits and near misses as moments while fighting', () => {
+    const rec = new ReplayRecorder();
+    const w = scriptedFight('warrior', rec);
+    expect(w.player.dead || w.enemies.some((e) => !e.alive)).toBe(true);
+    expect(rec.moments.length).toBeGreaterThan(0);
+    expect([...rec.moments].sort((a, b) => a - b)).toEqual(rec.moments);
+    expect(rec.frames.some((f) => f.active)).toBe(true);
   });
 
   it('the replay is due only once every enemy is down, the record is clean and the run goes on', () => {
@@ -265,13 +283,22 @@ describe('replay re-simulates the fight from the record', () => {
     expect(fightCleared(corridor(), new ReplayRecorder())).toBe(false);
   });
 
-  it('the window starts just before the fight and is capped', () => {
-    const rec = new ReplayRecorder();
-    scriptedFight('huntress', rec);
-    const { from, to } = rec.window();
-    expect(from).toBeCloseTo(Math.max(0, rec.combatStart! - 1), 6);
-    expect(to).toBe(rec.endTime);
-    expect(rec.window(1).from).toBeCloseTo(rec.endTime - 1, 6);
+  it('the window starts no earlier than just before the fight and plays in about the cap', () => {
+    for (const cls of ['huntress', 'warrior'] as const) {
+      const rec = new ReplayRecorder();
+      scriptedFight(cls, rec);
+      const { from, to } = rec.window();
+      expect(from).toBeGreaterThanOrEqual(Math.max(0, rec.combatStart! - 1) - 1e-9);
+      expect(to).toBe(rec.endTime);
+      const r = new ReplayPlayer(() => { const x = createTrialWorld('crossfire-arena', cls); x.player.yaw = x.level.spawn.yaw; return x; }, rec, from, to);
+      while (!r.prepare(1000));
+      let real = 0;
+      while (!r.done && real < 60) { r.advance(DT); real += DT; }
+      expect(r.diverged).toBe(false);
+      expect(real).toBeLessThanOrEqual(REPLAY.cap + 0.1);
+      const short = rec.window(1);
+      expect(short.from).toBeGreaterThan(from - 1e-9);
+    }
   });
 });
 

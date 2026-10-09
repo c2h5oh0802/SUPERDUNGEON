@@ -11,7 +11,7 @@ import type { LevelData } from '../gen/generator';
 import { Grid } from './grid';
 import { counterThreat, hunterEye, pushTarget, type CounterThreat, type HunterEye } from './classSys';
 import { Nav } from './nav';
-import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy } from './enemySys';
+import { updateEnemies, onNoise, createEnemy, awakenDungeon, damageEnemy, updateBurningEnemies } from './enemySys';
 import { movePlayer, startActions, updatePlayerAction, findInteractTarget } from './playerSys';
 import { updateProjectiles } from './projectileSys';
 import { updateDoors, updatePickups, updateSmokes, updateTraps } from './propSys';
@@ -557,7 +557,8 @@ export class World {
       this.updateReinforcements();
       if (this.outcome !== 'none') break;
       updateSmokes(this, dt);
-      updateAreas(this, dt, (e, dmg, src) => damageEnemy(this, e, dmg, { source: src, sneak: false, head: false, x: e.x, y: 0.5, z: e.z }));
+      updateAreas(this, dt, (e, dmg, src, byPlayer) => damageEnemy(this, e, dmg, { source: src, sneak: false, head: false, x: e.x, y: 0.5, z: e.z, redirect: byPlayer }));
+      updateBurningEnemies(this, dt);
       updateBuffs(this, dt);
       if (this.pendingChoice !== null) break;
     }

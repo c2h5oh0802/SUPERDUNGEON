@@ -360,6 +360,10 @@ export class Sfx {
           this.tone('sine', 90, 40, 0.5, 0.6, pos);
           this.noise(0.3, 0.4, 'lowpass', 800, 200, 1, pos);
           break;
+        case 'redirectKill':
+          // 借刀：上揚的和弦，蓋過一般的倒地聲
+          for (const [k, f] of [523, 659, 784].entries()) this.tone('triangle', f, f * 1.01, 0.32, 0.12, null, k * 0.06);
+          break;
         case 'machineWarn':
           // 機關上弦：短促的喀噠聲，先聽到再看到
           this.tone('square', e.kind === 'dart' ? 1500 : 700, e.kind === 'dart' ? 1450 : 650, 0.035, 0.1, pos);

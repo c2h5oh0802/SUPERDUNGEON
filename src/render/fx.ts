@@ -640,6 +640,10 @@ export class FxVisual {
     }
     for (const [id, m] of this.landRings) if (!seenLand.has(id)) m.visible = false;
     this.landMat.opacity = 0.4 + 0.25 * Math.abs(Math.sin(realTime * 6));
+    // 著火的敵人：身上冒火
+    for (const e of this.world.enemies) {
+      if (e.alive && e.burnT && Math.random() < 0.6) this.burst(e.x + (Math.random() - 0.5) * 0.4, e.y + 0.4 + Math.random() * 1.2, e.z + (Math.random() - 0.5) * 0.4, 2, [1, 0.55, 0.15], 1.2, 0.45);
+    }
     // 區域
     const seenArea = new Set<number>();
     for (const a of this.world.areas) {

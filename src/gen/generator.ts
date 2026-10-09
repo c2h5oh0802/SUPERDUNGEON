@@ -170,6 +170,11 @@ export interface LevelData {
   machines?: MachineSpawn[];
   /** 受到的傷害倍率（四捨五入）；只有試作戰鬥用。 */
   damageMul?: number;
+  /**
+   * 試作規則（只在試作房間開啟）。smartFire：敵人會繞開燃燒的火、投彈手不往
+   * 隊友身邊丟；火瓶碎開時炸傷範圍內的人，炸到的敵人會著火。
+   */
+  rules?: { smartFire?: boolean };
 }
 
 export const FACE_YAW: Record<Face, number> = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };

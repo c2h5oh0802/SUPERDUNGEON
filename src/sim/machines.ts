@@ -32,7 +32,7 @@ function fire(w: World, m: Machine): void {
   if (m.kind === 'vent') {
     m.hitPlayer = false;
     m.hitIds = [];
-    spawnArea(w, 'fire', m.x, m.z, { radius: m.radius, life: m.burn }, true);
+    spawnArea(w, 'fire', m.x, m.z, { radius: m.radius, life: m.burn }, { harmless: true });
     return;
   }
   const from = { x: m.x + m.dx * 0.12, y: MACHINE.dartY, z: m.z + m.dz * 0.12 };

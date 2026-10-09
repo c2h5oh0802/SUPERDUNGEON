@@ -1,6 +1,6 @@
 import { trialInfo } from '../gen/practiceTrials';
 import { timeUseSummary } from './timeUse';
-import { CURSE_NAMES, HUNGER, ITEM_FX, PLAYER, RUN, SEARCH, TALENT_FX, TRAP_NAMES, XP, TIP_NAMES, TOOL_NAMES, classInfo, type TipKind, type Tool } from '../config';
+import { CURSE_NAMES, ENEMY_NAMES, HUNGER, ITEM_FX, PLAYER, RUN, SEARCH, TALENT_FX, TRAP_NAMES, XP, TIP_NAMES, TOOL_NAMES, classInfo, type TipKind, type Tool } from '../config';
 import { T, TER } from '../sim/grid';
 import { gearName, knownHealingCount } from '../sim/items';
 import { HUNGER_NAMES, hungerState } from '../sim/hunger';
@@ -277,6 +277,11 @@ export class Hud {
         case 'deflect':
           this.toast('擊開！', 'good', 1.2);
           break;
+        case 'redirectKill': {
+          const name = ENEMY_NAMES[e.kind as keyof typeof ENEMY_NAMES] ?? '';
+          this.toast(e.source === 'charge' ? `借刀！${name}被突進者撞倒` : `借刀！${name}被火燒倒`, 'good', 1.8);
+          break;
+        }
         case 'block':
           this.toast(e.kind === 'charger' ? '擋下衝撞！' : e.kind === 'bolt' ? '盾擋下弩矢' : '盾擋下攻擊', 'good', 1.3);
           break;

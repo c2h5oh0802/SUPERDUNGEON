@@ -27,7 +27,7 @@ export const PRACTICE_TRIALS = [
     hint: '機關只隨世界時間運轉：你不動，箭和火焰幾乎停住。先停下來看清節奏（箭孔與噴火口亮起就是要發動了），再抓空檔走過去。' },
   { id: 'crossfire-arena', seed: 'TRIAL-CROSSFIRE', name: '四面來襲', goal: 'clear', kit: true, prototype: true, replay: true,
     objective: '清除五名敵人。這裡被打中比平常痛（×1.5）。',
-    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。停下來看清楚誰正在準備；空中的弩矢與火瓶都能閃開或打掉。打完會用正常速度重播這場戰鬥。' },
+    hint: '兩名高台弩手、投彈手、盾衛與突進者會一起出手。投彈手的火只燒你；把火瓶打回去或在空中射爆，它就燒敵人。也能讓突進者撞上自己人。打完會播放戰鬥精華。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);
@@ -192,6 +192,6 @@ function crossfireArena(): LevelData {
     mirrored: false, attempt: 0, grid, spawn: { x: 3.5, z: 18.5, yaw: -Math.PI / 2 },
     rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 2, z0: 2, w: 20, h: 18 }],
     enemies, pickups: [], chests: [], heart: null, stairs: null, resupply: null, traps: [], torches: torches(),
-    practice: true, practiceTrial: info.id, damageMul: 1.5,
+    practice: true, practiceTrial: info.id, damageMul: 1.5, rules: { smartFire: true },
   };
 }

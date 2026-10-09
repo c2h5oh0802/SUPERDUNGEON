@@ -8,7 +8,7 @@ import { shatterPotion, spawnArea } from './items';
 import { triggerTrapAt } from './dungeon';
 import { T } from './grid';
 import { hasTalent } from './progress';
-import { chargerHelmet, damageEnemy, enemyForward, wardenCrownClosed } from './enemySys';
+import { chargerHelmet, damageEnemy, enemyForward, firebombBurst, wardenCrownClosed } from './enemySys';
 import type { World } from './world';
 import type { Enemy, Projectile } from './types';
 
@@ -66,7 +66,7 @@ function findHit(w: World, p: Projectile, a: V3, b: V3, dt: number, tStart: numb
   return best;
 }
 
-export function breakBottle(w: World, b: Projectile, pos: V3, air: boolean): void {
+export function breakBottle(w: World, b: Projectile, pos: V3, air: boolean, hitByPlayer = false): void {
   if (!b.alive) return;
   b.alive = false;
   if (air) w.stats.airbursts++;
@@ -74,7 +74,11 @@ export function breakBottle(w: World, b: Projectile, pos: V3, air: boolean): voi
   if (b.payload === 'firebomb') {
     w.emit({ type: 'bottleBreak', x: pos.x, y: pos.y, z: pos.z, air, kind: 'firebomb' });
     w.emitNoise(pos.x, pos.y, pos.z, 6, 'bottle');
-    spawnArea(w, 'fire', pos.x, pos.z);
+    // smartFire: a bottle the player batted back or shot down is the player's fire.
+    const smart = !!w.level.rules?.smartFire;
+    const byPlayer = smart && (b.owner === 'player' || hitByPlayer);
+    if (smart) firebombBurst(w, pos, byPlayer);
+    spawnArea(w, 'fire', pos.x, pos.z, undefined, { byPlayer });
     return;
   }
   // 丟出的藥水：碎開的地方產生效果
@@ -147,7 +151,7 @@ export function updateProjectiles(w: World, dt: number): void {
       if (hit.type === 'bottle') {
         const b = hit.bottle!;
         const bAt = { x: b.pos.x + b.avgVel.x * hit.bottleTau!, y: b.pos.y + b.avgVel.y * hit.bottleTau!, z: b.pos.z + b.avgVel.z * hit.bottleTau! };
-        breakBottle(w, b, bAt, true);
+        breakBottle(w, b, bAt, true, p.owner === 'player');
         p.hitSet.add(b.id);
         if (p.kind === 'stone') {
           p.alive = false;

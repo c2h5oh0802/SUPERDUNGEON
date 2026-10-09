@@ -363,7 +363,7 @@ export function shatterPotion(w: World, id: PotionId, x: number, y: number, z: n
   spawnArea(w, id, x, z);
 }
 
-export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, size?: { radius: number; life: number }, harmless = false): void {
+export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, size?: { radius: number; life: number }, opts: { harmless?: boolean; byPlayer?: boolean } = {}): void {
   const spec = size ?? ITEM_FX.area[kind];
   // 火落在水上只冒出蒸氣
   if (kind === 'fire' && w.grid.terrainAt(Math.floor(x), Math.floor(z)) === TER.Water) {
@@ -377,7 +377,8 @@ export function spawnArea(w: World, kind: Area['kind'], x: number, z: number, si
       if (a.kind === 'fire' && Math.hypot(a.x - x, a.z - z) <= a.radius + spec.radius) w.areas.splice(k, 1);
     }
   }
-  w.areas.push({ id: w.nextId++, kind, x, z, radius: spec.radius, age: 0, life: spec.life, tickT: 0, hitPlayer: false, ...(harmless ? { harmless } : {}) });
+  w.areas.push({ id: w.nextId++, kind, x, z, radius: spec.radius, age: 0, life: spec.life, tickT: 0, hitPlayer: false,
+    ...(opts.harmless ? { harmless: true } : {}), ...(opts.byPlayer ? { byPlayer: true } : {}) });
   w.emit({ type: 'area', kind, x, y: 0.1, z, radius: spec.radius });
 }
 
@@ -386,7 +387,7 @@ export function inArea(w: World, kind: Area['kind'], x: number, z: number, pad =
 }
 
 /** 區域效果（世界時間）。 */
-export function updateAreas(w: World, dt: number, damageEnemy: (e: Enemy, dmg: number, src: string) => void): void {
+export function updateAreas(w: World, dt: number, damageEnemy: (e: Enemy, dmg: number, src: string, byPlayer: boolean) => void): void {
   const p = w.player;
   for (const a of w.areas) {
     a.age += dt;
@@ -396,7 +397,9 @@ export function updateAreas(w: World, dt: number, damageEnemy: (e: Enemy, dmg: n
       a.tickT += dt;
       if (a.tickT >= ITEM_FX.area.fire.tick) {
         a.tickT -= ITEM_FX.area.fire.tick;
-        for (const e of w.enemies) if (e.alive && !e.perched && inside(e.x, e.z, e.radius)) damageEnemy(e, ITEM_FX.area.fire.damage, 'fire');
+        // smartFire: enemy-thrown fire burns only the player.
+        const burnsEnemies = !w.level.rules?.smartFire || !!a.byPlayer;
+        if (burnsEnemies) for (const e of w.enemies) if (e.alive && !e.perched && inside(e.x, e.z, e.radius)) damageEnemy(e, ITEM_FX.area.fire.damage, 'fire', !!a.byPlayer);
         // 防火刻紋：不受火焰傷害
         if (!p.dead && p.armor.ench !== 'fireproof' && inside(p.x, p.z, PLAYER.radius)) w.damagePlayer(ITEM_FX.area.fire.damage, '火焰', a.x, a.z);
       }

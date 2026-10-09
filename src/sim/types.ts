@@ -81,6 +81,8 @@ export interface Area {
   hitPlayer: boolean;
   /** Flame drawn for a machine that deals its own damage; burns nobody by itself. */
   harmless?: boolean;
+  /** The player sent this fire (a batted-back or air-burst firebomb). */
+  byPlayer?: boolean;
 }
 
 /** 機關：只隨世界時間運轉。你不動，它就幾乎不動；看清節奏再走過去。 */
@@ -172,6 +174,10 @@ export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'investigate' | 'search' 
 export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger' | 'pushed';
 
 export interface Enemy {
+  /** smartFire: seconds left burning after a firebomb burst; who lit it. */
+  burnT?: number;
+  burnTick?: number;
+  burnByPlayer?: boolean;
   /** Target-local temporary mark; absolute world time, not carried between floors. */
   huntingMarkUntil?: number;
   /** 掉進深坑（沒有屍體留在原地）。 */
@@ -449,7 +455,8 @@ export type GameEventType =
   | 'mimicWake'
   | 'statueWake'
   | 'machineWarn'
-  | 'machineFire';
+  | 'machineFire'
+  | 'redirectKill';
 
 export interface GameEvent {
   type: GameEventType;

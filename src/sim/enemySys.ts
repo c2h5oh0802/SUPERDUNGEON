@@ -1,5 +1,5 @@
 import { combatRoomCells } from './combatSound';
-import { ENCOUNTERS, ENEMIES, GEAR, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { ENCOUNTERS, ENEMIES, FIREBOMB, GEAR, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
@@ -7,7 +7,7 @@ import type { EnemySpawn } from '../gen/generator';
 import { recoilPlayer, shieldBlocks } from './classSys';
 import { setDoor } from './propSys';
 import type { World } from './world';
-import type { Enemy, Projectile } from './types';
+import type { Area, Enemy, Projectile } from './types';
 
 // Distance accumulation belongs to the actual movement path, not a second perception loop.
 const footstepDistance = new WeakMap<Enemy, number>();
@@ -197,6 +197,8 @@ export interface DamageInfo {
   x: number;
   y: number;
   z: number;
+  /** The player turned enemy fire on this enemy (smartFire rules). */
+  redirect?: boolean;
 }
 
 const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
@@ -227,6 +229,7 @@ export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): 
     if (e.lodged > 0) w.addPickup('arrows', e.lodged, e.x, 0.05, e.z, null);
     e.lodged = 0;
     w.emit({ type: 'enemyDeath', id: e.id, x: e.x, y: e.y, z: e.z, kind: e.kind });
+    if (info.redirect) w.emit({ type: 'redirectKill', id: e.id, kind: e.kind, source: info.source, x: e.x, y: e.y + 1, z: e.z });
     dropCarried(w, e);
     w.onKill(e);
     w.updateEncounter();
@@ -575,8 +578,33 @@ function moveTo(w: World, e: Enemy, goal: V2, speed: number, dt: number, arriveD
     return false;
   }
   const step = Math.min(d, speed * dt);
-  const nx = e.x + (dx / d) * step;
-  const nz = e.z + (dz / d) * step;
+  let nx = e.x + (dx / d) * step;
+  let nz = e.z + (dz / d) * step;
+  if (w.level.rules?.smartFire) {
+    const pad = e.radius * 0.5;
+    const inside = burningAt(w, e.x, e.z, pad);
+    if (inside) {
+      // Already in the fire: get out the shortest way, whatever the path says.
+      let ax = e.x - inside.x, az = e.z - inside.z;
+      if (Math.hypot(ax, az) < 1e-3) ({ x: ax, z: az } = forwardFromYaw(e.yaw));
+      const ad = Math.hypot(ax, az);
+      nx = e.x + (ax / ad) * speed * dt;
+      nz = e.z + (az / ad) * speed * dt;
+    } else if (burningAt(w, nx, nz, pad)) {
+      // Never step into fire: slip around its edge, or wait for it to burn out.
+      let found = false;
+      for (const turn of [0.9, -0.9, 1.6, -1.6]) {
+        const c = Math.cos(turn), s = Math.sin(turn);
+        const tx = e.x + ((dx * c - dz * s) / d) * step, tz = e.z + ((dx * s + dz * c) / d) * step;
+        if (!burningAt(w, tx, tz, pad) && !w.grid.circleBlocked(tx, tz, e.radius)) { nx = tx; nz = tz; found = true; break; }
+      }
+      if (!found) {
+        e.moving = false;
+        e.yaw = turnToward(e.yaw, yawFromDir(dx, dz), 6 * dt);
+        return false;
+      }
+    }
+  }
   // 門：停下、花時間開門
   const doorId = blockingDoor(w, nx, nz, e.radius);
   if (doorId >= 0) {
@@ -1196,7 +1224,8 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
           w.emitNoise(nx, 1, nz, NOISE.combatHit, 'impact', e.id);
           // 衝撞也會撞傷擋在路上的同伴
           w.emit({ type: 'bump', id: o.id, kind: 'charge', x: (e.x + o.x) / 2, y: 1.0, z: (e.z + o.z) / 2 });
-          damageEnemy(w, o, s.allyDamage, { source: 'charge', sneak: false, head: false, x: o.x, y: 1.0, z: o.z });
+          // smartFire: luring a charge into an ally is the player's doing.
+          damageEnemy(w, o, s.allyDamage, { source: 'charge', sneak: false, head: false, x: o.x, y: 1.0, z: o.z, redirect: !!w.level.rules?.smartFire });
           if (o.alive) staggerEnemy(o, s.allyStumble);
           e.phase = 'recovery';
           e.phaseT = 0;
@@ -1254,6 +1283,98 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
 
 // ---------- 投彈手 ----------
 
+/** smartFire: fire here that can burn an enemy, i.e. fire the player sent. */
+function burningAt(w: World, x: number, z: number, pad: number): Area | null {
+  for (const a of w.areas) if (a.kind === 'fire' && a.byPlayer && Math.hypot(a.x - x, a.z - z) <= a.radius + pad) return a;
+  return null;
+}
+
+/** Another walking enemy would be inside the fire if a bottle landed here. */
+function alliesNear(w: World, self: Enemy, x: number, z: number): boolean {
+  const r = ITEM_FX.area.fire.radius + FIREBOMB.allyClear;
+  return w.enemies.some((o) => o !== self && o.alive && !o.perched && Math.hypot(o.x - x, o.z - z) <= r);
+}
+
+/**
+ * Where the bomber throws. Normally at the player. Under smartFire, when allies are
+ * close to the player, it lands the fire just behind the player instead, on the
+ * side away from them: the retreat burns while the allies stay clear. Null when
+ * no such spot is clear.
+ */
+export function bomberTarget(w: World, e: Enemy): V2 | null {
+  const p = w.player;
+  if (!w.level.rules?.smartFire || !alliesNear(w, e, p.x, p.z)) return { x: p.x, z: p.z };
+  let ux = 0, uz = 0;
+  for (const o of w.enemies) {
+    if (o === e || !o.alive || o.perched) continue;
+    const d = Math.hypot(o.x - p.x, o.z - p.z);
+    if (d > ITEM_FX.area.fire.radius + FIREBOMB.allyClear || d < 1e-3) continue;
+    ux += (o.x - p.x) / d;
+    uz += (o.z - p.z) / d;
+  }
+  const len = Math.hypot(ux, uz);
+  if (len < 1e-3) return null;
+  const back = ITEM_FX.area.fire.radius + 0.4;
+  for (const turn of [0, 0.7, -0.7]) {
+    const c = Math.cos(turn), s = Math.sin(turn);
+    const bx = -(ux * c - uz * s) / len, bz = -(ux * s + uz * c) / len;
+    const x = p.x + bx * back, z = p.z + bz * back;
+    if (w.grid.circleBlocked(x, z, 0.3) || alliesNear(w, e, x, z)) continue;
+    return { x, z };
+  }
+  return null;
+}
+
+/**
+ * smartFire: a breaking firebomb hurts whoever it was thrown at. The bomber's own
+ * bottle burns only the player; one the player batted back or shot down burns the
+ * enemies near it, and they catch fire.
+ */
+export function firebombBurst(w: World, pos: V3, byPlayer: boolean): void {
+  const r = FIREBOMB.burstRadius;
+  const p = w.player;
+  if (!p.dead && Math.hypot(p.x - pos.x, p.z - pos.z) <= r + PLAYER.radius * 0.5 && Math.abs(pos.y - 0.9) < 2) w.damagePlayer(FIREBOMB.burst, '火瓶爆炸', pos.x, pos.z);
+  if (!byPlayer) return;
+  for (const e of w.enemies) {
+    if (!e.alive || Math.hypot(e.x - pos.x, e.z - pos.z) > r + e.radius * 0.5 || Math.abs(e.y + 0.9 - pos.y) > 1.8) continue;
+    damageEnemy(w, e, FIREBOMB.burst, { source: 'firebomb', sneak: false, head: false, x: e.x, y: e.y + 1, z: e.z, redirect: byPlayer });
+    if (!e.alive) continue;
+    e.burnT = FIREBOMB.burn;
+    e.burnTick = 0;
+    e.burnByPlayer = true;
+  }
+}
+
+/**
+ * Burning enemies keep taking damage for a moment, even after they leave the fire.
+ * smartFire: an enemy standing in the player's fire walks out of it, whatever it
+ * was doing (a chasing enemy also steers around it in moveTo).
+ */
+export function updateBurningEnemies(w: World, dt: number): void {
+  for (const e of w.enemies) {
+    if (!e.alive) continue;
+    if (w.level.rules?.smartFire && !e.perched && !e.push) {
+      const a = burningAt(w, e.x, e.z, e.radius * 0.5);
+      if (a) {
+        // Straight out from the centre (dead centre: the way it is facing).
+        let ax = e.x - a.x, az = e.z - a.z;
+        if (Math.hypot(ax, az) < 1e-3) ({ x: ax, z: az } = forwardFromYaw(e.yaw));
+        const ad = Math.hypot(ax, az);
+        const r = w.grid.resolveCircle(e.x + (ax / ad) * FIREBOMB.fleeSpeed * dt, e.z + (az / ad) * FIREBOMB.fleeSpeed * dt, e.radius);
+        e.x = r.x;
+        e.z = r.z;
+        e.moving = true;
+      }
+    }
+    if (!e.burnT) continue;
+    e.burnT = Math.max(0, e.burnT - dt);
+    e.burnTick = (e.burnTick ?? 0) + dt;
+    if (e.burnTick < FIREBOMB.burnTick) continue;
+    e.burnTick -= FIREBOMB.burnTick;
+    damageEnemy(w, e, 1, { source: 'fire', sneak: false, head: false, x: e.x, y: e.y + 1, z: e.z, redirect: !!e.burnByPlayer });
+  }
+}
+
 /** 拋出火瓶：鎖定落點後以固定的飛行時間算出拋物線；瓶子看得見、可以被射爆或打回去。 */
 function throwFirebomb(w: World, e: Enemy, target: V2): void {
   const spec = PROJECTILES.bottle;
@@ -1293,6 +1414,12 @@ function bomberAlert(w: World, e: Enemy, dt: number): void {
         chase(w, e, dt, s.speed, s.maxDist);
         return;
       }
+      if (!bomberTarget(w, e)) {
+        // A competent bomber does not throw into its own side: wait for a clear shot.
+        e.phase = 'reload';
+        e.phaseT = s.reload - 0.3;
+        return;
+      }
       e.phase = 'aim';
       e.phaseT = 0;
       e.locked = false;
@@ -1308,7 +1435,16 @@ function bomberAlert(w: World, e: Enemy, dt: number): void {
         if (e.phaseT >= s.windup - s.lockBefore) {
           e.locked = true;
           e.lockedYaw = e.yaw;
-          e.aimPoint = { x: p.x, y: 0, z: p.z };
+          const target = bomberTarget(w, e);
+          if (!target) {
+            // An ally stepped in at the last moment and there is no clear spot: hold the bottle.
+            e.locked = false;
+            e.aimPoint = null;
+            e.phase = 'reload';
+            e.phaseT = s.reload - 0.5;
+            return;
+          }
+          e.aimPoint = { x: target.x, y: 0, z: target.z };
           w.emit({ type: 'enemyLock', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
         }
       }
