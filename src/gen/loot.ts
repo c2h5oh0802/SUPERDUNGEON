@@ -7,7 +7,7 @@ import type { GearProps } from '../sim/types';
 
 // 掉落表：生成器（地上、寶箱）與敵人掉落共用。與職業無關，同一個種子兩個職業拿到的一樣。
 // pool 1＝舊版（生成版本 1 與舊存檔的亂數不變）；pool 2＝生成版本 2：多了新消耗品，
-// 裝備是未知的（等級 −1～+2，可能有附魔或詛咒）。
+// 裝備是未知的（等級 +0～+2，可能有附魔或詛咒）。
 
 export type LootPool = 1 | 2;
 
@@ -43,7 +43,9 @@ export function rollEquipment(rng: Rng, floor: number, pool: LootPool = 1): Loot
   const fi = Math.max(0, Math.min(3, floor - 1));
   if (rng.chance(GEAR.curseChance)) {
     const curse = rng.pick(id.startsWith('weapon:') ? WEAPON_CURSES : ARMOR_CURSES);
-    return { id, level: rng.chance(0.5) ? -1 : 0, curse, unknown: true };
+    // 以前這裡擲 −1 或 +0；照樣擲一次，同一個種子的其他結果才不會變（進行中的存檔也一樣）。
+    rng.chance(0.5);
+    return { id, level: 0, curse, unknown: true };
   }
   const weights = GEAR.levelWeights[fi >= 2 ? 1 : 0]!;
   let roll = rng.next();
@@ -52,7 +54,7 @@ export function rollEquipment(rng: Rng, floor: number, pool: LootPool = 1): Loot
     roll -= weights[k]!;
     if (roll < 0) break;
   }
-  const out: LootRoll = { id, level: k - 1, unknown: true };
+  const out: LootRoll = { id, level: k, unknown: true };
   if (rng.chance(GEAR.enchantChance[fi] ?? 0)) out.ench = rollEnchant(rng, id);
   return out;
 }

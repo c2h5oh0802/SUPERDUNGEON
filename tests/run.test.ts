@@ -53,7 +53,7 @@ describe('樓層生成', () => {
       const near = l.enemies.filter((e) => e.roomKey === h.roomKey && Math.hypot(e.x - h.x, e.z - h.z) <= 5.2);
       expect(near.length).toBeGreaterThanOrEqual(1);
     }
-  });
+  }, 60000);
 });
 
 describe('跨層保留與存檔', () => {

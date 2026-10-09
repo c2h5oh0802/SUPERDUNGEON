@@ -442,7 +442,7 @@ export const worldEnglish: Record<string, string> = {
   "{0}的詛咒": "{0} Curse",
   "{0}的詛咒：{1}；裝備後卸不下來，用強化卷軸或除咒卷軸解除": "{0} Curse: {1}. It cannot be removed once equipped; lift it with an Upgrade Scroll or a Remove Curse Scroll",
   "{0}的詛咒：{1}；卸不下來，用強化卷軸或除咒卷軸解除": "{0} Curse: {1}. It cannot be removed; lift it with an Upgrade Scroll or a Remove Curse Scroll",
-  "未知的裝備：裝備上去或鑑定才知道強化等級（−1 到 +2），以及有沒有附魔或詛咒；被詛咒的裝備卸不下來。+0 時：{0}": "Unknown equipment: equip or identify it to learn its upgrade level (−1 to +2) and whether it is enchanted or cursed. Cursed equipment cannot be removed. At +0: {0}",
+  "未知的裝備：裝備上去或鑑定才知道強化等級（+0 到 +2），以及有沒有附魔或詛咒；被詛咒的裝備卸不下來。+0 時：{0}": "Unknown equipment: equip or identify it to learn its upgrade level (+0 to +2) and whether it is enchanted or cursed. Cursed equipment cannot be removed. At +0: {0}",
   "{0}被詛咒了，卸不下來：用強化卷軸或除咒卷軸解除": "{0} is cursed and cannot be removed. Lift the curse with an Upgrade Scroll or a Remove Curse Scroll",
   "被詛咒了！{0}；卸不下來": "Cursed! {0}; it cannot be removed",
   "心眼 {0} 秒：隔著牆也看得到敵人": "Mind Vision for {0} seconds: see enemies through walls",

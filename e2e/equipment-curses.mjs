@@ -34,10 +34,10 @@ const indexOf = async (id) => (await st()).player.items.findIndex((it) => it.id 
 const action = (index, mode) => page.locator(`#inv-list button[data-k="${index}"][data-m="${mode}"]`);
 const toasts = () => page.evaluate(() => [...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent ?? ''));
 
-console.log('INFO 狀態注入：放進背包 未知的重斧（沉重的詛咒、−1）、未知的皮甲（寂靜 +1）、除咒卷軸、心眼藥水');
+console.log('INFO 狀態注入：放進背包 未知的重斧（沉重的詛咒、+0）、未知的皮甲（寂靜 +1）、除咒卷軸、心眼藥水');
 await page.evaluate(() => {
   const d = window.__sd.debug;
-  d.giveItem('weapon:axe', -1, { unknown: true, curse: 'heavy' });
+  d.giveItem('weapon:axe', 0, { unknown: true, curse: 'heavy' });
   d.giveItem('armor:leather', 1, { unknown: true, ench: 'silent' });
   d.giveItem('scroll:removecurse', 0);
   d.giveItem('potion:mindvision', 0);
@@ -58,7 +58,7 @@ await page.screenshot({ path: `${OUT}equipment-curses-unknown.png` });
 await action(axe, 'use').click();
 await idle();
 let s = await st();
-check('穿上才揭曉：重斧 −1、沉重的詛咒', s.player.weapon.id === 'axe' && s.player.weapon.level === -1 && s.player.weapon.curse === 'heavy', JSON.stringify(s.player.weapon));
+check('穿上才揭曉：重斧 +0、沉重的詛咒', s.player.weapon.id === 'axe' && s.player.weapon.level === 0 && s.player.weapon.curse === 'heavy', JSON.stringify(s.player.weapon));
 const t1 = await toasts();
 check('被詛咒的提示', t1.some((x) => (zh ? x.includes('詛咒') : /curse/i.test(x))), JSON.stringify(t1));
 const tool = await page.textContent('#tools');

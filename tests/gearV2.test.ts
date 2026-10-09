@@ -18,7 +18,7 @@ import { finishAction, makeWorld, OPEN_ROOM, run } from './helpers';
 const han = /\p{Script=Han}/u;
 
 describe('unknown equipment rolls', () => {
-  it('v2 floors roll unknown gear from −1 to +2; curses are mild, never enchanted, and level ≤ 0; F1 has no enchants', () => {
+  it('v2 floors roll unknown gear from +0 to +2, never negative; curses are mild, never enchanted, and +0; F1 has no enchants', () => {
     const rng = new Rng('GEAR-ROLLS');
     const levels = new Set<number>();
     let cursed = 0, enchanted = 0, n = 0;
@@ -28,12 +28,12 @@ describe('unknown equipment rolls', () => {
       n++;
       expect(r.unknown).toBe(true);
       levels.add(r.level);
-      expect(r.level).toBeGreaterThanOrEqual(-1);
+      expect(r.level).toBeGreaterThanOrEqual(0);
       expect(r.level).toBeLessThanOrEqual(2);
       if (r.curse) {
         cursed++;
         expect(r.ench).toBeUndefined();
-        expect(r.level).toBeLessThanOrEqual(0);
+        expect(r.level).toBe(0);
         expect(r.id.startsWith('weapon:') ? ['heavy'] : ['noisy', 'fragile']).toContain(r.curse);
       }
       if (r.ench) {
@@ -43,7 +43,7 @@ describe('unknown equipment rolls', () => {
       }
       if (floor <= 2) expect(r.level).toBeLessThanOrEqual(1);
     }
-    expect([...levels].sort()).toEqual([-1, 0, 1, 2]);
+    expect([...levels].sort()).toEqual([0, 1, 2]);
     expect(cursed / n).toBeGreaterThan(GEAR.curseChance - 0.04);
     expect(cursed / n).toBeLessThan(GEAR.curseChance + 0.04);
     expect(enchanted).toBeGreaterThan(0);

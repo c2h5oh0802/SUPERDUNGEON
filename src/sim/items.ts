@@ -141,7 +141,7 @@ export function itemDesc(w: World, id: ItemId, level = 0, gear?: GearProps): str
   if (c === 'food') return `吃下：減少 ${HUNGER.foodRestore} 世界秒的飢餓。吃完才生效；正常行動要花時間，已飽食時保留。`;
   if ((c === 'weapon' || c === 'armor') && gear?.unknown) {
     const base = itemDesc(w, id, 0);
-    return `未知的裝備：裝備上去或鑑定才知道強化等級（−1 到 +2），以及有沒有附魔或詛咒；被詛咒的裝備卸不下來。+0 時：${base}`;
+    return `未知的裝備：裝備上去或鑑定才知道強化等級（+0 到 +2），以及有沒有附魔或詛咒；被詛咒的裝備卸不下來。+0 時：${base}`;
   }
   if (c === 'weapon') {
     const s = WEAPONS[k as keyof typeof WEAPONS];

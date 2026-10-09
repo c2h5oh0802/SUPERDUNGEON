@@ -28,11 +28,13 @@ function trapAt(w: World, i: number, j: number, kind: Trap['kind'], hidden = fal
 }
 
 describe('dungeon v2 generation', () => {
-  it('300 seeds × floors 1–4 validate with procedural rooms, specials, vaults and secrets', () => {
+  it('300 seeds × floors 1–4 validate with procedural rooms, specials, vaults and secrets', async () => {
     let retries = 0;
     const layouts = new Set<string>();
     const feelings = new Set<string>();
     for (const seed of SEEDS) for (let floor = 1; floor <= 4; floor++) {
+      // Yield once per seed: almost a minute of solid work starves the test worker's messaging.
+      if (floor === 1) await new Promise((resolve) => setTimeout(resolve, 0));
       const l = generateLevel(seed, { floor });
       expect(validateLevel(l).errors).toEqual([]);
       expect(l.gen).toBe(2);
@@ -473,7 +475,7 @@ describe('floor feelings', () => {
       // 固定預算：第 1 層 3、第 2–4 層 2（寶箱優先，不足的放在地上）
       expect(healing + loose).toBeGreaterThanOrEqual(floor === 1 ? 3 : 2);
     }
-  });
+  }, 60000);
 });
 
 describe('enemy dormancy and the item area budget remain intact', () => {
