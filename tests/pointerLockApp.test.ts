@@ -35,9 +35,14 @@ vi.mock('../src/audio/sfx', () => ({ Sfx: class {
   setSlow = vi.fn(); setListener = vi.fn(); onEvents = vi.fn(); unlock = vi.fn();
   ui = vi.fn(); setVolumes = vi.fn(); resume = vi.fn(); suspend = vi.fn();
 } }));
+// The bag's markup is a browser concern here; only its open/close lifecycle matters.
+vi.mock('../src/ui/inventory', () => ({
+  renderInventory: vi.fn(), focusInventory: vi.fn(), focusChoice: vi.fn(), renderIdentifyChoice: vi.fn(),
+}));
 vi.mock('../src/core/loop', () => ({ Loop: class {
   start(frame: (dt: number) => void) { captured.frames.push(frame); }
   resetClock = vi.fn();
+  stop = vi.fn();
 } }));
 vi.mock('../src/input/touch', () => ({ TouchInput: class {
   attach = vi.fn(); clear = vi.fn();
@@ -64,6 +69,7 @@ class ElementStub extends EventTarget {
   style = { setProperty: vi.fn(), removeProperty: vi.fn(), opacity: '' };
   value = ''; textContent = ''; innerHTML = ''; className = ''; disabled = false; checked = false;
   focus = vi.fn();
+  remove = vi.fn();
   querySelector = () => new ElementStub();
   setAttribute(name: string, value: string) { this.attributes.set(name, value); }
   click() { this.dispatchEvent(new Event('click')); }
@@ -303,5 +309,19 @@ describe('pointer lock across real App restart/resume input events', () => {
     expect(h.requestPointerLock).toHaveBeenCalledTimes(2);
     await load();
     expectLocked(h);
+  });
+
+  it('releases a pointer lock that only lands after the bag opened, without pausing', async () => {
+    const h = await setup();
+    await start(h);
+    expectLocked(h);
+    h.key('KeyI'); h.frame(); h.key('KeyI', 'keyup');
+    expect(h.shown('screen-inventory')).toBe(true);
+    expect(h.doc.pointerLockElement).toBeNull();
+    // The relock requested on returning to play resolves late, while the bag is open.
+    h.lockChange(h.canvas);
+    expect(h.doc.pointerLockElement).toBeNull();
+    expect(h.shown('screen-inventory')).toBe(true);
+    expect(h.shown('screen-pause')).toBe(false);
   });
 });

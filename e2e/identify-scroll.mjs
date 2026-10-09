@@ -3,7 +3,7 @@
 // This verifies UI contracts, not natural loot acquisition or human game feel.
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
-import { BASE, OUT, launch, startRun, selectInventoryItem } from './lib.mjs';
+import { BASE, OUT, launch, seedLanguage, startRun, selectInventoryItem } from './lib.mjs';
 
 mkdirSync(OUT, { recursive: true });
 const { browser, page, errors } = await launch();
@@ -163,6 +163,7 @@ try {
 
   // Real touch in landscape plus portrait layout while the choice already pauses play.
   const mobile = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+  await seedLanguage(mobile);
   const mp = await mobile.newPage(); mp.on('pageerror', e => errors.push(e.message));
   await mp.goto(`${BASE}?dev=1&gfx=low`); await mp.locator('#btn-mobile-continue').tap();
   await mp.locator('.class-card[data-cls="warrior"]').tap();

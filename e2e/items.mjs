@@ -89,6 +89,8 @@ check('換上重斧；長劍 +1 回到背包', s.player.weapon.id === 'axe' && s
 check('工具列顯示「重斧」', await toolHas('重斧'), await page.textContent('#tools'));
 
 // 5) 丟出火焰藥水：碎開處燒起來、揭曉
+// 出生點正前方有補給箱，落點會被擋住看不到（看不到就不會認出藥水）；先往右轉一點，丟到看得見的空地
+await bot.turnTo(-0.35);
 await bot.pitchTo(0.05, 0.05);
 await openBag();
 await selectInventoryItem(page, await idx('potion:fire'));
@@ -96,6 +98,7 @@ await page.click(`#inv-list button[data-k="${await idx('potion:fire')}"][data-m=
 await page.waitForFunction(() => window.__sd.state().areas.some((a) => a.kind === 'fire'), null, { timeout: 30000 });
 s = await st();
 check('丟出的藥水碎開：燒起一片火，藥水被認出來', s.player.known.includes('potion:fire'));
+await bot.turnTo(0);
 await page.waitForTimeout(300);
 await page.screenshot({ path: `${OUT}items-fire.png` });
 

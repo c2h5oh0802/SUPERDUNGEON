@@ -345,6 +345,17 @@ describe('touch event boundaries', () => {
     expect(input.consume()).toEqual(idle);
   });
 
+  it('cancels the release click of a control press, so it cannot hit the screen that press opened', () => {
+    const { input, pointer, emit, root, native, controls } = setup();
+    pointer('pointerdown', 'map', 1);
+    expect(input.consume().map).toBe(true);
+    input.clear(); // The app clears touch input when the map opens.
+    // touchend stays targeted at the touched control; cancelling it suppresses the click.
+    expect(emit(root, 'touchend', controls.get('map')!).defaultPrevented).toBe(true);
+    expect(emit(root, 'touchend', native).defaultPrevented).toBe(false);
+    expect(emit(root, 'touchend', controls.get('unknown')!).defaultPrevented).toBe(false);
+  });
+
   it('still releases controls when pointer capture is unavailable', () => {
     const { input, pointer, controls } = setup();
     controls.get('fire')!.setPointerCapture = () => { throw new Error('No capture'); };

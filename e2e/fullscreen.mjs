@@ -49,7 +49,10 @@ try {
       // must leave a usable button and may not prevent the rest of the game.
       await page.waitForFunction(() => !document.querySelector('#screen-menu [data-fullscreen]').disabled);
       const active = await page.evaluate(() => document.fullscreenElement === document.documentElement);
-      assert.equal(await menuButton.innerText(), active ? '退出全螢幕' : '全螢幕');
+      // 這個腳本不預設語言，介面照預設語言顯示
+      const en = (await page.evaluate(() => document.documentElement.lang)).startsWith('en');
+      const label = active ? (en ? 'Exit fullscreen' : '退出全螢幕') : (en ? 'Fullscreen' : '全螢幕');
+      assert.equal(await menuButton.innerText(), label);
     }
     await page.locator('#btn-practice').tap();
     await page.waitForFunction(() => window.__sd.state().mode === 'playing');

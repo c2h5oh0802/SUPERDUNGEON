@@ -49,7 +49,10 @@ const check = (name, ok, detail = '') => {
   await page.goto(`${BASE}?gfx=low`);
   await page.waitForTimeout(300);
   const note = await page.textContent('#storage-note');
-  check('localStorage 封鎖時不崩潰並提示', errors.length === 0 && (note ?? '').includes('本次'), `${note} ${errors.join('|')}`);
+  // 存不了語言設定，介面照預設語言（英文）；兩種語言都要說明設定只在這次有效
+  const lang = await page.evaluate(() => document.documentElement.lang);
+  const told = lang.startsWith('en') ? /this visit only/i.test(note ?? '') : (note ?? '').includes('本次');
+  check('localStorage 封鎖時不崩潰並提示', errors.length === 0 && told, `${lang}: ${note} ${errors.join('|')}`);
   await page.click('#btn-settings');
   await page.fill('#set-fov', '90');
   await page.dispatchEvent('#set-fov', 'input');

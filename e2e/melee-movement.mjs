@@ -4,7 +4,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { BASE, OUT, launch, selectInventoryItem } from './lib.mjs';
 
 mkdirSync(OUT, { recursive: true });
-const { browser, page, errors } = await launch();
+// A small window renders faster under software GL, so frames are short enough to
+// sample the knife's 0.08 s windup more than once. Nothing here checks the picture.
+const { browser, page, errors } = await launch({ viewport: { width: 480, height: 270 } });
 const results = [];
 const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name} ${detail}`);
@@ -46,7 +48,7 @@ try {
       const sample = () => {
         const s = window.__sd.state();
         rows.push({ realTime: s.realTime, worldTime: s.time, x: s.player.x, z: s.player.z, action: s.player.action });
-        if (performance.now() - begin > 1600) resolve(rows);
+        if (performance.now() - begin > 2400) resolve(rows);
         else requestAnimationFrame(sample);
       };
       requestAnimationFrame(sample);

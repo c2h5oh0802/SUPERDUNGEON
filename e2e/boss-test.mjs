@@ -11,6 +11,8 @@ try {
   await startRun(page, 'BOSS-TEST-SAVE'); await pause(); await page.click('#btn-quit');
   const campaignSave = await save(); assert.ok(campaignSave);
   await page.goto(`${BASE}?dev=1&boss=1`);
+  // 介面初始化後才切到 Boss 測試畫面
+  await page.locator('#screen-boss-test').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
   assert.equal(await page.locator('#screen-boss-test').isVisible(), true);
   for (const preset of ['starting', 'split']) for (const cls of ['warrior', 'huntress']) {
     await page.selectOption('#boss-test-class', cls);

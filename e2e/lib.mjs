@@ -14,15 +14,7 @@ export async function launch({ headless = true, viewport = { width: 1280, height
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'],
   });
   const context = await browser.newContext({ viewport });
-  // 這些腳本的斷言是照繁中介面寫的；設定裡沒有語言時先選繁中（E2E_LANG=en 可改回英文預設）。
-  const lang = process.env.E2E_LANG ?? 'zh-Hant';
-  if (lang !== 'en') await context.addInitScript((language) => {
-    try {
-      const key = 'superdungeon.settings.v1';
-      const s = JSON.parse(localStorage.getItem(key) ?? '{}');
-      if (!s.language) localStorage.setItem(key, JSON.stringify({ ...s, language }));
-    } catch { /* storage blocked: keep the default */ }
-  }, lang);
+  await seedLanguage(context);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -30,6 +22,20 @@ export async function launch({ headless = true, viewport = { width: 1280, height
     if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
   });
   return { browser, context, page, errors };
+}
+
+/** 這些腳本的斷言是照繁中介面寫的；設定裡沒有語言時先選繁中（E2E_LANG=en 可改回英文預設）。
+ * 自己另開瀏覽器分頁的腳本也要呼叫。 */
+export async function seedLanguage(context) {
+  const lang = process.env.E2E_LANG ?? 'zh-Hant';
+  if (lang === 'en') return;
+  await context.addInitScript((language) => {
+    try {
+      const key = 'superdungeon.settings.v1';
+      const s = JSON.parse(localStorage.getItem(key) ?? '{}');
+      if (!s.language) localStorage.setItem(key, JSON.stringify({ ...s, language }));
+    } catch { /* storage blocked: keep the default */ }
+  }, lang);
 }
 
 export const wrap = (a) => {

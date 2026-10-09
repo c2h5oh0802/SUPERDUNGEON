@@ -70,6 +70,8 @@ const before = await saved();
 await page.reload();
 await page.mouse.move(400, 225);
 const cont = page.locator('#btn-continue');
+// 存檔是在介面初始化後才讀進來，「繼續」按鈕稍後才出現
+await cont.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
 check('重新整理後出現「繼續」', await cont.isVisible(), await cont.textContent());
 check('「繼續」顯示樓層、職業、種子', (await cont.textContent()).includes('第 2 / 5 層') && (await cont.textContent()).includes('獵手'), await cont.textContent());
 await cont.click();
@@ -93,6 +95,7 @@ await page.evaluate((save) => {
   localStorage.setItem('superdungeon.run.v1', JSON.stringify(save));
 }, before);
 await page.reload();
+await page.locator('#btn-continue').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
 check('舊 v2 缺少飢餓欄位仍可繼續', await page.locator('#btn-continue').isVisible());
 await page.click('#btn-continue'); await waitFloor(2);
 s = await st();
@@ -110,7 +113,8 @@ check('第 4 層仍是探索層', s.goal === 'descend');
 await page.screenshot({ path: `${OUT}floors-4.png` });
 await useGoal(); await waitFloor(5); s = await st();
 check('第 5 層是無隨機物資的守心者大廳', s.goal === 'heart' && s.encounterState === 'dormant' && s.pickups.length === 0);
-check('第五層只有一名完整守心者', s.enemies.length === 1 && s.enemies[0].kind === 'warden' && s.enemies[0].hp === 32 && s.enemies[0].boss);
+check('第五層只有一名完整守心者', s.enemies.length === 1 && s.enemies[0].kind === 'warden' && s.enemies[0].hp === s.enemies[0].maxHp && s.enemies[0].boss,
+  JSON.stringify(s.enemies.map((e) => ({ kind: e.kind, hp: e.hp, maxHp: e.maxHp }))));
 const pre = s.player.hunger;
 await bot.down('Space'); await page.waitForTimeout(300); await bot.up('Space');
 check('正式戰鬥前仍消耗飢餓', (await st()).player.hunger > pre);

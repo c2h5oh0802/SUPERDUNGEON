@@ -21,6 +21,8 @@ const frozen = async (name) => {
 try {
   await page.goto(`${BASE}?dev=1&gfx=low`);
   await page.click('#btn-practice'); await waitPlaying();
+  // 剛進入練習場時輸入還在接手，稍等再按鍵
+  await page.waitForTimeout(400);
   assert.ok((await page.textContent('#hunger-label')).includes('正常'));
   // Standing eye remains exactly the same under Shift, including while moving.
   await bot.down('ShiftLeft'); await bot.down('KeyW'); await page.waitForTimeout(200);
@@ -51,6 +53,8 @@ try {
   await frozen('upgrade'); await page.click('#choice-cards button[data-idx="0"]'); await waitPlaying();
   await page.evaluate(() => window.__sd.debug.giveXp(10));
   await page.waitForFunction(() => window.__sd.state().mode === 'choice');
+  // 選擇畫面緊接在回到遊戲之後打開：等滑鼠鎖定放開，點擊才會落在卡片上
+  await page.waitForFunction(() => !document.pointerLockElement);
   await frozen('talent'); await page.click('#choice-cards button[data-idx="0"]'); await waitPlaying();
 
   // Threshold setup is labeled injection; following damage/eating checks use real input.

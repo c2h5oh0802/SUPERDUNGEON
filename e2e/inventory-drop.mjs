@@ -66,7 +66,10 @@ try {
   await place('weapon:spear', 'drop');
   s = await bot.st(); assert.equal(count(s, 'weapon:spear'), 8);
   assert.ok(s.pickups.some(p => p.item === 'weapon:spear'));
-  await openBag(); await bot.tap('KeyI'); await openBag(); await bot.tap('Escape');
+  // Wait for the close to land: two presses inside one frame count as one.
+  await openBag(); await bot.tap('KeyI');
+  await page.waitForFunction(() => window.__sd.state().mode === 'playing');
+  await openBag(); await bot.tap('Escape');
   await page.waitForFunction(() => window.__sd.state().mode === 'playing');
   assert.deepEqual(errors, []);
   console.log('PASS inventory drop: one/all, full bag, paid action, intact unknown item, re-pickup gating, statistics, short viewport, repeated close');

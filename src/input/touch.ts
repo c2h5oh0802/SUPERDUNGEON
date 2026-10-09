@@ -67,6 +67,12 @@ export class TouchInput {
         if (type === 'click') this.click(e as MouseEvent, control.role);
       });
     }
+    // The browser aims a tap's click at whatever is under the finger on release, and
+    // touchend keeps the control as target even after capture was released. A press
+    // that opened the map, bag or pause must not also click that screen's buttons.
+    on(this.root, 'touchend', (e) => {
+      if (this.control(e.target)) e.preventDefault();
+    });
     on(window, 'blur', () => this.clear());
     on(window, 'pagehide', () => this.clear());
     on(window, 'resize', () => this.clear());

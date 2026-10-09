@@ -780,7 +780,9 @@ export class App {
       this.hud.setLockBanner(false);
       $('lock-fail').classList.add('hidden');
       // A cancelled asynchronous start must not capture the menu/picker later.
-      if (this.mode === 'menu' || this.mode === 'results' || this.mode === 'error') {
+      // A lock requested on returning to play can also land after a choice or the
+      // bag opened in the meantime; those screens need a free pointer to click.
+      if (this.mode === 'menu' || this.mode === 'results' || this.mode === 'error' || this.mode === 'choice' || this.mode === 'inventory') {
         this.intentionalUnlock = true;
         this.input.exitLock();
       }

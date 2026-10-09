@@ -12,13 +12,13 @@ vi.mock('../src/render/renderer', () => ({ GameRenderer: class {
 } }));
 vi.mock('../src/ui/hud', () => ({ Hud: class {
   update = vi.fn(); onEvents = vi.fn();
-  setTouchMode = vi.fn(); show = vi.fn(); reset = vi.fn(); setLockBanner = vi.fn(); hint = vi.fn();
+  setTouchMode = vi.fn(); show = vi.fn(); reset = vi.fn(); setLockBanner = vi.fn(); hint = vi.fn(); banner = vi.fn();
 } }));
 vi.mock('../src/audio/sfx', () => ({ Sfx: class {
   setSlow = vi.fn(); setListener = vi.fn(); onEvents = vi.fn();
   unlock = vi.fn(); ui = vi.fn(); setVolumes = vi.fn(); resume = vi.fn(); suspend = vi.fn();
 } }));
-vi.mock('../src/core/loop', () => ({ Loop: class { start = vi.fn(); resetClock = vi.fn(); } }));
+vi.mock('../src/core/loop', () => ({ Loop: class { start = vi.fn(); stop = vi.fn(); resetClock = vi.fn(); } }));
 vi.mock('../src/input/input', () => ({ Input: class {
   consume = () => ({ moveX: 0, moveZ: 0, lookDX: 0, lookDY: 0, keyYaw: 0, keyPitch: 0, fire: false, firePressed: false, selectSlot: null, shield: false, sneak: false, inventory: false, bottle: false, interact: false, potion: false, wait: false, map: false, escape: false, digit: null });
   attach = vi.fn(); clear = vi.fn(); exitLock = vi.fn(); requestLock = vi.fn(async () => true);

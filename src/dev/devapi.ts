@@ -121,6 +121,7 @@ export function installDevApi(app: App): void {
           locked: e.locked,
           lockedYaw: e.lockedYaw,
           hp: e.hp,
+          maxHp: e.maxHp,
           alive: e.alive,
           awareness: e.awareness,
           seesPlayer: e.seesPlayer,
