@@ -301,9 +301,6 @@ export class Hud {
         case 'helmet':
           if (e.kind === 'warden') {
             this.toast('冠甲擋住了：改打身體或繞側', '', 1.5);
-          } else if (e.kind === 'archer') {
-            this.toast('弩甲擋住了', '', 1.2);
-            this.hint('cls-archer-armour', '弩手只會倒在被打回去的弩矢或火瓶下：戰士揮劍擊開飛來的弩矢，獵手射中飛來的弩矢。', 7);
           } else {
             this.toast('角盔擋住了', '', 1.2);
             this.hint('cls-helmet', '突進者的角盔擋住正面的頭：閃過衝鋒、讓它撞牆暈眩，頭就會露出來。', 7);

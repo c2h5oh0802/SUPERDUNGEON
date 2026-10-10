@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { ENEMIES, ENEMY_DEATH_FALL_TIME, LEAD_TINT } from '../config';
+import { ENEMIES, ENEMY_DEATH_FALL_TIME } from '../config';
 import { clamp, lerp, smoothstep } from '../core/math';
 import type { Enemy } from '../sim/types';
 import { wardenBraced, wardenCrownClosed, wardenLockBefore, wardenWindup } from '../sim/enemySys';
@@ -961,9 +961,8 @@ export class EnemyVisual {
     if (braced) (u.uGlow!.value as THREE.Color).setHex(0xff46ab);
     else (u.uGlow!.value as THREE.Color).setRGB(1.0, lerp(0.45, 0.12, clamp(glow - 0.2, 0, 1)), 0.05);
     // 麻痺紫、冰寒藍；老兵平常帶一點金色（頭盔）
-    // 預判走位的弩手（試作）：萊姆綠
-    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : braced ? 0.4 : exposed ? 0.12 : e.warden?.phaseTwo ? 0.18 : e.leads ? 0.35 : e.veteran ? 0.22 : 0;
-    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : braced ? 0xdf58b2 : exposed ? 0x9bf7e8 : e.warden?.phaseTwo ? 0xff7840 : e.leads ? LEAD_TINT : 0xf2c14e);
+    this.rig.uTintAmt.value = e.paralyzeT > 0 ? 0.55 : e.slowT > 0 ? 0.4 : braced ? 0.4 : exposed ? 0.12 : e.warden?.phaseTwo ? 0.18 : e.veteran ? 0.22 : 0;
+    this.rig.uTint.value.setHex(e.paralyzeT > 0 ? 0xb07cff : e.slowT > 0 ? 0x6cc4ff : braced ? 0xdf58b2 : exposed ? 0x9bf7e8 : e.warden?.phaseTwo ? 0xff7840 : 0xf2c14e);
     this.rig.uFlash.value = e.hurtT > 0 ? (e.hurtT / 0.3) * 0.75 : 0;
     this.rig.uDim.value = 1;
     this.eyes.visible = e.state !== 'sleep';

@@ -156,14 +156,14 @@ try {
   await page.click('#btn-quit');
   await mode('menu');
 
-  // ---- 四面來襲 v4：兩波、快、弩手只怕借刀、預判混搭 ----
+  // ---- 四面來襲 v5：兩波、快、弩手全部預判、齊射一個接一個鎖定 ----
   await page.click('#btn-trials');
   await page.click('#btn-crossfire-quick');
   await mode('playing');
   await page.waitForTimeout(400);
   s = await st();
-  check('進入四面來襲 v4：第一波五名敵人，還有一波', s.practiceTrial === 'crossfire-quick' && s.enemies.length === 5 && s.waves.left === 1 && s.enemies.every((e) => e.hp === 2), JSON.stringify(s.waves));
-  check('預判混搭：西側弩手預判、東側直瞄', s.enemies.filter((e) => e.kind === 'archer').map((e) => e.leads).join() === 'true,false', JSON.stringify(s.enemies.filter((e) => e.kind === 'archer').map((e) => [e.x, e.leads])));
+  check('進入四面來襲 v5：第一波五名敵人，還有一波', s.practiceTrial === 'crossfire-quick' && s.enemies.length === 5 && s.waves.left === 1 && s.enemies.every((e) => e.hp === 2), JSON.stringify(s.waves));
+  check('弩手全部預判', s.enemies.filter((e) => e.kind === 'archer').map((e) => e.leads).join() === 'true,true', JSON.stringify(s.enemies.filter((e) => e.kind === 'archer').map((e) => [e.x, e.leads])));
   console.log('INFO 狀態注入：每一波直接擊倒（之後不會自動重播）');
   const v3Toasts = [];
   for (let wave = 0; wave < 2; wave++) {

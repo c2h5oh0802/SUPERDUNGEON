@@ -31,9 +31,9 @@ export const PRACTICE_TRIALS = [
   { id: 'crossfire-waves', seed: 'TRIAL-WAVES', name: '四面來襲 v2', goal: 'clear', kit: true, prototype: true, replay: true,
     objective: '撐過三波、清除所有敵人。敵人一下就倒，你被打中 ×1.5。',
     hint: '三波敵人從北、西、東三個門進來。弩手會等隊友或近戰一起出手，從兩側交叉齊射。每個敵人一下就倒：先停下來看誰最危險，再一個個解決。投彈手的火只燒你，打回去或射爆就燒敵人。打完會快轉重播整場戰鬥。' },
-  { id: 'crossfire-quick', seed: 'TRIAL-QUICK', name: '四面來襲 v4', goal: 'clear', kit: true, prototype: true, replay: true,
-    objective: '撐過兩波、清除所有敵人。弩手只會倒在被打回去的弩矢或火瓶下；你被打中 ×2.5。',
-    hint: '弩手穿著弩甲，你的箭和劍傷不了他們：戰士揮劍把弩矢打回去，獵手射中飛來的弩矢讓它飛回射手；投彈手的火瓶打回去或射爆也行。綠色的弩手會預判你的走位，箭射向你前方。弩矢與突進者比平常快得多。打完會快轉重播整場戰鬥。' },
+  { id: 'crossfire-quick', seed: 'TRIAL-QUICK', name: '四面來襲 v5', goal: 'clear', kit: true, prototype: true, replay: true,
+    objective: '撐過兩波、清除所有敵人。你被打中 ×2.5。',
+    hint: '三名弩手都會預判你的走位，箭射向你前方，而且一個接一個鎖定；綠線就是弩矢會射到的地方。戰士揮劍可以把弩矢打回去，獵手射中飛來的弩矢會讓它飛回射手。弩矢與突進者比平常快得多。打完會快轉重播整場戰鬥。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);
@@ -214,11 +214,11 @@ const spawnAt = (kind: EnemySpawn['kind'], x: number, z: number, hp: number, per
  * enemy is left or 20 world seconds after the last. Crossbowmen on both flanks
  * hold their shot for a partner or a melee strike, then fire together.
  *
- * Crossfire v4 (crossfire-quick), same arena: real time too fast to react,
+ * Crossfire v5 (crossfire-quick), same arena: real time too fast to react,
  * stopped time enough (quickThreats); hits hurt 2.5x; two waves, the second
  * 12 world seconds after the first at most, so a fall costs little to retry.
- * Crossbowmen fall only to fire turned back on them (redirect), and the
- * western ones lead the player's movement.
+ * Every crossbowman leads the player's movement and a volley locks one after
+ * another (staggerVolley); bolts can be batted or shot back (redirect).
  */
 function crossfireWaves(id: 'crossfire-waves' | 'crossfire-quick'): LevelData {
   const info = trialInfo(id);
@@ -234,9 +234,9 @@ function crossfireWaves(id: 'crossfire-waves' | 'crossfire-quick'): LevelData {
   grid.addPillar({ x: 9.5, z: 9.5, r: .6, h: WORLD.wallHeight, kind: 'pillar' });
   grid.addPillar({ x: 15.5, z: 9.5, r: .6, h: WORLD.wallHeight, kind: 'pillar' });
   for (const [x, z] of [[4, 6], [20, 6], [8, 3]] as const) rect(x, z, x, z, T.Platform);
-  // v4: the western crossbowmen lead the player's movement, the eastern one aims where it stands.
+  // v5: every crossbowman leads the player's movement.
   enemies.push(
-    { ...spawnAt('archer', 4.5, 6.5, 2, true), leads: quick || undefined }, spawnAt('archer', 20.5, 6.5, 2, true),
+    { ...spawnAt('archer', 4.5, 6.5, 2, true), leads: quick || undefined }, { ...spawnAt('archer', 20.5, 6.5, 2, true), leads: quick || undefined },
     spawnAt('rat', 11.8, 4.2, 2), spawnAt('rat', 12.6, 3.6, 2), spawnAt('rat', 13.4, 4.2, 2),
   );
   const waves: NonNullable<LevelData['waves']> = quick ? [
@@ -259,6 +259,6 @@ function crossfireWaves(id: 'crossfire-waves' | 'crossfire-quick'): LevelData {
     rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 1, z0: 1, w: 24, h: 20 }],
     enemies, pickups: [], chests: [], heart: null, stairs: null, resupply: null, traps: [], torches: torches(),
     practice: true, practiceTrial: info.id, damageMul: quick ? 2.5 : 1.5,
-    rules: { smartFire: true, syncVolley: true, ...(quick ? { quickThreats: true, noLevelUp: true, redirect: true } : {}) }, waves,
+    rules: { smartFire: true, syncVolley: true, ...(quick ? { staggerVolley: true, quickThreats: true, noLevelUp: true, redirect: true } : {}) }, waves,
   };
 }

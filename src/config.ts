@@ -11,9 +11,11 @@ export const TIME = {
   maxSubstep: 1 / 120,
 } as const;
 
-/** 試作規則 smartFire 的火瓶：碎開時炸傷、炸到的敵人著火（每 tick 秒 1 傷害）。 */
-/** 試作規則 syncVolley：弩手最多等這麼久，等隊友一起齊射或近戰出手。 */
-export const VOLLEY = { maxWait: 1.2, meleeRange: 4 } as const;
+/**
+ * 試作規則 syncVolley：弩手最多等這麼久，等隊友一起齊射或近戰出手。
+ * staggerVolley：一起齊射時，後面的弩手每名晚 stagger 秒鎖定（用你躲第一支之後的新方向）。
+ */
+export const VOLLEY = { maxWait: 1.2, meleeRange: 4, stagger: 0.35 } as const;
 
 /**
  * 試作規則 quickThreats：正常速度下來不及反應、停下來才來得及。弩手鎖定後
@@ -24,9 +26,10 @@ export const QUICK = { boltSpeed: 30, archerLockBefore: 0.15, chargeSpeed: 14 } 
 /** 試作規則 redirect：獵手的箭從弩矢旁這麼近（公尺）經過，就把弩矢打回射手。 */
 export const REDIRECT = { reflectRadius: 0.45 } as const;
 
-/** 預判走位的弩手（試作）的身體色調與瞄準線顏色。 */
+/** 預判走位的弩手（試作）的瞄準線顏色：線指著弩矢會射到的地方。 */
 export const LEAD_TINT = 0x9cff3a;
 
+/** 試作規則 smartFire 的火瓶：碎開時炸傷、炸到的敵人著火（每 tick 秒 1 傷害）。 */
 export const FIREBOMB = { burst: 4, burstRadius: 1.8, burn: 2, burnTick: 0.5, allyClear: 0.6, fleeSpeed: 2.6 } as const;
 
 /** Shared by the corpse pose and the public victory presentation delay. */

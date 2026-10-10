@@ -294,9 +294,7 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
   const guardBlocks =
     e.kind === 'guard' && fromFront && e.state !== 'sleep' && e.phase !== 'stun' && e.phase !== 'stagger' && e.phase !== 'pushed' && (!head || e.shieldUp);
   const helmetBlocks = head && fromFront && (chargerHelmet(e) || wardenCrownClosed(e));
-  // redirect rule: crossbowman armour turns arrows and stones; only a turned-back bolt gets through.
-  const armoured = !!w.level.rules?.redirect && e.kind === 'archer' && !p.deflected;
-  if (guardBlocks || helmetBlocks || armoured) {
+  if (guardBlocks || helmetBlocks) {
     p.alive = false;
     w.emit({ type: guardBlocks ? 'shield' : 'helmet', x: at.x, y: at.y, z: at.z, id: e.id, kind: e.kind, source: p.kind, head });
     const dx = e.x + f.x * (e.radius + 0.4);

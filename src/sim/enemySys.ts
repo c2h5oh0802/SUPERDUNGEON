@@ -206,11 +206,6 @@ const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive || w.isDormantPublicEnemy(e)) return;
-  // redirect rule: crossbowman armour turns everything but fire turned back on them.
-  if (w.level.rules?.redirect && e.kind === 'archer' && !info.redirect && info.source !== 'debug') {
-    if (PLAYER_WEAPONS.has(info.source)) w.emit({ type: 'helmet', id: e.id, kind: e.kind, source: info.source, x: info.x, y: info.y, z: info.z });
-    return;
-  }
   if (e.boss) w.startEncounter();
   // 厚甲精英：每次少受 1（至少 1）
   if (e.elite === 'armored') dmg = Math.max(1, dmg - 1);
@@ -928,8 +923,7 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
       const lockAt = s.aim - archerLockBefore(w);
       if (e.phaseT < lockAt) {
         facePlayer(w, e, 6, dt);
-        // A leading crossbowman's aim (and its aim line) sits where the player is heading.
-        e.aimPoint = e.leads ? leadPoint(w, e) : { x: p.x, y: 1.2, z: p.z };
+        e.aimPoint = archerAimPoint(w, e);
       } else if (!e.locked) {
         e.locked = true;
         e.lockedYaw = e.yaw;
@@ -958,11 +952,15 @@ function volleyReady(w: World, e: Enemy, dt: number): boolean {
 
 /** syncVolley: every other ready crossbowman with a clear line shoots in the same moment. */
 function joinVolley(w: World, e: Enemy): void {
+  let order = 0;
   for (const o of w.enemies) {
     if (o === e || o.kind !== 'archer' || !o.alive || o.state !== 'alert' || o.phase !== 'none' || !archerSeesNow(w, o)) continue;
     if (Math.hypot(w.player.x - o.x, w.player.z - o.z) > ENEMIES.archer.fireRange) continue;
     o.yaw = yawFromDir(w.player.x - o.x, w.player.z - o.z);
     startAim(w, o);
+    // staggerVolley: each partner locks a beat after the last, reading the player's new course.
+    // startAim may decline (no clear line); read the phase again.
+    if (w.level.rules?.staggerVolley && (o.phase as Enemy['phase']) === 'aim') o.phaseT = -VOLLEY.stagger * ++order;
     o.volleyWait = 0;
   }
 }
@@ -1011,6 +1009,16 @@ export function leadPoint(w: World, e: Enemy): V3 {
   let t = lock + Math.hypot(p.x - e.x, p.z - e.z) / speed;
   for (let k = 0; k < 2; k++) t = lock + Math.hypot(p.x + v.x * t - e.x, p.z + v.z * t - e.z) / speed;
   return { x: p.x + v.x * t, y: 1.2, z: p.z + v.z * t };
+}
+
+/**
+ * Where a crossbowman aims (and draws its aim line) before the lock: a leading one
+ * at the player's predicted spot, or at the player itself when cover hides that spot.
+ */
+export function archerAimPoint(w: World, e: Enemy): V3 {
+  const p = w.player;
+  const lead = e.leads ? leadPoint(w, e) : null;
+  return lead && archerLineClear(w, e, lead) ? lead : { x: p.x, y: 1.2, z: p.z };
 }
 
 function fireBolt(w: World, e: Enemy): void {

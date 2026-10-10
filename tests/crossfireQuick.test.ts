@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { ENEMIES, PLAYER, PROJECTILES, QUICK } from '../src/config';
+import { ENEMIES, PLAYER, PROJECTILES, QUICK, VOLLEY } from '../src/config';
 import { Rng } from '../src/core/rng';
 import { createTrialLevel, trialInfo } from '../src/gen/practiceTrials';
 import { validateLevel } from '../src/gen/validate';
 import { yawFromDir } from '../src/core/math';
 import { returnBolt } from '../src/sim/classSys';
-import { becomeAlert, damageEnemy } from '../src/sim/enemySys';
+import { archerAimPoint, becomeAlert } from '../src/sim/enemySys';
 import { fireProjectile } from '../src/sim/playerSys';
 import { createTrialWorld } from '../src/sim/practiceTrials';
 import { gainXp } from '../src/sim/progress';
 import { fightCleared, ReplayPlayer, ReplayRecorder } from '../src/sim/replay';
 import { emptyInput, type FrameInput } from '../src/sim/types';
-import type { World } from '../src/sim/world';
-import { run } from './helpers';
+import { World } from '../src/sim/world';
+import { run, testLevel } from './helpers';
 
 const DT = 1 / 60;
 const v4 = (cls: 'huntress' | 'warrior' = 'huntress') => createTrialWorld('crossfire-quick', cls);
@@ -46,7 +46,7 @@ function lockToHit(make: () => World, hold: 'still' | 'wait'): number {
   return -1;
 }
 
-describe('prototype: crossfire v4 (too fast to read at normal speed; crossbowmen fall only to their own fire)', () => {
+describe('prototype: crossfire v5 (too fast to read at normal speed; every crossbowman leads)', () => {
   it('same arena and first wave as v2, two waves, quick threats, hits hurt 2.5x, no instruction to stop', () => {
     const l = createTrialLevel('crossfire-quick');
     expect(validateLevel(l)).toEqual({ ok: true, errors: [] });
@@ -54,9 +54,9 @@ describe('prototype: crossfire v4 (too fast to read at normal speed; crossbowmen
     for (const e of l.enemies) expect(l.grid.lineOfSight({ x: e.x, y: e.y + 1.6, z: e.z }, { ...l.spawn, y: PLAYER.eyeHeight })).toBe(false);
     expect(l.waves).toHaveLength(1);
     expect(l.waves![0]!.time).toBe(12);
-    expect(l.rules).toEqual({ smartFire: true, syncVolley: true, quickThreats: true, noLevelUp: true, redirect: true });
-    // Mixed volley: the western crossbowmen lead, the eastern one aims where the player stands.
-    expect(l.enemies.filter((e) => e.kind === 'archer').map((e) => [e.x, !!e.leads])).toEqual([[4.5, true], [20.5, false]]);
+    expect(l.rules).toEqual({ smartFire: true, syncVolley: true, staggerVolley: true, quickThreats: true, noLevelUp: true, redirect: true });
+    // Every crossbowman leads the player's movement.
+    expect(l.enemies.filter((e) => e.kind === 'archer').map((e) => [e.x, !!e.leads])).toEqual([[4.5, true], [20.5, true]]);
     expect(l.waves![0]!.spawns.filter((e) => e.kind === 'archer').map((e) => !!e.leads)).toEqual([true]);
     expect(createTrialLevel('crossfire-waves').enemies.some((e) => e.leads)).toBe(false);
     expect(l.damageMul).toBe(2.5);
@@ -182,7 +182,7 @@ describe('prototype: crossfire v4 (too fast to read at normal speed; crossbowmen
   });
 });
 
-/** One crossbowman (0 west, leads; 1 east, direct) alone and hunting, no more waves. */
+/** One crossbowman (0 west, 1 east; both lead in v5) alone and hunting, no more waves. */
 function only(w: World, which: 0 | 1): World['enemies'][number] {
   const a = w.enemies[which]!;
   for (const e of w.enemies) if (e !== a) { e.alive = false; e.hp = 0; }
@@ -191,27 +191,39 @@ function only(w: World, which: 0 | 1): World['enemies'][number] {
   return a;
 }
 
+/** Open ground (30 x 14) with one ground crossbowman in the north, quick threats on; optionally a pillar at (13.5, 8.5). */
+function openGround(leads: boolean, pillar = false): World {
+  const rows: string[] = [];
+  for (let z = 0; z < 14; z++) {
+    let r = '';
+    for (let x = 0; x < 30; x++) r += x === 0 || z === 0 || x === 29 || z === 13 ? '#' : pillar && x === 13 && z === 8 ? 'o' : x === 4 && z === 11 ? '@' : '.';
+    rows.push(r);
+  }
+  const w = new World({ ...testLevel(rows, [{ kind: 'archer', x: 15, z: 2.5, leads }]), rules: { quickThreats: true } }, { cls: 'huntress' });
+  w.player.hp = 1e6;
+  becomeAlert(w, w.enemies[0]!);
+  return w;
+}
+
 /**
- * The player runs north and south on open ground in view (turning only at the ends),
- * stands still, or runs and stops for 0.6 s whenever the crossbowman locks.
- * Returns bolts hit / fired over 40 world seconds and the aim's distance from the player at each lock.
+ * The player runs east and west 8.5 m from the crossbowman (turning only at the ends, about 4.9 s a leg),
+ * stands still, or runs and stops for 0.6 s whenever it locks. Bolts hit / fired over 60 world seconds.
  */
-function lane(which: 0 | 1, mode: 'run' | 'stand' | 'stopOnLock') {
-  const w = v4();
-  const a = only(w, which);
-  w.player.x = 12.5; w.player.z = 4; w.player.hp = 1e6;
-  let fired = 0, hits = 0, dir = 1, lockAt = -1;
-  const gaps: number[] = [];
-  for (let f = 0; f < 60 * 200 && w.time < 40; f++) {
-    if (w.player.z > 8.5) dir = -1; else if (w.player.z < 3.8) dir = 1;
-    const stop = mode === 'stand' || (mode === 'stopOnLock' && lockAt >= 0 && w.time - lockAt < 0.6);
-    w.frame(DT, { ...emptyInput(Math.PI, 0), moveZ: stop ? 0 : dir, wait: stop });
-    if (a.locked && a.phase === 'aim' && lockAt < 0) { lockAt = w.time; gaps.push(Math.hypot(a.aimPoint!.x - w.player.x, a.aimPoint!.z - w.player.z)); }
-    if (a.phase !== 'aim') lockAt = -1;
+function crossing(leads: boolean, mode: 'run' | 'stand' | 'stopOnLock') {
+  const w = openGround(leads);
+  const a = w.enemies[0]!;
+  let fired = 0, hits = 0, dir = 1, stopUntil = -1, seen = false;
+  for (let f = 0; f < 60 * 300 && w.time < 60; f++) {
+    if (w.player.x > 26) dir = -1; else if (w.player.x < 4) dir = 1;
+    const stop = mode === 'stand' || (mode === 'stopOnLock' && w.time < stopUntil);
+    w.frame(DT, { ...emptyInput(0, 0), moveX: stop ? 0 : dir, wait: stop });
+    if (a.locked && a.phase === 'aim' && !seen) { seen = true; stopUntil = w.time + 0.6; }
+    if (a.phase !== 'aim') seen = false;
     for (const e of w.drainEvents()) { if (e.type === 'enemyFire') fired++; if (e.type === 'playerHurt') hits++; }
   }
-  return { fired, hits, gaps };
+  return { fired, hits };
 }
+
 
 /** Aim the player at a point (eye height) and loose an arrow or stone. */
 function shootAt(w: World, x: number, y: number, z: number, kind: 'bow' | 'stone' = 'bow'): void {
@@ -221,49 +233,59 @@ function shootAt(w: World, x: number, y: number, z: number, kind: 'bow' | 'stone
   fireProjectile(w, kind);
 }
 
-describe('crossfire v4: mixed volley (leading and direct crossbowmen)', () => {
-  it('a leading crossbowman locks about 2 m ahead of a running player, a direct one on it; standing still both aim at it', () => {
-    const lead = lane(0, 'run'), direct = lane(1, 'run');
-    expect(lead.gaps.length).toBeGreaterThan(2);
-    for (const g of lead.gaps) expect(g).toBeGreaterThan(1.2);
-    for (const g of direct.gaps) expect(g).toBeLessThan(0.3);
-    for (const g of lane(0, 'stand').gaps) expect(g).toBeLessThan(0.05);
+describe('crossfire v5: every crossbowman leads, volleys lock one after another', () => {
+  it('a leading crossbowman hits a steady runner; stopping at the lock beats it; standing still does not', () => {
+    const running = crossing(true, 'run'), stand = crossing(true, 'stand'), stop = crossing(true, 'stopOnLock');
+    const direct = crossing(false, 'run');
+    expect(running.fired).toBeGreaterThan(5);
+    expect(running.hits / running.fired).toBeGreaterThanOrEqual(0.7);
+    expect(stand.hits).toBe(stand.fired);
+    expect(stop.fired).toBeGreaterThan(5);
+    expect(stop.hits).toBe(0);
+    // A crossbowman that aims where the player stands misses the same runner.
+    expect(direct.hits / direct.fired).toBeLessThanOrEqual(0.2);
   });
 
-  it('the two need opposite answers: running beats the direct one, stopping at the lock beats the leading one, standing still beats neither', () => {
-    const leadStand = lane(0, 'stand'), directStand = lane(1, 'stand');
-    expect(leadStand.hits).toBe(leadStand.fired);
-    expect(directStand.hits).toBe(directStand.fired);
-    const directRun = lane(1, 'run'), leadRun = lane(0, 'run'), leadStop = lane(0, 'stopOnLock');
-    expect(directRun.hits / directRun.fired).toBeLessThan(0.3);
-    expect(leadRun.hits / leadRun.fired).toBeGreaterThanOrEqual(0.5);
-    expect(leadStop.fired).toBeGreaterThan(2);
-    expect(leadStop.hits).toBe(0);
+  it('when cover hides the predicted spot, it aims at the player instead of giving up', () => {
+    for (const pillar of [false, true]) {
+      const w = openGround(true, pillar);
+      const a = w.enemies[0]!;
+      w.player.x = 10.5; w.player.z = 11.5;
+      w.playerWorldVel = { x: 4.5, z: 0 };
+      a.yaw = yawFromDir(w.player.x - a.x, w.player.z - a.z);
+      const aim = archerAimPoint(w, a);
+      if (pillar) expect([aim.x, aim.z]).toEqual([10.5, 11.5]);
+      else expect(aim.x).toBeGreaterThan(12);
+    }
   });
-});
 
-describe('crossfire v4: crossbowmen fall only to fire turned back on them', () => {
-  it('arrows bounce off crossbow armour (clink, arrow on the floor); a blade does nothing', () => {
+  it('in a volley the second crossbowman locks a beat after the first', () => {
+    const w = v4();
+    const archers = w.enemies.filter((e) => e.kind === 'archer');
+    for (const e of w.enemies) if (e.kind !== 'archer') { e.alive = false; e.hp = 0; }
+    w.wavesSpawned = 1;
+    w.player.x = 12.5; w.player.z = 7.5; w.player.hp = 1e6;
+    for (const a of archers) becomeAlert(w, a);
+    const lockedAt = new Map<number, number>();
+    for (let f = 0; f < 3000 && lockedAt.size < 2; f++) {
+      run(w, 1, { wait: true });
+      for (const a of archers) if (a.locked && a.phase === 'aim' && !lockedAt.has(a.id)) lockedAt.set(a.id, w.time);
+    }
+    const [t1, t2] = [...lockedAt.values()].sort((x, y) => x - y);
+    expect(t2! - t1!).toBeCloseTo(VOLLEY.stagger, 1);
+  });
+
+  it('no armour: an arrow drops a crossbowman', () => {
     const w = v4();
     const a = only(w, 1);
     w.player.x = 12.5; w.player.z = 7.5;
-    w.drainEvents();
     shootAt(w, a.x, a.y + 1.2, a.z);
     run(w, 30, { wait: true });
-    expect(a.alive).toBe(true);
-    expect(a.hp).toBe(2);
-    expect(w.drainEvents().some((e) => e.type === 'helmet' && e.kind === 'archer')).toBe(true);
-    damageEnemy(w, a, 4, { source: 'melee', sneak: false, head: false, x: a.x, y: 1, z: a.z });
-    expect(a.hp).toBe(2);
-    // Without the rule the same arrow drops a crossbowman.
-    const c = v2();
-    const b = only(c, 1);
-    c.player.x = 12.5; c.player.z = 7.5;
-    shootAt(c, b.x, b.y + 1.2, b.z);
-    run(c, 30, { wait: true });
-    expect(b.alive).toBe(false);
+    expect(a.alive).toBe(false);
   });
+});
 
+describe('crossfire v5: bolts turned back on their shooters', () => {
   it('the Huntress shoots an incoming bolt and it flies back at its shooter: a turned-fire kill', () => {
     const w = v4();
     const a = only(w, 1);
