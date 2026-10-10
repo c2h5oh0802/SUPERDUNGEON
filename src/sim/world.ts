@@ -142,6 +142,8 @@ export class World {
   realTime = 0;
   lastWorldDt = 0;
   lastRealDt = 0;
+  /** The player's displacement per world second over the last frame (what a leading crossbowman reads). */
+  playerWorldVel = { x: 0, z: 0 };
   outcome: Outcome = 'none';
   /** 致命一擊的來源（結算顯示用）。 */
   deathCause: string | null = null;
@@ -409,6 +411,7 @@ export class World {
     startActions(this, input);
     p.sneaking = input.sneak && !p.dead;
     this.waiting = input.wait;
+    const x0 = p.x, z0 = p.z;
     const dist = movePlayer(this, input, realDt);
     p.lastMoveDist = dist;
     // 非潛行走過長草會踩倒；潛行步小心穿過不會
@@ -424,6 +427,7 @@ export class World {
       actionRemaining: this.actionRemaining(),
       waitHeld: input.wait,
     });
+    if (worldDt > 0) this.playerWorldVel = { x: (p.x - x0) / worldDt, z: (p.z - z0) / worldDt };
     this.advance(worldDt);
     this.lastWorldDt = worldDt;
     this.measureTimeUse(realDt, worldDt);

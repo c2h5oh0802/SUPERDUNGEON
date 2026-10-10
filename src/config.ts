@@ -21,6 +21,12 @@ export const VOLLEY = { maxWait: 1.2, meleeRange: 4 } as const;
  */
 export const QUICK = { boltSpeed: 30, archerLockBefore: 0.15, chargeSpeed: 14 } as const;
 
+/** 試作規則 redirect：獵手的箭從弩矢旁這麼近（公尺）經過，就把弩矢打回射手。 */
+export const REDIRECT = { reflectRadius: 0.45 } as const;
+
+/** 預判走位的弩手（試作）的身體色調與瞄準線顏色。 */
+export const LEAD_TINT = 0x9cff3a;
+
 export const FIREBOMB = { burst: 4, burstRadius: 1.8, burn: 2, burnTick: 0.5, allyClear: 0.6, fleeSpeed: 2.6 } as const;
 
 /** Shared by the corpse pose and the public victory presentation delay. */

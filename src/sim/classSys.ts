@@ -177,6 +177,25 @@ export function applyCounter(w: World, e: Enemy): boolean {
   return true;
 }
 
+/** A bolt the player turned back: straight and fast along dir (unit), the player's now, ordinary deflect damage. */
+export function returnBolt(w: World, b: Projectile, dir: V3): void {
+  const sp = CLASSES.warrior.deflectSpeed;
+  b.vel = { x: dir.x * sp, y: dir.y * sp, z: dir.z * sp };
+  b.avgVel = { ...b.vel };
+  b.next = { ...b.pos };
+  b.owner = 'player';
+  b.deflected = true;
+  // The returned lance is an ordinary deflected bolt, not the boss's damage.
+  delete b.damage;
+  delete b.source;
+  delete b.lifetime;
+  b.gravity = 0;
+  b.age = 0;
+  b.hitSet = new Set();
+  w.stats.deflects++;
+  w.emit({ type: 'deflect', id: b.id, x: b.pos.x, y: b.pos.y, z: b.pos.z });
+}
+
 /** 揮劍作用期間：把劍範圍內飛向自己的弩矢朝準星方向打回去。回傳擊開的數量。 */
 export function deflectBolts(w: World): number {
   const p = w.player;
@@ -221,20 +240,7 @@ export function deflectBolts(w: World): number {
       n++;
       continue;
     }
-    b.vel = { x: (vx / len) * c.deflectSpeed, y: (vy / len) * c.deflectSpeed, z: (vz / len) * c.deflectSpeed };
-    b.avgVel = { ...b.vel };
-    b.next = { ...b.pos };
-    b.owner = 'player';
-    b.deflected = true;
-    // The returned lance is an ordinary deflected bolt, not the boss's damage.
-    delete b.damage;
-    delete b.source;
-    delete b.lifetime;
-    b.gravity = 0;
-    b.age = 0;
-    b.hitSet = new Set();
-    w.stats.deflects++;
-    w.emit({ type: 'deflect', id: b.id, x: b.pos.x, y: b.pos.y, z: b.pos.z });
+    returnBolt(w, b, { x: vx / len, y: vy / len, z: vz / len });
     n++;
   }
   return n;

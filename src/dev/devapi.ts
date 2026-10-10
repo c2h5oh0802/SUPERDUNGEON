@@ -116,6 +116,7 @@ export function installDevApi(app: App): void {
         enemies: w.enemies.map((e) => ({
           id: e.id,
           kind: e.kind,
+          leads: !!e.leads,
           x: e.x,
           z: e.z,
           y: e.y,

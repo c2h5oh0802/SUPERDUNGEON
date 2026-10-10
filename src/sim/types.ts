@@ -174,6 +174,8 @@ export type EnemyState = 'sleep' | 'idle' | 'patrol' | 'investigate' | 'search' 
 export type AttackPhase = 'none' | 'windup' | 'active' | 'recovery' | 'aim' | 'reload' | 'charge' | 'stun' | 'stagger' | 'pushed';
 
 export interface Enemy {
+  /** Prototype: a crossbowman that aims where the player is heading, not where it stands. */
+  leads?: boolean;
   /** syncVolley: how long a ready crossbowman has held its shot for a partner. */
   volleyWait?: number;
   /** smartFire: seconds left burning after a firebomb burst; who lit it. */

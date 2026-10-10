@@ -97,6 +97,7 @@ export function createEnemy(w: World, s: EnemySpawn): Enemy {
     boss: !!s.boss,
     carriesKey: s.carriesKey || undefined,
     elite: s.elite,
+    leads: s.leads || undefined,
     disguised: s.kind === 'mimic' || undefined,
     dormant: s.kind === 'statue' || undefined,
     loot: s.loot,
@@ -205,6 +206,11 @@ const PLAYER_WEAPONS = new Set(['melee', 'arrow', 'stone', 'deflect']);
 
 export function damageEnemy(w: World, e: Enemy, dmg: number, info: DamageInfo): void {
   if (!e.alive || w.isDormantPublicEnemy(e)) return;
+  // redirect rule: crossbowman armour turns everything but fire turned back on them.
+  if (w.level.rules?.redirect && e.kind === 'archer' && !info.redirect && info.source !== 'debug') {
+    if (PLAYER_WEAPONS.has(info.source)) w.emit({ type: 'helmet', id: e.id, kind: e.kind, source: info.source, x: info.x, y: info.y, z: info.z });
+    return;
+  }
   if (e.boss) w.startEncounter();
   // 厚甲精英：每次少受 1（至少 1）
   if (e.elite === 'armored') dmg = Math.max(1, dmg - 1);
@@ -919,11 +925,11 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
         return;
       }
       e.phaseT += dt;
-      // quickThreats: the aim stays on the player until later, so the shot leaves less time.
-      const lockAt = s.aim - (w.level.rules?.quickThreats ? QUICK.archerLockBefore : s.lockBefore);
+      const lockAt = s.aim - archerLockBefore(w);
       if (e.phaseT < lockAt) {
         facePlayer(w, e, 6, dt);
-        e.aimPoint = { x: p.x, y: 1.2, z: p.z };
+        // A leading crossbowman's aim (and its aim line) sits where the player is heading.
+        e.aimPoint = e.leads ? leadPoint(w, e) : { x: p.x, y: 1.2, z: p.z };
       } else if (!e.locked) {
         e.locked = true;
         e.lockedYaw = e.yaw;
@@ -985,9 +991,31 @@ function startAim(w: World, e: Enemy): void {
   w.emit({ type: 'enemyWindup', id: e.id, kind: e.kind, x: e.x, y: e.y, z: e.z });
 }
 
+/** quickThreats: the aim stays on the player until later, so a shot leaves less time. */
+function archerLockBefore(w: World): number {
+  return w.level.rules?.quickThreats ? QUICK.archerLockBefore : ENEMIES.archer.lockBefore;
+}
+
+function boltSpeed(w: World): number {
+  return w.level.rules?.quickThreats ? QUICK.boltSpeed : PROJECTILES.bolt.speed;
+}
+
+/**
+ * Where a bolt locked now would meet the player if it kept its world-time
+ * velocity: the lock-to-release delay plus the flight. A player standing still
+ * is aimed at directly; changing course after the lock is the way out.
+ */
+export function leadPoint(w: World, e: Enemy): V3 {
+  const p = w.player, v = w.playerWorldVel;
+  const lock = archerLockBefore(w), speed = boltSpeed(w);
+  let t = lock + Math.hypot(p.x - e.x, p.z - e.z) / speed;
+  for (let k = 0; k < 2; k++) t = lock + Math.hypot(p.x + v.x * t - e.x, p.z + v.z * t - e.z) / speed;
+  return { x: p.x + v.x * t, y: 1.2, z: p.z + v.z * t };
+}
+
 function fireBolt(w: World, e: Enemy): void {
   const s = PROJECTILES.bolt;
-  const speed = w.level.rules?.quickThreats ? QUICK.boltSpeed : s.speed;
+  const speed = boltSpeed(w);
   const f = forwardFromYaw(e.yaw);
   const origin = { x: e.x + f.x * 0.5, y: e.y + 1.45, z: e.z + f.z * 0.5 };
   const tgt = e.aimPoint!;

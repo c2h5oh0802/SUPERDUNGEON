@@ -29,6 +29,8 @@ export interface EnemySpawn {
   carriesKey?: boolean;
   /** Authored fixtures only: exact hit points instead of the floor's scaling. */
   hp?: number;
+  /** Prototype crossbowman that leads the player's movement (aims where it is heading). */
+  leads?: boolean;
   /** 精英持鑰者的特性。 */
   elite?: EliteTrait;
   /** 寶箱怪：原本寶箱裡的東西。 */
@@ -176,9 +178,11 @@ export interface LevelData {
    * 試作規則（只在試作房間開啟）。smartFire：敵人會繞開燃燒的火、投彈手不往
    * 隊友身邊丟；火瓶碎開時炸傷範圍內的人，炸到的敵人會著火。quickThreats：
    * 弩矢更快、弩手更晚鎖定、突進者衝刺更快（見 QUICK）。noLevelUp：擊殺不給
-   * 經驗，最大生命不變，戰鬥中也不跳天賦選擇。
+   * 經驗，最大生命不變，戰鬥中也不跳天賦選擇。redirect：弩手只會倒在被打回去的
+   * 弩矢或你送出的火下（箭、劍、石都會被弩甲擋開）；獵手的箭在空中射中弩矢，
+   * 弩矢會飛回射手。
    */
-  rules?: { smartFire?: boolean; syncVolley?: boolean; quickThreats?: boolean; noLevelUp?: boolean };
+  rules?: { smartFire?: boolean; syncVolley?: boolean; quickThreats?: boolean; noLevelUp?: boolean; redirect?: boolean };
   /**
    * 試作：後續的敵人波次。場上活著的敵人不超過 alive 個，或世界時間到 time 秒，
    * 就從指定入口進來（直接追你）。

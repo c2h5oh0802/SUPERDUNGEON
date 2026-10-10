@@ -1,9 +1,9 @@
 import { bowDamage } from './equipment';
 import { applyHuntingMark } from './huntingMark';
-import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, SMOKE, TALENT_FX, TIPS } from '../config';
+import { CLASSES, ENEMIES, NOISE, PLAYER, PROJECTILES, REDIRECT, SMOKE, TALENT_FX, TIPS } from '../config';
 import { movingSpheresTOI, type V3 } from '../core/math';
 import { segmentCylinder, segmentEnemy } from './characterHit';
-import { shieldBlocks } from './classSys';
+import { returnBolt, shieldBlocks } from './classSys';
 import { shatterPotion, spawnArea } from './items';
 import { triggerTrapAt } from './dungeon';
 import { T } from './grid';
@@ -14,11 +14,14 @@ import type { Enemy, Projectile } from './types';
 
 interface Hit {
   t: number;
-  type: 'wall' | 'bottle' | 'enemy' | 'player';
+  type: 'wall' | 'bottle' | 'bolt' | 'enemy' | 'player';
   wallKind?: string;
   /** 在空中被擊中的煙霧瓶。 */
   bottle?: Projectile;
   bottleTau?: number;
+  /** redirect rule: an enemy bolt an arrow met in the air. */
+  bolt?: Projectile;
+  boltTau?: number;
   enemy?: Enemy;
   head?: boolean;
 }
@@ -59,6 +62,15 @@ function findHit(w: World, p: Projectile, a: V3, b: V3, dt: number, tStart: numb
       if (tau < 0) continue;
       const t = remain > 0 ? tau / remain : 0;
       if (!best || t < best.t) best = { t, type: 'bottle', bottle: bt, bottleTau: dt * tStart + tau };
+    }
+    // redirect rule: an arrow that passes close by an incoming bolt sends it back at its shooter.
+    if (p.kind === 'arrow' && w.level.rules?.redirect) for (const bt of w.projectiles) {
+      if (!bt.alive || bt.kind !== 'bolt' || bt.owner === 'player' || p.hitSet.has(bt.id)) continue;
+      const bPos = lerp3(bt.pos, bt.next, tStart);
+      const tau = movingSpheresTOI(a, p.avgVel, bPos, bt.avgVel, p.radius + REDIRECT.reflectRadius, remain);
+      if (tau < 0) continue;
+      const t = remain > 0 ? tau / remain : 0;
+      if (!best || t < best.t) best = { t, type: 'bolt', bolt: bt, boltTau: dt * tStart + tau };
     }
   }
   const ch = charHit(w, p, a, b);
@@ -164,6 +176,15 @@ export function updateProjectiles(w: World, dt: number): void {
         a = at;
         continue;
       }
+      if (hit.type === 'bolt') {
+        const b = hit.bolt!;
+        b.pos = { x: b.pos.x + b.avgVel.x * hit.boltTau!, y: b.pos.y + b.avgVel.y * hit.boltTau!, z: b.pos.z + b.avgVel.z * hit.boltTau! };
+        sendBack(w, b);
+        p.alive = false;
+        const c = w.grid.resolveCircle(b.pos.x, b.pos.z, 0.1);
+        w.addPickup('arrows', 1, c.x, 0.05, c.z, null);
+        break;
+      }
       if (hit.type === 'player' && p.kind === 'bottle') {
         // 火瓶砸在身上：腳下起火
         breakBottle(w, p, { x: w.player.x, y: 0.3, z: w.player.z }, false);
@@ -241,6 +262,17 @@ function onWall(w: World, p: Projectile, at: V3, kind: string | undefined): void
   }
 }
 
+/** redirect rule: a bolt an arrow met flies back at the crossbowman that shot it (straight back if it is gone). */
+function sendBack(w: World, b: Projectile): void {
+  const shooter = typeof b.owner === 'number' ? w.enemies.find((e) => e.id === b.owner && e.alive) : undefined;
+  let d = shooter
+    ? { x: shooter.x - b.pos.x, y: shooter.y + shooter.height * 0.55 - b.pos.y, z: shooter.z - b.pos.z }
+    : { x: -b.vel.x, y: -b.vel.y, z: -b.vel.z };
+  const len = Math.hypot(d.x, d.y, d.z) || 1;
+  d = { x: d.x / len, y: d.y / len, z: d.z / len };
+  returnBolt(w, b, d);
+}
+
 /** 第一個角色接觸即停止投射物；瓶子空爆的後續飛行另外處理。 */
 function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void {
   // Hostile bolts have the same base damage against either body. They never pierce,
@@ -262,7 +294,9 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
   const guardBlocks =
     e.kind === 'guard' && fromFront && e.state !== 'sleep' && e.phase !== 'stun' && e.phase !== 'stagger' && e.phase !== 'pushed' && (!head || e.shieldUp);
   const helmetBlocks = head && fromFront && (chargerHelmet(e) || wardenCrownClosed(e));
-  if (guardBlocks || helmetBlocks) {
+  // redirect rule: crossbowman armour turns arrows and stones; only a turned-back bolt gets through.
+  const armoured = !!w.level.rules?.redirect && e.kind === 'archer' && !p.deflected;
+  if (guardBlocks || helmetBlocks || armoured) {
     p.alive = false;
     w.emit({ type: guardBlocks ? 'shield' : 'helmet', x: at.x, y: at.y, z: at.z, id: e.id, kind: e.kind, source: p.kind, head });
     const dx = e.x + f.x * (e.radius + 0.4);
@@ -286,7 +320,7 @@ function onEnemy(w: World, p: Projectile, e: Enemy, at: V3, head: boolean): void
   if (e.kind === 'charger' && e.phase === 'stun') dmg *= ENEMIES.charger.stunDamageMul;
   if (!p.deflected) w.stats.shotHits++;
   p.hitSet.add(e.id);
-  damageEnemy(w, e, dmg, { source: p.deflected ? 'deflect' : p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z });
+  damageEnemy(w, e, dmg, { source: p.deflected ? 'deflect' : p.kind, sneak: false, head, x: at.x, y: at.y, z: at.z, redirect: p.deflected && !!w.level.rules?.redirect });
   if (p.kind === 'arrow' && !p.deflected && !p.tip) applyHuntingMark(w, e);
   w.emitNoise(at.x, at.y, at.z, p.kind === 'stone' ? PROJECTILES.stone.noise : 8, 'combat');
   // 藥劑箭：改變敵人的時間軸（藥劑碰到東西就用掉）

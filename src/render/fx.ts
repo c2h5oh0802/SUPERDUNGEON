@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { itemColor } from '../sim/items';
 import { wardenBraced, wardenWindup } from '../sim/enemySys';
-import { ENEMIES, PLAYER, SMOKE } from '../config';
+import { ENEMIES, LEAD_TINT, PLAYER, SMOKE } from '../config';
 import { clamp, forwardFromYaw, smoothstep } from '../core/math';
 import type { Enemy, GameEvent, Projectile } from '../sim/types';
 import type { World } from '../sim/world';
@@ -588,7 +588,9 @@ export class FxVisual {
         const k = clamp(e.phaseT / ENEMIES.archer.aim, 0, 1);
         const mat = m.material as THREE.MeshBasicMaterial;
         mat.opacity = e.locked ? 0.55 + 0.4 * Math.abs(Math.sin(realTime * 30)) : 0.12 + 0.35 * k;
-        mat.color.setRGB(1, e.locked ? 0.15 : 0.45 - 0.25 * k, 0.1);
+        // A leading crossbowman's line (lime) points where the bolt will go, ahead of a moving player.
+        if (e.leads) mat.color.setHex(LEAD_TINT);
+        else mat.color.setRGB(1, e.locked ? 0.15 : 0.45 - 0.25 * k, 0.1);
         m.visible = true;
       }
       if (e.kind === 'guard' && ((e.phase === 'windup' && e.locked) || e.phase === 'active')) {
