@@ -22,7 +22,7 @@ try {
   await page.goto(`${BASE}?dev=1&gfx=low`);
   await page.click('.class-card[data-cls="huntress"]');
   await page.click('#btn-trials');
-  for (const id of ['clockwork-corridor', 'crossfire-arena', 'crossfire-waves']) check(`練習選單有 ${id}`, await page.locator(`#btn-${id}`).isVisible());
+  for (const id of ['clockwork-corridor', 'crossfire-arena', 'crossfire-waves', 'crossfire-quick']) check(`練習選單有 ${id}`, await page.locator(`#btn-${id}`).isVisible());
 
   // ---- 機關走廊 ----
   await page.click('#btn-clockwork-corridor');
@@ -151,6 +151,33 @@ try {
   check('後兩波依序進場（有提示）', s.waves.spawned === 2 && s.enemies.length === 14 && ((await zh()) ? wavesText.includes('第二波') && wavesText.includes('第三波') : /Second wave/.test(wavesText) && /Third wave/.test(wavesText)), wavesText);
   const v2Objective = await page.textContent('#objective');
   check('三波清完：目標完成', s.enemies.every((e) => !e.alive) && ((await zh()) ? v2Objective.includes('目標完成') : /Objective complete/.test(v2Objective)), v2Objective);
+  await bot.tap('Escape');
+  await mode('paused');
+  await page.click('#btn-quit');
+  await mode('menu');
+
+  // ---- 四面來襲 v3：兩波、快到要停下來看 ----
+  await page.click('#btn-trials');
+  await page.click('#btn-crossfire-quick');
+  await mode('playing');
+  await page.waitForTimeout(400);
+  s = await st();
+  check('進入四面來襲 v3：第一波五名敵人，還有一波', s.practiceTrial === 'crossfire-quick' && s.enemies.length === 5 && s.waves.left === 1 && s.enemies.every((e) => e.hp === 2), JSON.stringify(s.waves));
+  console.log('INFO 狀態注入：每一波直接擊倒（之後不會自動重播）');
+  const v3Toasts = [];
+  for (let wave = 0; wave < 2; wave++) {
+    await page.evaluate(() => { for (const e of window.__sd.state().enemies) if (e.alive) window.__sd.debug.defeatEnemy(e.id); });
+    for (let k = 0; k < 20; k++) {
+      await page.waitForTimeout(150);
+      if ((await st()).mode === 'choice') { await bot.tap('Digit1'); await mode('playing'); }
+      v3Toasts.push(...await page.evaluate(() => [...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent ?? '')));
+    }
+  }
+  s = await st();
+  const v3Text = [...new Set(v3Toasts)].join(' | ');
+  check('第二波進場（有提示）', s.waves.spawned === 1 && s.enemies.length === 10 && ((await zh()) ? v3Text.includes('第二波') : /Second wave/.test(v3Text)), v3Text);
+  const v3Objective = await page.textContent('#objective');
+  check('兩波清完：目標完成', s.enemies.every((e) => !e.alive) && ((await zh()) ? v3Objective.includes('目標完成') : /Objective complete/.test(v3Objective)), v3Objective);
   check('沒有頁面錯誤', errors.length === 0, errors.join(' | '));
 } finally {
   await browser.close();

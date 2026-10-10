@@ -31,6 +31,9 @@ export const PRACTICE_TRIALS = [
   { id: 'crossfire-waves', seed: 'TRIAL-WAVES', name: '四面來襲 v2', goal: 'clear', kit: true, prototype: true, replay: true,
     objective: '撐過三波、清除所有敵人。敵人一下就倒，你被打中 ×1.5。',
     hint: '三波敵人從北、西、東三個門進來。弩手會等隊友或近戰一起出手，從兩側交叉齊射。每個敵人一下就倒：先停下來看誰最危險，再一個個解決。投彈手的火只燒你，打回去或射爆就燒敵人。打完會快轉重播整場戰鬥。' },
+  { id: 'crossfire-quick', seed: 'TRIAL-QUICK', name: '四面來襲 v3', goal: 'clear', kit: true, prototype: true, replay: true,
+    objective: '撐過兩波、清除所有敵人。敵人一下就倒，你被打中 ×2.5：弩矢兩下就倒，突進者與火瓶一下。',
+    hint: '兩波敵人從北、西、東三個門進來。弩矢與突進者比平常快得多，弩手會等隊友一起從兩側齊射。投彈手的火只燒你，打回去或射爆就燒敵人。打完會快轉重播整場戰鬥。' },
 ] as const;
 export type PracticeTrialId = typeof PRACTICE_TRIALS[number]['id'];
 export const trialForSeed = (seed: string) => PRACTICE_TRIALS.find(t => t.seed === seed);
@@ -45,7 +48,7 @@ export function createTrialLevel(id: PracticeTrialId): LevelData {
   }
   if (id === 'clockwork-corridor') return clockworkCorridor();
   if (id === 'crossfire-arena') return crossfireArena();
-  if (id === 'crossfire-waves') return crossfireWaves();
+  if (id === 'crossfire-waves' || id === 'crossfire-quick') return crossfireWaves(id);
   const grid = new Grid(26, 24);
   grid.tiles.fill(T.Wall);
   const rect = (x0: number, z0: number, x1: number, z1: number, tile: TileId = T.Floor) => {
@@ -210,9 +213,14 @@ const spawnAt = (kind: EnemySpawn['kind'], x: number, z: number, hp: number, per
  * through the north, west and east gates, the next one as soon as at most one
  * enemy is left or 20 world seconds after the last. Crossbowmen on both flanks
  * hold their shot for a partner or a melee strike, then fire together.
+ *
+ * Crossfire v3 (crossfire-quick), same arena: real time too fast to react,
+ * stopped time enough (quickThreats); hits hurt 2.5x; two waves, the second
+ * 12 world seconds after the first at most, so a fall costs little to retry.
  */
-function crossfireWaves(): LevelData {
-  const info = trialInfo('crossfire-waves');
+function crossfireWaves(id: 'crossfire-waves' | 'crossfire-quick'): LevelData {
+  const info = trialInfo(id);
+  const quick = id === 'crossfire-quick';
   const { grid, rect, enemies, torches } = prototypeBuilder(26, 22);
   rect(3, 3, 22, 15);   // arena
   rect(12, 1, 13, 2);   // north gate
@@ -228,7 +236,12 @@ function crossfireWaves(): LevelData {
     spawnAt('archer', 4.5, 6.5, 2, true), spawnAt('archer', 20.5, 6.5, 2, true),
     spawnAt('rat', 11.8, 4.2, 2), spawnAt('rat', 12.6, 3.6, 2), spawnAt('rat', 13.4, 4.2, 2),
   );
-  const waves: NonNullable<LevelData['waves']> = [
+  const waves: NonNullable<LevelData['waves']> = quick ? [
+    { alive: 1, time: 12, label: '第二波：四面八方', spawns: [
+      spawnAt('charger', 1.6, 8.9, 3), spawnAt('bomber', 12.9, 1.6, 2), spawnAt('rat', 24.0, 8.6, 2), spawnAt('rat', 24.0, 9.4, 2),
+      spawnAt('archer', 8.5, 3.5, 2, true),
+    ] },
+  ] : [
     { alive: 1, time: 20, label: '第二波：西門、北門、東門', spawns: [
       spawnAt('charger', 1.6, 8.9, 3), spawnAt('bomber', 12.9, 1.6, 2), spawnAt('rat', 24.0, 8.6, 2), spawnAt('rat', 24.0, 9.4, 2),
     ] },
@@ -242,6 +255,7 @@ function crossfireWaves(): LevelData {
     mirrored: false, attempt: 0, grid, spawn: { x: 6.5, z: 19.5, yaw: -Math.PI / 2 },
     rooms: [{ key: 'T', role: 'practice', tier: 0, optional: false, layoutId: info.id, name: info.name, x0: 1, z0: 1, w: 24, h: 20 }],
     enemies, pickups: [], chests: [], heart: null, stairs: null, resupply: null, traps: [], torches: torches(),
-    practice: true, practiceTrial: info.id, damageMul: 1.5, rules: { smartFire: true, syncVolley: true }, waves,
+    practice: true, practiceTrial: info.id, damageMul: quick ? 2.5 : 1.5,
+    rules: { smartFire: true, syncVolley: true, ...(quick ? { quickThreats: true, noLevelUp: true } : {}) }, waves,
   };
 }

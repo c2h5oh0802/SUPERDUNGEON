@@ -174,9 +174,11 @@ export interface LevelData {
   damageMul?: number;
   /**
    * 試作規則（只在試作房間開啟）。smartFire：敵人會繞開燃燒的火、投彈手不往
-   * 隊友身邊丟；火瓶碎開時炸傷範圍內的人，炸到的敵人會著火。
+   * 隊友身邊丟；火瓶碎開時炸傷範圍內的人，炸到的敵人會著火。quickThreats：
+   * 弩矢更快、弩手更晚鎖定、突進者衝刺更快（見 QUICK）。noLevelUp：擊殺不給
+   * 經驗，最大生命不變，戰鬥中也不跳天賦選擇。
    */
-  rules?: { smartFire?: boolean; syncVolley?: boolean };
+  rules?: { smartFire?: boolean; syncVolley?: boolean; quickThreats?: boolean; noLevelUp?: boolean };
   /**
    * 試作：後續的敵人波次。場上活著的敵人不超過 alive 個，或世界時間到 time 秒，
    * 就從指定入口進來（直接追你）。

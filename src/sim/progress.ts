@@ -37,6 +37,8 @@ export function queueChoice(w: World, c: PendingChoice): void {
 }
 
 export function gainXp(w: World, n: number): void {
+  // noLevelUp prototype rule: max HP stays put, so hits-to-down holds all fight.
+  if (w.level.rules?.noLevelUp) return;
   const p = w.player;
   p.xp += n;
   while (p.level < XP.levels.length && p.xp >= XP.levels[p.level]!) {

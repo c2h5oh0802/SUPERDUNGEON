@@ -1,5 +1,5 @@
 import { combatRoomCells } from './combatSound';
-import { ENCOUNTERS, ENEMIES, FIREBOMB, GEAR, VOLLEY, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
+import { ENCOUNTERS, ENEMIES, FIREBOMB, GEAR, VOLLEY, ITEM_FX, NOISE, PERCEPTION, PLAYER, PROJECTILES, QUICK, RUN, SHIELD, STEALTH, TALENT_FX, TIPS } from '../config';
 import { segmentEnemy } from './characterHit';
 import { hasTalent } from './progress';
 import { angleDiff, clamp, forwardFromYaw, lerp, turnToward, wrapAngle, yawFromDir, type V2, type V3 } from '../core/math';
@@ -919,7 +919,8 @@ function archerAlert(w: World, e: Enemy, dt: number): void {
         return;
       }
       e.phaseT += dt;
-      const lockAt = s.aim - s.lockBefore;
+      // quickThreats: the aim stays on the player until later, so the shot leaves less time.
+      const lockAt = s.aim - (w.level.rules?.quickThreats ? QUICK.archerLockBefore : s.lockBefore);
       if (e.phaseT < lockAt) {
         facePlayer(w, e, 6, dt);
         e.aimPoint = { x: p.x, y: 1.2, z: p.z };
@@ -986,6 +987,7 @@ function startAim(w: World, e: Enemy): void {
 
 function fireBolt(w: World, e: Enemy): void {
   const s = PROJECTILES.bolt;
+  const speed = w.level.rules?.quickThreats ? QUICK.boltSpeed : s.speed;
   const f = forwardFromYaw(e.yaw);
   const origin = { x: e.x + f.x * 0.5, y: e.y + 1.45, z: e.z + f.z * 0.5 };
   const tgt = e.aimPoint!;
@@ -1001,7 +1003,7 @@ function fireBolt(w: World, e: Enemy): void {
     kind: 'bolt',
     owner: e.id,
     pos: origin,
-    vel: { x: dx * s.speed, y: dy * s.speed, z: dz * s.speed },
+    vel: { x: dx * speed, y: dy * speed, z: dz * speed },
     radius: s.radius,
     gravity: s.gravity,
     age: 0,
@@ -1235,7 +1237,7 @@ function chargerAlert(w: World, e: Enemy, dt: number): void {
       e.moving = true;
       const f = forwardFromYaw(e.lockedYaw);
       e.yaw = e.lockedYaw;
-      const step = s.chargeSpeed * dt;
+      const step = (w.level.rules?.quickThreats ? QUICK.chargeSpeed : s.chargeSpeed) * dt;
       const nx = e.x + f.x * step;
       const nz = e.z + f.z * step;
       if (w.grid.circleBlocked(nx, nz, e.radius)) {

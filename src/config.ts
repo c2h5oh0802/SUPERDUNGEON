@@ -15,6 +15,12 @@ export const TIME = {
 /** 試作規則 syncVolley：弩手最多等這麼久，等隊友一起齊射或近戰出手。 */
 export const VOLLEY = { maxWait: 1.2, meleeRange: 4 } as const;
 
+/**
+ * 試作規則 quickThreats：正常速度下來不及反應、停下來才來得及。弩手鎖定後
+ * 0.15 + 8.5 m ÷ 30 m/s ≈ 0.43 秒就到（停下來是 4.3 秒）；突進者衝刺也更快。
+ */
+export const QUICK = { boltSpeed: 30, archerLockBefore: 0.15, chargeSpeed: 14 } as const;
+
 export const FIREBOMB = { burst: 4, burstRadius: 1.8, burn: 2, burnTick: 0.5, allyClear: 0.6, fleeSpeed: 2.6 } as const;
 
 /** Shared by the corpse pose and the public victory presentation delay. */
